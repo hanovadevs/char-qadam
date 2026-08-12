@@ -1,0 +1,3 @@
+# Feature modules (auth, run_tracking, points, rewards, leaderboard).
+# Each feature holds its own presentation / providers / models.
+# Intentionally empty during initial scaffolding.

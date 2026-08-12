@@ -1,0 +1,2 @@
+# Business-logic services (auth, run tracking, points engine, Awin client, ...)
+# will live here. Intentionally empty during initial scaffolding.

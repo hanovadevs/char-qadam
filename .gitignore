@@ -1,0 +1,49 @@
+# ---------- Root ----------
+.DS_Store
+*.log
+.env
+.env.local
+
+# ---------- Python / FastAPI (backend/) ----------
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# ---------- Flutter / Dart (mobile/) ----------
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/.pub-cache/
+mobile/.pub/
+mobile/pubspec.lock
+mobile/**/generated_plugin_registrant.*
+mobile/.idea/
+*.iml
+
+# Android
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/android/app/*.jks
+mobile/**/GeneratedPluginRegistrant.*
+
+# iOS
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/Flutter.framework/
+mobile/ios/Flutter/Flutter.podspec
+mobile/ios/Flutter/ephemeral/
+mobile/**/*.mode1v3
+mobile/**/*.pbxuser
+
+# ---------- IDE / Editors ----------
+.vscode/
+*.swp
