@@ -1,7 +1,7 @@
 """FastAPI application entry point for the Qadam backend.
 
-Scaffold only: wires up config, MongoDB lifespan, CORS, and a /health
-endpoint. No feature routers are registered yet.
+Wires up config, PostgreSQL lifespan, CORS, and a /health endpoint.
+Feature routers will be registered here as each backend phase completes.
 """
 from contextlib import asynccontextmanager
 
@@ -9,16 +9,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.db.mongo import close_mongo_connection, connect_to_mongo
-from app.routers import health
+from app.db.postgres import dispose_engine, get_engine
+from app.routers import auth, health
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage startup/shutdown: open and close the MongoDB connection."""
-    await connect_to_mongo()
+    """Manage startup/shutdown: warm-up and dispose the PostgreSQL engine."""
+    # Touch the engine on startup so misconfigured DATABASE_URL fails fast.
+    get_engine()
     yield
-    await close_mongo_connection()
+    await dispose_engine()
 
 
 def create_app() -> FastAPI:
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(auth.router)
 
     @app.get("/", tags=["root"])
     async def root() -> dict:

@@ -7,15 +7,19 @@ Tracked checklist of every module/feature and its status.
 
 **Status legend:** ✅ Done · 🚧 In Progress · ⏳ Pending
 
-_Last updated: 2026-08-13_
+_Last updated: 2026-08-14 (Phase B0)_
 
-| Module               | Status     | Notes |
-|----------------------|------------|-------|
-| Project scaffolding  | ✅ Done     | 2026-08-13 — Flutter app in `/mobile` (Riverpod, go_router, geolocator, pedometer, dio, secure_storage) + FastAPI backend in `/backend` (app/main, config, db/mongo, routers/health). Both verified running; tracking docs created. |
-| Auth (JWT)           | ⏳ Pending  | Deps present (python-jose, passlib); no logic yet. |
-| GPS run tracking     | ⏳ Pending  | geolocator + pedometer installed; no tracking logic yet. |
-| Points engine        | ⏳ Pending  | Not started. |
-| Rewards & redemption | ⏳ Pending  | Not started. |
-| Leaderboard          | ⏳ Pending  | Not started. |
-| User profile         | ⏳ Pending  | Not started. |
-| Awin integration     | ⏳ Pending  | Future phase — no Awin calls yet. |
+| Module                        | Status        | Notes |
+|-------------------------------|---------------|-------|
+| Project scaffolding           | ✅ Done        | 2026-08-13 — Flutter app in `/mobile` + FastAPI backend in `/backend`. Both verified running. |
+| **B0 — Postgres foundation**  | ✅ Done        | 2026-08-14 — Swapped Motor/MongoDB for SQLAlchemy 2.0 async + asyncpg + Alembic. 9 ORM tables, initial migration, seed script. `DATABASE_URL` env var replaces `MONGO_*`. |
+| **B1 — Auth (JWT)**              | ✅ Done        | 2026-08-14 — POST /auth/register, POST /auth/login, GET /auth/me. bcrypt password hashing (passlib), HS256 JWT (python-jose), get_current_user dep, 10/10 tests passing. |
+| B2 — Activity + points engine | ⏳ Pending     | Step sync, idempotency, ledger. |
+| B3 — Offers + voucher issuance| ⏳ Pending     | Catalog, redeem endpoint, QR token. |
+| B4 — Merchant validate/redeem | ⏳ Pending     | Partner API, double-redeem guard. |
+| B5 — Profile + housekeeping   | ⏳ Pending     | PATCH profile, DELETE account, seed script. |
+| M0 — App shell                | ⏳ Pending     | Riverpod + go_router wired; `health` + `qr_flutter` added to pubspec. |
+| M1 — Auth (Flutter)           | ⏳ Pending     | Login/register screens, JWT stored in secure_storage. |
+| M2 — Steps + dashboard        | ⏳ Pending     | health integration, manual dev entry, sync. |
+| M3 — Points, rewards, wallet  | ⏳ Pending     | Catalog, redeem, QR voucher view. |
+| M4 — Wire-up & E2E            | ⏳ Pending     | Full loop test: register → steps → points → redeem → validate. |

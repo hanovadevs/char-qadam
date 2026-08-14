@@ -7,12 +7,16 @@ uvicorn[standard]==0.37.0
 pydantic==2.11.10
 pydantic-settings==2.7.1
 
-# MongoDB async driver
-motor==3.7.1
+# PostgreSQL async ORM + migrations
+sqlalchemy[asyncio]==2.0.41
+asyncpg==0.30.0
+alembic==1.16.2
+greenlet==3.2.3
 
 # Auth: JWT + password hashing
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.3.0                 # passlib 1.7.4 is incompatible with bcrypt>=5.x
 
 # Misc
 python-multipart==0.0.20
@@ -21,3 +25,4 @@ email-validator==2.2.0
 # Dev / testing
 httpx==0.28.1
 pytest==8.4.2
+pytest-asyncio==0.24.0

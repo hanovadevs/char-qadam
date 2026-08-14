@@ -1,6 +1,7 @@
 """Application configuration loaded from environment variables."""
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,9 +15,22 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
 
-    # MongoDB
-    mongo_uri: str = "mongodb://localhost:27017"
-    mongo_db_name: str = "qadam"
+    # PostgreSQL (async)
+    # Accepts both postgresql:// and postgresql+asyncpg:// — the validator below
+    # normalises plain postgresql:// (psycopg2) to asyncpg automatically.
+    database_url: str = "postgresql+asyncpg://qadam:qadam@localhost:5432/qadam"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _coerce_asyncpg_scheme(cls, v: str) -> str:
+        """Upgrade postgresql:// → postgresql+asyncpg:// if needed."""
+        if isinstance(v, str) and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
+    # Points engine — server-side earning rule
+    steps_per_point: int = 100          # 100 steps = 1 point
+    daily_step_cap: int = 20_000        # max eligible steps counted per day
 
     # JWT auth
     jwt_secret: str = "change-me-in-production"

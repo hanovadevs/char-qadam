@@ -5,7 +5,7 @@ Folder/file layout for the Qadam project. Two top-level apps: `/mobile`
 
 > **Rule:** Keep this current as folders/files are added.
 
-_Last updated: 2026-08-13 (initial scaffold)_
+_Last updated: 2026-08-14 (Phase B0 — Postgres swap)_
 
 ---
 
@@ -15,9 +15,11 @@ _Last updated: 2026-08-13 (initial scaffold)_
 Qadam/
 ├── mobile/               # Flutter mobile app
 ├── backend/              # FastAPI backend
+├── MVP_PLAN.md           # Authoritative build plan (phases B0–B5, M0–M4)
+├── MVP_req.md            # Product requirements document (PRD)
 ├── TECH_STACK.md         # All tech + versions + rationale
 ├── PROJECT_STRUCTURE.md  # This file
-├── REQUIREMENTS.md       # MVP functional requirements
+├── REQUIREMENTS.md       # Legacy requirements (superseded by MVP_req.md)
 ├── MODULES.md            # Module/feature status checklist
 └── .gitignore            # Flutter + Python ignore rules
 ```
@@ -30,24 +32,42 @@ Qadam/
 backend/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py           # App factory, lifespan (Mongo connect/close), CORS, /health, /
-│   ├── config.py         # Settings via pydantic-settings (env-driven)
+│   ├── main.py           # App factory, lifespan (Postgres engine warm-up/dispose), CORS, /health, /
+│   ├── config.py         # Settings via pydantic-settings (DATABASE_URL, JWT, points engine rules)
 │   ├── db/
 │   │   ├── __init__.py
-│   │   └── mongo.py       # Motor client lifecycle + get_db() accessor
+│   │   ├── base.py        # SQLAlchemy DeclarativeBase (shared by all models)
+│   │   ├── models.py      # All 9 ORM tables: users, devices, activity_daily, points_ledger,
+│   │   │                  #   partners, offers, vouchers, redemptions, audit_log
+│   │   └── postgres.py    # Async engine + session factory + get_session() FastAPI dependency
 │   ├── routers/
 │   │   ├── __init__.py
-│   │   └── health.py      # GET /health (only functional endpoint so far)
-│   ├── models/           # Pydantic v2 models (empty scaffold — .gitkeep)
-│   └── services/         # Business logic (empty scaffold — .gitkeep)
-├── requirements.txt      # Pinned Python dependencies
-├── .env.example          # Sample env config (copy to .env)
-├── .venv/                # Local virtualenv (git-ignored)
-└── README.md             # Backend setup/run instructions
+│   │   └── health.py      # GET /health (functional endpoint)
+│   ├── models/            # Pydantic v2 request/response schemas (populated per phase)
+│   └── services/          # Business logic (populated per phase)
+├── alembic/
+│   ├── env.py             # Async Alembic environment (reads DATABASE_URL from app.config)
+│   ├── script.py.mako     # Migration file template
+│   └── versions/
+│       └── 0001_initial_schema.py  # Creates all 9 tables + indexes
+├── seeds/
+│   └── seed.py            # Demo partner + 3 offers (idempotent, run with python -m seeds.seed)
+├── alembic.ini            # Alembic config (script_location = alembic)
+├── requirements.txt       # Pinned Python dependencies
+├── .env.example           # Sample env config (copy to .env)
+├── .venv/                 # Local virtualenv (git-ignored)
+└── README.md              # Backend setup/run instructions
 ```
 
-**Run:** `uvicorn app.main:app --reload` → http://127.0.0.1:8000
-(`/health`, `/docs`).
+**Setup:**
+```bash
+cd backend
+cp .env.example .env          # fill in DATABASE_URL
+pip install -r requirements.txt
+alembic upgrade head           # create all tables
+python -m seeds.seed           # (optional) seed demo data
+uvicorn app.main:app --reload  # → http://127.0.0.1:8000
+```
 
 ---
 
@@ -57,18 +77,21 @@ backend/
 mobile/
 ├── lib/
 │   ├── main.dart         # App entry (default Flutter counter screen for now)
-│   ├── core/             # Theme, constants, shared utils (empty scaffold)
-│   ├── routing/          # go_router config (empty scaffold)
-│   ├── data/             # API clients (Dio), repositories, secure storage (empty scaffold)
-│   └── features/         # Feature modules: auth, run_tracking, points, rewards, leaderboard (empty scaffold)
+│   ├── core/             # Theme, constants, shared utils (scaffold — Phase M0)
+│   ├── routing/          # go_router config (scaffold — Phase M0)
+│   ├── data/             # API clients (Dio), repositories, secure storage (scaffold — Phase M0)
+│   └── features/         # Feature modules (scaffold — Phases M1–M4)
+│       ├── auth/
+│       ├── activity/
+│       ├── points/
+│       ├── rewards/
+│       ├── wallet/
+│       └── profile/
 ├── android/              # Android platform project
 ├── ios/                  # iOS platform project
-├── test/                 # Widget/unit tests (default widget_test.dart)
+├── test/                 # Widget/unit tests
 ├── pubspec.yaml          # Flutter dependencies
 └── pubspec.lock          # Locked dependency versions (git-ignored)
 ```
 
 **Run:** `cd mobile && flutter run`.
-
-> The `lib/` sub-folders are structural placeholders (`.gitkeep`); no feature
-> code exists yet. `main.dart` remains the default Flutter starter screen.

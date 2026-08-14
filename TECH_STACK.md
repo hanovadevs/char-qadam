@@ -1,11 +1,11 @@
 # TECH_STACK.md
 
-Every technology, library, and package used in the Qadam "run-to-earn" project,
+Every technology, library, and package used in the Qadam "step-to-earn" project,
 with versions and a one-line reason for each choice.
 
 > **Rule:** Update this file whenever a dependency is added, removed, or upgraded.
 
-_Last updated: 2026-08-13 (initial scaffold)_
+_Last updated: 2026-08-14 (Phase B0 — Postgres swap)_
 
 ---
 
@@ -31,10 +31,12 @@ Package name: `qadam` · Org: `com.qadam` · Platforms: Android, iOS
 |---------|---------|--------|
 | flutter_riverpod | ^2.6.1 | State management (specified stack choice). |
 | go_router | ^17.5.0 | Declarative navigation / routing. |
-| geolocator | ^14.0.3 | GPS location for run tracking. |
-| pedometer | ^4.2.0 | Step counting for run tracking. |
 | dio | ^5.11.0 | HTTP client for talking to the FastAPI backend. |
 | flutter_secure_storage | ^11.0.0 | Secure on-device storage for JWT tokens. |
+| health | (TBD — Phase M0) | HealthKit / Health Connect step reading. |
+| qr_flutter | (TBD — Phase M3) | QR code rendering for voucher display. |
+| geolocator | ^14.0.3 | GPS (kept; attestation/fraud work deferred). |
+| pedometer | ^4.2.0 | Step counting fallback (may be replaced by `health`). |
 | cupertino_icons | ^1.0.8 | iOS-style icon set (Flutter default). |
 
 ### Dev dependencies
@@ -56,13 +58,23 @@ Python 3.12 · pinned in `backend/requirements.txt`
 | uvicorn[standard] | 0.37.0 | ASGI server to run FastAPI. |
 | pydantic | 2.11.10 | Data validation / serialization (v2). |
 | pydantic-settings | 2.7.1 | Env-driven application settings. |
-| motor | 3.7.1 | Async MongoDB driver. |
-| python-jose[cryptography] | 3.5.0 | JWT encode/decode for auth (future phase). |
-| passlib[bcrypt] | 1.7.4 | Password hashing for auth (future phase). |
-| python-multipart | 0.0.20 | Form/multipart parsing (login forms, uploads). |
+| sqlalchemy[asyncio] | 2.0.41 | Async ORM for PostgreSQL; mapped_column API. |
+| asyncpg | 0.30.0 | Async PostgreSQL driver (used by SQLAlchemy). |
+| alembic | 1.16.2 | Schema migrations for SQLAlchemy models. |
+| greenlet | 3.2.3 | Required for SQLAlchemy async support. |
+| python-jose[cryptography] | 3.5.0 | JWT encode/decode for auth. |
+| passlib[bcrypt] | 1.7.4 | Password hashing. |
+| python-multipart | 0.0.20 | Form/multipart parsing. |
 | email-validator | 2.2.0 | Email validation for Pydantic models. |
-| httpx | 0.28.1 | Async HTTP client (tests + future Awin calls). |
+| httpx | 0.28.1 | Async HTTP client (tests). |
 | pytest | 8.4.2 | Test runner. |
+| pytest-asyncio | 0.24.0 | Async test support for pytest. |
+
+### Removed
+
+| Package | Reason removed |
+|---------|----------------|
+| motor 3.7.1 | MongoDB async driver — replaced by asyncpg + SQLAlchemy (Phase B0). |
 
 ---
 
@@ -70,7 +82,7 @@ Python 3.12 · pinned in `backend/requirements.txt`
 
 | Tech | Version | Reason |
 |------|---------|--------|
-| MongoDB | (server, external) | Document store for users, runs, points, rewards. Accessed async via Motor. |
+| PostgreSQL | 15+ (external) | Transactional-correct relational store for balances, vouchers, and the append-only ledger. Chosen in MVP_PLAN.md §0 for correctness over MongoDB. |
 
 ---
 
@@ -78,4 +90,5 @@ Python 3.12 · pinned in `backend/requirements.txt`
 
 | Tech | Reason |
 |------|--------|
-| Awin API | Affiliate network for discount coupons / cashback rewards. |
+| Redis | Async job queue / rate-limit backing store (post-MVP). |
+| App Attest / Play Integrity | Device attestation for fraud hardening (post-MVP). |
