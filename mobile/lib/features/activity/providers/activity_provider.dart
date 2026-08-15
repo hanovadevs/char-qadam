@@ -91,11 +91,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     final hasPerm = await healthService.requestPermissions();
     state = state.copyWith(hasPermission: hasPerm);
 
-    int steps = 0;
-    if (hasPerm) {
-      steps = await healthService.fetchTodaySteps();
-    }
-
+    final steps = await healthService.fetchTodaySteps();
     state = state.copyWith(todaySteps: steps);
 
     // If steps > 0, sync to server
