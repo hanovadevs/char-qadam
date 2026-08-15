@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     steps_per_point: int = 100          # 100 steps = 1 point
     daily_step_cap: int = 20_000        # max eligible steps counted per day
 
+    # Vouchers
+    voucher_validity_days: int = 30     # days from issuance until a voucher expires
+
+    # Partner API (B4)
+    # Secret used to HMAC-sign validate→redeem nonces.  Defaults to jwt_secret.
+    partner_nonce_secret: str = ""      # if empty, falls back to jwt_secret at runtime
+    nonce_max_age_seconds: int = 300    # 5 minutes — nonce window between validate and redeem
+
     # JWT auth
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"

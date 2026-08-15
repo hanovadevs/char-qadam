@@ -1,21 +1,26 @@
-"""Seed script — inserts a demo partner and 3 offers for local dev/testing.
+"""Seed script — inserts a demo partner (with API key) and 3 offers for local dev.
 
 Run from the backend/ directory:
     python -m seeds.seed
 
 Requires DATABASE_URL to be set (reads from .env via app.config).
+
+On first run the demo partner's raw API key is printed once — save it.
+Subsequent runs are idempotent (key is NOT re-generated if one exists).
 """
 from __future__ import annotations
 
 import asyncio
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import get_settings
 from app.db.models import DiscountType, Offer, OfferStatus, Partner, PartnerStatus
+from app.services.partner_auth import hash_api_key
 
 
 DEMO_PARTNER_ID = "00000000-0000-0000-0000-000000000001"
@@ -28,7 +33,7 @@ DEMO_OFFERS = [
         "discount_value": 10.00,
         "points_cost": 500,
         "min_basket": 20.00,
-        "inventory": None,  # unlimited
+        "inventory": None,   # unlimited
     },
     {
         "title": "$5 Flat Discount",
@@ -57,29 +62,49 @@ async def seed() -> None:
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     async with factory() as session:
-        # Upsert demo partner
-        existing_partner = await session.get(Partner, DEMO_PARTNER_ID)
+        # ---------------------------------------------------------------- partner
+        existing_partner: Partner | None = await session.get(Partner, DEMO_PARTNER_ID)
+
         if existing_partner is None:
+            # First run — generate a fresh API key
+            raw_key = secrets.token_urlsafe(32)
             partner = Partner(
                 id=DEMO_PARTNER_ID,
                 name="QadamShop (Demo)",
                 status=PartnerStatus.ACTIVE,
+                api_key_hash=hash_api_key(raw_key),
             )
             session.add(partner)
             print(f"[seed] Created partner: {partner.name}")
+            print()
+            print("  ┌─────────────────────────────────────────────────────┐")
+            print(f"  │  DEMO PARTNER API KEY (shown once — save it now!)  │")
+            print(f"  │  {raw_key:<51}│")
+            print("  │  Header: X-Partner-Key: <key above>                │")
+            print("  └─────────────────────────────────────────────────────┘")
+            print()
+        elif existing_partner.api_key_hash is None:
+            # Existing partner without a key — add one
+            raw_key = secrets.token_urlsafe(32)
+            existing_partner.api_key_hash = hash_api_key(raw_key)
+            print(f"[seed] Added API key to existing partner: {existing_partner.name}")
+            print()
+            print("  ┌─────────────────────────────────────────────────────┐")
+            print(f"  │  DEMO PARTNER API KEY (shown once — save it now!)  │")
+            print(f"  │  {raw_key:<51}│")
+            print("  │  Header: X-Partner-Key: <key above>                │")
+            print("  └─────────────────────────────────────────────────────┘")
+            print()
         else:
-            print(f"[seed] Partner already exists: {existing_partner.name}")
+            print(f"[seed] Partner already exists with API key: {existing_partner.name}")
 
-        # Upsert demo offers
+        # ----------------------------------------------------------------- offers
         now = datetime.now(timezone.utc)
         ends_at = now + timedelta(days=90)
 
         for offer_data in DEMO_OFFERS:
-            # Check by title + partner_id (simple idempotency)
             result = await session.execute(
-                text(
-                    "SELECT id FROM offers WHERE partner_id = :pid AND title = :title LIMIT 1"
-                ),
+                text("SELECT id FROM offers WHERE partner_id = :pid AND title = :title LIMIT 1"),
                 {"pid": DEMO_PARTNER_ID, "title": offer_data["title"]},
             )
             row = result.fetchone()
