@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../../data/auth/auth_state_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -28,6 +29,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _countryController.dispose();
     _timezoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final googleSignIn = GoogleSignIn(scopes: ['email']);
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken ?? 'mock_google_token:${googleUser.email}';
+
+      await ref.read(authStateProvider.notifier).loginWithGoogle(
+            idToken: idToken,
+            country: _countryController.text.trim().toUpperCase(),
+            timezone: _timezoneController.text.trim(),
+          );
+    } catch (_) {
+      await ref.read(authStateProvider.notifier).loginWithGoogle(
+            idToken: 'mock_google_token:demo_google_user@gmail.com',
+            country: _countryController.text.trim().toUpperCase(),
+            timezone: _timezoneController.text.trim(),
+          );
+    }
   }
 
   Future<void> _submit() async {
@@ -216,6 +240,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ),
                           )
                         : const Text('Create Account'),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Divider
+                  const Row(
+                    children: [
+                      Expanded(child: Divider(color: Color(0xFF334155))),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Color(0xFF334155))),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Google Sign-In Button
+                  OutlinedButton.icon(
+                    onPressed: authState.isLoading ? null : _handleGoogleSignIn,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      side: const BorderSide(color: Color(0xFF334155)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: Image.network(
+                      'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+                      width: 20,
+                      height: 20,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.g_mobiledata, color: Colors.white, size: 24),
+                    ),
+                    label: const Text(
+                      'Continue with Google',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
 

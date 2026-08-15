@@ -66,6 +66,32 @@ class AuthRepository {
     }
   }
 
+  /// Exchange a Google OAuth ID Token (or Supabase OAuth Token) for a Qadam JWT.
+  Future<String> loginWithGoogle({
+    required String idToken,
+    String? country,
+    String? timezone,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'id_token': idToken,
+      };
+      if (country != null) body['country'] = country;
+      if (timezone != null) body['timezone'] = timezone;
+
+      final response = await apiClient.post(
+        '/auth/google',
+        data: body,
+      );
+      final data = response.data as Map<String, dynamic>;
+      return data['access_token'] as String;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Unexpected Google authentication error: $e');
+    }
+  }
+
   /// Get profile of the current authenticated user.
   Future<UserModel> getMe() async {
     try {
