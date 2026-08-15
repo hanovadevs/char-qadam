@@ -121,6 +121,9 @@ async def google_auth(
         # Verify ID token against Google's OAuth2 tokeninfo endpoint
         try:
             import httpx
+            from app.config import get_settings
+            settings = get_settings()
+
             async with httpx.AsyncClient(timeout=10.0) as http_client:
                 resp = await http_client.get(
                     "https://oauth2.googleapis.com/tokeninfo",
@@ -129,7 +132,14 @@ async def google_auth(
                 if resp.status_code == 200:
                     payload = resp.json()
                     if payload.get("email_verified") in (True, "true"):
-                        email = payload.get("email")
+                        # If google_client_id is configured, verify target audience
+                        if settings.google_client_id:
+                            aud = payload.get("aud")
+                            azp = payload.get("azp")
+                            if settings.google_client_id in (aud, azp):
+                                email = payload.get("email")
+                        else:
+                            email = payload.get("email")
         except Exception:
             pass
 

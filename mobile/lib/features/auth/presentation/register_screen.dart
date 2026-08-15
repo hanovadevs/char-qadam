@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../../core/config/env_config.dart';
 import '../../../data/auth/auth_state_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -33,7 +34,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _handleGoogleSignIn() async {
     try {
-      final googleSignIn = GoogleSignIn(scopes: ['email']);
+      final googleSignIn = GoogleSignIn(
+        serverClientId: EnvConfig.googleClientId,
+        scopes: ['email'],
+      );
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) return;
 

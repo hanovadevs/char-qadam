@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     partner_nonce_secret: str = ""      # if empty, falls back to jwt_secret at runtime
     nonce_max_age_seconds: int = 300    # 5 minutes — nonce window between validate and redeem
 
+    # OAuth (Google / Supabase)
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
     # JWT auth
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
