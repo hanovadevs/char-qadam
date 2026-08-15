@@ -1,27 +1,20 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-
 /// Environment configuration for the Qadam mobile app.
 ///
 /// Base URL & Google Client ID can be overridden at build/run time via:
-///   `flutter run --dart-define=API_BASE_URL=http://your-ip:8000`
+///   `flutter run --dart-define=API_BASE_URL=https://char-qadam.onrender.com`
 class EnvConfig {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const String _envGoogleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+
+  /// Production live API URL on Render
+  static const String productionBaseUrl = 'https://char-qadam.onrender.com';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) {
       return _envBaseUrl;
     }
-    // Default fallback based on platform
-    if (kIsWeb) {
-      return 'http://localhost:8000';
-    }
-    if (Platform.isAndroid) {
-      // 10.0.2.2 points to host localhost from Android emulator
-      return 'http://10.0.2.2:8000';
-    }
-    return 'http://localhost:8000';
+    // Default to live production URL
+    return productionBaseUrl;
   }
 
   static String get googleClientId {
