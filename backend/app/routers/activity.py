@@ -1,0 +1,101 @@
+"""Activity router — step sync and historical aggregates.
+
+Routes
+------
+POST /activity/sync            Ingest a step count for a given day (idempotent).
+GET  /activity?range=...       Aggregated step totals (today | week | month).
+"""
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import get_settings
+from app.db.models import ActivityDaily, User
+from app.db.postgres import get_session
+from app.deps import get_current_user
+from app.schemas.activity import ActivityPeriod, ActivityRangeOut, SyncIn, SyncOut
+from app.services.activity import sync_activity
+
+router = APIRouter(prefix="/activity", tags=["activity"])
+
+
+@router.post(
+    "/sync",
+    response_model=SyncOut,
+    summary="Sync daily step count (idempotent)",
+)
+async def sync(
+    body: SyncIn,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SyncOut:
+    """Ingest a step reading for a calendar day.
+
+    - Steps are clamped to the server-configured daily cap.
+    - Only the **increase** vs the previously stored total is awarded as points.
+    - Replaying the same ``sync_key`` is a no-op (returns current state, 0 new points).
+    """
+    settings = get_settings()
+    result = await sync_activity(
+        user_id=current_user.id,
+        local_date=body.local_date,
+        eligible_steps=body.eligible_steps,
+        source=body.source,
+        sync_key=body.sync_key,
+        session=session,
+        settings=settings,
+    )
+    return SyncOut(
+        local_date=body.local_date,
+        eligible_steps=result.eligible_steps,
+        points_awarded=result.points_awarded,
+        balance=result.balance,
+        is_replay=result.is_replay,
+    )
+
+
+@router.get(
+    "",
+    response_model=ActivityRangeOut,
+    summary="Get aggregated step history",
+)
+async def get_activity(
+    range: str = Query(default="today", pattern="^(today|week|month)$"),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ActivityRangeOut:
+    """Return step totals for today, the last 7 days, or the last 30 days.
+
+    Days with no synced data are omitted from ``days`` but counted in the
+    date window for ``total_steps``.
+    """
+    today = date.today()
+    if range == "today":
+        start = today
+    elif range == "week":
+        start = today - timedelta(days=6)
+    else:  # month
+        start = today - timedelta(days=29)
+
+    start_str = start.isoformat()
+    end_str = today.isoformat()
+
+    rows_result = await session.execute(
+        select(ActivityDaily)
+        .where(
+            ActivityDaily.user_id == current_user.id,
+            ActivityDaily.local_date >= start_str,
+            ActivityDaily.local_date <= end_str,
+        )
+        .order_by(ActivityDaily.local_date)
+    )
+    rows = rows_result.scalars().all()
+
+    days = [ActivityPeriod(date=r.local_date, eligible_steps=r.eligible_steps) for r in rows]
+    total_steps = sum(d.eligible_steps for d in days)
+
+    return ActivityRangeOut(range=range, total_steps=total_steps, days=days)
