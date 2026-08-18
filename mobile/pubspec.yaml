@@ -38,6 +38,7 @@ dependencies:
   go_router: ^17.5.0
   geolocator: ^13.0.2
   pedometer: ^4.2.0
+  permission_handler: ^11.3.1
   dio: ^5.11.0
   flutter_secure_storage: ^9.2.2
   health: ^13.0.0

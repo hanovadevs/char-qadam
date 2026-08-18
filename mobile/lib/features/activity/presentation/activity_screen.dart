@@ -11,42 +11,6 @@ class ActivityScreen extends ConsumerStatefulWidget {
 }
 
 class _ActivityScreenState extends ConsumerState<ActivityScreen> {
-  final _manualStepsController = TextEditingController(text: '8500');
-  bool _showDevTools = false;
-
-  @override
-  void dispose() {
-    _manualStepsController.dispose();
-    super.dispose();
-  }
-
-  void _submitManualSteps() async {
-    final steps = int.tryParse(_manualStepsController.text.trim());
-    if (steps == null || steps < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid step count')),
-      );
-      return;
-    }
-
-    final success = await ref
-        .read(activityProvider.notifier)
-        .syncManualSteps(steps: steps);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Successfully synced $steps steps!'
-                : 'Failed to sync steps',
-          ),
-          backgroundColor: success ? const Color(0xFF10B981) : Colors.redAccent,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final activityState = ref.watch(activityProvider);
@@ -70,15 +34,6 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.developer_mode),
-            tooltip: 'Toggle Dev Tools',
-            onPressed: () {
-              setState(() {
-                _showDevTools = !_showDevTools;
-              });
-            },
-          ),
-          IconButton(
             icon: activityState.isSyncing
                 ? const SizedBox(
                     width: 20,
@@ -97,9 +52,6 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            // Dev Tools Card (When toggled or for emulator testing)
-            if (_showDevTools) _buildDevToolsCard(context, activityState),
-
             // Step Counter Progress Card
             Card(
               child: Padding(
@@ -350,69 +302,6 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ],
-    );
-  }
-
-  Widget _buildDevToolsCard(BuildContext context, ActivityState state) {
-    return Card(
-      color: const Color(0xFF1E1B4B), // Deep indigo
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.bug_report, color: Color(0xFF818CF8), size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Developer Sandbox: Manual Step Ingestion',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF818CF8),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Simulate step counts for emulator/testing without a physical device.',
-              style: TextStyle(fontSize: 12, color: Color(0xFFA5B4FC)),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _manualStepsController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Manual Steps',
-                      hintText: 'e.g. 12000',
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: state.isSyncing ? null : _submitManualSteps,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(110, 48),
-                  ),
-                  child: const Text('Sync Steps'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 

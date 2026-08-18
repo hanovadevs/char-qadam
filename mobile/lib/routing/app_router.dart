@@ -19,14 +19,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/steps',
+    initialLocation: '/splash',
     refreshListenable: _RiverpodRefreshListenable(ref, authStateProvider),
     redirect: (context, state) {
       final status = authState.status;
+      final isSplash = state.matchedLocation == '/splash';
       final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
 
       if (status == AuthStatus.initial) {
-        return null; // Stay on current screen while loading
+        return isSplash ? null : '/splash';
       }
 
       if (status == AuthStatus.unauthenticated) {
@@ -34,12 +35,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (status == AuthStatus.authenticated) {
-        return isAuthRoute ? '/steps' : null;
+        return (isSplash || isAuthRoute) ? '/steps' : null;
       }
 
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
@@ -98,6 +103,49 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Dedicated splash screen shown during app startup and auth token resolution.
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF0F172A),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFF10B981),
+              child: Icon(Icons.directions_walk, size: 48, color: Colors.black),
+            ),
+            SizedBox(height: 24),
+            Text(
+              'QADAM',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 4,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 20),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// Listenable bridge connecting Riverpod state changes to GoRouter's refreshListenable.
 class _RiverpodRefreshListenable extends ChangeNotifier {

@@ -72,22 +72,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> checkAuthStatus() async {
     state = state.copyWith(isLoading: true);
     final token = await tokenStorage.getToken();
+    final cachedUser = await tokenStorage.getUser();
+
     if (token != null && token.isNotEmpty) {
+      // Immediately restore authenticated state from local storage so the user stays
+      // logged in persistently and can use the app even offline / with spotty connection.
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        token: token,
+        user: cachedUser,
+        isLoading: false,
+      );
+
+      // Attempt to refresh the profile in the background if online
       try {
         final user = await authRepository.getMe();
-        state = AuthState(
-          status: AuthStatus.authenticated,
-          token: token,
-          user: user,
-          isLoading: false,
-        );
+        await tokenStorage.saveUser(user);
+        state = state.copyWith(user: user);
       } catch (_) {
-        // Token invalid or network failure on startup
-        await tokenStorage.deleteToken();
-        state = const AuthState(
-          status: AuthStatus.unauthenticated,
-          isLoading: false,
-        );
+        // If it's a network glitch or server issue, do NOT log out.
+        // If the token is truly 401 invalid, ApiClient's interceptor triggers logout() automatically.
       }
     } else {
       state = const AuthState(
@@ -103,6 +107,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final token = await authRepository.login(email: email, password: password);
       await tokenStorage.saveToken(token);
       final user = await authRepository.getMe();
+      await tokenStorage.saveUser(user);
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
@@ -133,6 +138,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       await tokenStorage.saveToken(token);
       final user = await authRepository.getMe();
+      await tokenStorage.saveUser(user);
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
@@ -161,6 +167,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       await tokenStorage.saveToken(token);
       final user = await authRepository.getMe();
+      await tokenStorage.saveUser(user);
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
@@ -179,13 +186,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (state.status == AuthStatus.authenticated) {
       try {
         final user = await authRepository.getMe();
+        await tokenStorage.saveUser(user);
         state = state.copyWith(user: user);
       } catch (_) {}
     }
   }
 
   Future<void> logout() async {
-    await tokenStorage.deleteToken();
+    await tokenStorage.clearAll();
     state = const AuthState(
       status: AuthStatus.unauthenticated,
       isLoading: false,

@@ -107,26 +107,6 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     }
   }
 
-  /// Manual Dev Entry Step Sync for testing on emulators / dev environments.
-  Future<bool> syncManualSteps({
-    required int steps,
-    String? dateString,
-  }) async {
-    state = state.copyWith(isSyncing: true, errorMessage: null);
-    final targetDate = dateString ?? _getTodayString();
-    
-    final success = await _performSync(
-      steps: steps,
-      source: 'manual',
-      date: targetDate,
-    );
-
-    if (targetDate == _getTodayString()) {
-      state = state.copyWith(todaySteps: steps);
-    }
-    return success;
-  }
-
   Future<bool> _performSync({
     required int steps,
     required String source,

@@ -44,8 +44,8 @@ class ApiClient {
         },
         onError: (DioException error, handler) async {
           if (error.response?.statusCode == 401) {
-            // Token expired or invalid — clear token and invoke callback
-            await tokenStorage.deleteToken();
+            // Token expired or invalid — clear token, cached user, and invoke callback
+            await tokenStorage.clearAll();
             onUnauthorized?.call();
           }
           return handler.next(error);
