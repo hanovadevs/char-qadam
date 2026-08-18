@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/config/env_config.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/auth/auth_state_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -41,7 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppTheme.accentRose,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -78,64 +79,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Brand Header
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.directions_walk_rounded,
-                      size: 40,
-                      color: Color(0xFF10B981),
+                  // App Brand Glowing Header
+                  Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor.withValues(alpha: 0.25),
+                            AppTheme.secondaryColor.withValues(alpha: 0.15),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                            blurRadius: 30,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.directions_walk_rounded,
+                        size: 44,
+                        color: AppTheme.primaryColor,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text(
+                  const Text(
                     'Qadam',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF10B981),
-                          letterSpacing: 1.2,
-                        ),
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.primaryColor,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Sign in to sync your steps & earn rewards',
+                  const Text(
+                    'Walk, earn points, unlock real world perks',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF94A3B8),
-                        ),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 36),
 
                   // Error banner if any
                   if (authState.errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                        color: AppTheme.accentRose.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.accentRose.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                          const Icon(Icons.error_outline_rounded, color: AppTheme.accentRose, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               authState.errorMessage!,
-                              style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                              style: const TextStyle(color: AppTheme.accentRose, fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
@@ -152,7 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Email Address',
                       hintText: 'you@example.com',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon: Icon(Icons.mail_outline_rounded),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -175,10 +199,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onFieldSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                         ),
                         onPressed: () {
                           setState(() {
@@ -201,59 +225,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: authState.isLoading ? null : _submit,
                     child: authState.isLoading
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                            width: 22,
+                            height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF080C14)),
                             ),
                           )
                         : const Text('Sign In'),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Divider
                   const Row(
                     children: [
-                      Expanded(child: Divider(color: Color(0xFF334155))),
+                      Expanded(child: Divider(color: AppTheme.darkBorder)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        padding: EdgeInsets.symmetric(horizontal: 14),
                         child: Text(
                           'OR',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSubtle),
                         ),
                       ),
-                      Expanded(child: Divider(color: Color(0xFF334155))),
+                      Expanded(child: Divider(color: AppTheme.darkBorder)),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Google Sign-In Button
-                  OutlinedButton.icon(
+                  OutlinedButton(
                     onPressed: authState.isLoading ? null : _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      side: const BorderSide(color: Color(0xFF334155)),
+                      minimumSize: const Size.fromHeight(52),
+                      side: const BorderSide(color: AppTheme.darkBorderLight),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    icon: Image.network(
-                      'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
-                      width: 20,
-                      height: 20,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.g_mobiledata, color: Colors.white, size: 24),
-                    ),
-                    label: const Text(
-                      'Continue with Google',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.network(
+                          'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+                          width: 20,
+                          height: 20,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.g_mobiledata_rounded, color: Colors.white, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 28),
 
                   // Navigation to Register
                   Row(
@@ -261,15 +292,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       const Text(
                         "Don't have an account?",
-                        style: TextStyle(color: Color(0xFF94A3B8)),
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
                       ),
                       TextButton(
                         onPressed: () => context.go('/register'),
                         child: const Text(
-                          'Sign Up',
+                          'Create Account',
                           style: TextStyle(
-                            color: Color(0xFF10B981),
-                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
                           ),
                         ),
                       ),

@@ -110,34 +110,70 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF0F172A),
+    return Scaffold(
+      backgroundColor: const Color(0xFF080C14),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Color(0xFF10B981),
-              child: Icon(Icons.directions_walk, size: 48, color: Colors.black),
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF00F59B).withValues(alpha: 0.3),
+                    const Color(0xFF6366F1).withValues(alpha: 0.15),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF00F59B).withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF00F59B).withValues(alpha: 0.25),
+                    blurRadius: 36,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.directions_walk_rounded,
+                size: 50,
+                color: Color(0xFF00F59B),
+              ),
             ),
-            SizedBox(height: 24),
-            Text(
+            const SizedBox(height: 28),
+            const Text(
               'QADAM',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 4,
+                letterSpacing: 6,
                 color: Colors.white,
               ),
             ),
-            SizedBox(height: 20),
-            SizedBox(
+            const SizedBox(height: 8),
+            const Text(
+              'Step • Earn • Elevate',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 36),
+            const SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00F59B)),
               ),
             ),
           ],

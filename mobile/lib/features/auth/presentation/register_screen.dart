@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/config/env_config.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/auth/auth_state_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -76,7 +77,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppTheme.accentRose,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -92,7 +93,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       appBar: AppBar(
         title: const Text('Create Account'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => context.go('/login'),
         ),
       ),
@@ -106,36 +107,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Get Started with Qadam',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                  const Text(
+                    'Join the Movement',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Create an account to start earning points from your daily steps.',
-                    style: TextStyle(color: Color(0xFF94A3B8)),
+                    'Step up, earn points, and unlock exclusive rewards with every stride.',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
                   ),
                   const SizedBox(height: 28),
 
                   // Error banner if any
                   if (authState.errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                        color: AppTheme.accentRose.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.accentRose.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                          const Icon(Icons.error_outline_rounded, color: AppTheme.accentRose, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               authState.errorMessage!,
-                              style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                              style: const TextStyle(color: AppTheme.accentRose, fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
@@ -152,7 +155,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Email Address',
                       hintText: 'you@example.com',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon: Icon(Icons.mail_outline_rounded),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -175,10 +178,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       hintText: 'At least 8 characters',
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                         ),
                         onPressed: () {
                           setState(() {
@@ -207,10 +210,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     onFieldSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
                       labelText: 'Confirm Password',
-                      prefixIcon: const Icon(Icons.lock_reset_outlined),
+                      prefixIcon: const Icon(Icons.lock_reset_rounded),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                          _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                         ),
                         onPressed: () {
                           setState(() {
@@ -236,59 +239,66 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     onPressed: authState.isLoading ? null : _submit,
                     child: authState.isLoading
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                            width: 22,
+                            height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF080C14)),
                             ),
                           )
                         : const Text('Create Account'),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Divider
                   const Row(
                     children: [
-                      Expanded(child: Divider(color: Color(0xFF334155))),
+                      Expanded(child: Divider(color: AppTheme.darkBorder)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        padding: EdgeInsets.symmetric(horizontal: 14),
                         child: Text(
                           'OR',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSubtle),
                         ),
                       ),
-                      Expanded(child: Divider(color: Color(0xFF334155))),
+                      Expanded(child: Divider(color: AppTheme.darkBorder)),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Google Sign-In Button
-                  OutlinedButton.icon(
+                  OutlinedButton(
                     onPressed: authState.isLoading ? null : _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      side: const BorderSide(color: Color(0xFF334155)),
+                      minimumSize: const Size.fromHeight(52),
+                      side: const BorderSide(color: AppTheme.darkBorderLight),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    icon: Image.network(
-                      'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
-                      width: 20,
-                      height: 20,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.g_mobiledata, color: Colors.white, size: 24),
-                    ),
-                    label: const Text(
-                      'Continue with Google',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.network(
+                          'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+                          width: 20,
+                          height: 20,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.g_mobiledata_rounded, color: Colors.white, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 28),
 
                   // Navigation to Login
                   Row(
@@ -296,15 +306,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     children: [
                       const Text(
                         'Already have an account?',
-                        style: TextStyle(color: Color(0xFF94A3B8)),
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
                       ),
                       TextButton(
                         onPressed: () => context.go('/login'),
                         child: const Text(
                           'Sign In',
                           style: TextStyle(
-                            color: Color(0xFF10B981),
-                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
                           ),
                         ),
                       ),
