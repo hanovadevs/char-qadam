@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # JWT auth
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60 * 24  # 24h
+    access_token_expire_minutes: int = 60 * 24 * 365  # 1 year (persistent login)
 
 
 @lru_cache
