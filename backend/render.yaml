@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: qadam-api
+    env: python
+    region: singapore # Or frankfurt / oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
+      - key: APP_NAME
+        value: Qadam API
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false

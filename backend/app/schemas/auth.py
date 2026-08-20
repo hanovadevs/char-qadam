@@ -28,6 +28,12 @@ class LoginIn(BaseModel):
     password: str
 
 
+class GoogleAuthIn(BaseModel):
+    id_token: str = Field(min_length=10, description="Google OAuth ID Token or Supabase OAuth Token")
+    country: str | None = Field(default=None, max_length=2)
+    timezone: str | None = Field(default=None, max_length=64)
+
+
 # ---------------------------------------------------------------------------
 # Responses
 # ---------------------------------------------------------------------------

@@ -27,21 +27,6 @@ async def get_balance(user_id: str, session: AsyncSession) -> int:
 
 async def get_balance_breakdown(user_id: str, session: AsyncSession) -> dict:
     """Return balance, total_earned, and total_spent for *user_id*."""
-    result = await session.execute(
-        select(
-            func.coalesce(func.sum(PointsLedger.delta), 0).label("balance"),
-            func.coalesce(
-                func.sum(
-                    PointsLedger.delta.operate(
-                        lambda col: func.nullif(col, None)
-                    )
-                ),
-                0,
-            ).label("dummy"),  # placeholder; computed below per-reason
-        ).where(PointsLedger.user_id == user_id)
-    )
-
-    # Simpler: three targeted queries (small table in MVP, index on user_id)
     balance = await get_balance(user_id, session)
 
     earned_result = await session.execute(

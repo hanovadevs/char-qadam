@@ -5,7 +5,7 @@ with versions and a one-line reason for each choice.
 
 > **Rule:** Update this file whenever a dependency is added, removed, or upgraded.
 
-_Last updated: 2026-08-14 (Phase B0 — Postgres swap)_
+_Last updated: 2026-08-15 (Phase M4 — Complete MVP)_
 
 ---
 
@@ -33,11 +33,13 @@ Package name: `qadam` · Org: `com.qadam` · Platforms: Android, iOS
 | go_router | ^17.5.0 | Declarative navigation / routing. |
 | dio | ^5.11.0 | HTTP client for talking to the FastAPI backend. |
 | flutter_secure_storage | ^11.0.0 | Secure on-device storage for JWT tokens. |
-| health | (TBD — Phase M0) | HealthKit / Health Connect step reading. |
-| qr_flutter | (TBD — Phase M3) | QR code rendering for voucher display. |
+| health | ^13.0.0 | HealthKit / Health Connect step reading. |
+| qr_flutter | ^4.1.0 | QR code rendering for voucher display. |
+| intl | ^0.20.2 | Date and currency formatting. |
+| uuid | ^4.5.1 | Client-side UUID v4 generation for idempotency keys. |
 | geolocator | ^14.0.3 | GPS (kept; attestation/fraud work deferred). |
-| pedometer | ^4.2.0 | Step counting fallback (may be replaced by `health`). |
-| cupertino_icons | ^1.0.8 | iOS-style icon set (Flutter default). |
+| pedometer | ^4.2.0 | Step counting fallback. |
+| cupertino_icons | ^1.0.8 | iOS-style icon set. |
 
 ### Dev dependencies
 

@@ -7,14 +7,15 @@
 """
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User, UserStatus
+from app.db.models import Partner, PartnerStatus, User, UserStatus
 from app.db.postgres import get_session
+from app.services.partner_auth import hash_api_key
 from app.services.security import decode_access_token
 
 _bearer = HTTPBearer(auto_error=False)
@@ -58,3 +59,39 @@ async def get_current_user(
         )
 
     return user
+
+
+_401_partner = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Invalid or missing partner API key",
+    headers={"WWW-Authenticate": "X-Partner-Key"},
+)
+
+
+async def get_current_partner(
+    x_partner_key: str | None = Header(default=None, alias="X-Partner-Key"),
+    session: AsyncSession = Depends(get_session),
+) -> Partner:
+    """Validate the ``X-Partner-Key`` header and return the Partner row.
+
+    Raises HTTP 401 if the header is missing or the key doesn't match any
+    partner.  Raises HTTP 403 if the partner is INACTIVE.
+    """
+    if not x_partner_key:
+        raise _401_partner
+
+    key_hash = hash_api_key(x_partner_key)
+    result = await session.execute(
+        select(Partner).where(Partner.api_key_hash == key_hash)
+    )
+    partner = result.scalar_one_or_none()
+
+    if partner is None:
+        raise _401_partner
+    if partner.status != PartnerStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Partner account is inactive",
+        )
+
+    return partner

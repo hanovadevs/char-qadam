@@ -181,6 +181,7 @@ class Partner(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
+    api_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     status: Mapped[PartnerStatus] = mapped_column(
         Enum(PartnerStatus, name="partner_status", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
