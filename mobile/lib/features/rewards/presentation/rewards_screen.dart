@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/swiss_skeleton.dart';
 import '../../points/providers/points_provider.dart';
 import '../providers/rewards_provider.dart';
 
@@ -14,6 +16,7 @@ class RewardsScreen extends ConsumerWidget {
     final cost = offer.pointsCost as int;
     final title = offer.title as String;
     final remainingAfter = userBalance - cost;
+    HapticsService.light();
 
     showModalBottomSheet(
       context: context,
@@ -102,6 +105,7 @@ class RewardsScreen extends ConsumerWidget {
                         Navigator.pop(context);
                         final result = await ref.read(rewardsProvider.notifier).redeem(offer.id);
                         if (result != null && context.mounted) {
+                          HapticsService.heavy();
                           ref.read(pointsProvider.notifier).refresh();
                           _showSuccessModal(context, result);
                         } else if (context.mounted) {
@@ -388,73 +392,74 @@ class RewardsScreen extends ConsumerWidget {
                                   child: Text(
                                     _discountLabel(offer.discountType, offer.discountValue),
                                     style: const TextStyle(
-                                      color: AppTheme.white,
-                                      fontWeight: FontWeight.w700,
+                                      fontSize: 9,
                                       fontFamily: AppTheme.monoFont,
-                                      fontSize: 10,
-                                      letterSpacing: 0.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.white,
                                     ),
                                   ),
                                 ),
-                                if (offer.inventory != null)
-                                  Text(
-                                    '${offer.inventory} IN STOCK',
-                                    style: const TextStyle(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: inStock ? AppTheme.offWhite : AppTheme.white,
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                                    border: Border.all(color: inStock ? AppTheme.border : AppTheme.accentRed),
+                                  ),
+                                  child: Text(
+                                    inStock ? 'IN STOCK' : 'OUT OF STOCK',
+                                    style: TextStyle(
                                       fontSize: 9,
                                       fontFamily: AppTheme.monoFont,
-                                      color: AppTheme.grey,
+                                      fontWeight: FontWeight.w700,
+                                      color: inStock ? AppTheme.grey : AppTheme.accentRed,
                                     ),
                                   ),
+                                ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 10),
                             Text(
                               offer.title,
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: -0.3,
                                 color: AppTheme.black,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                            if (offer.description != null) ...[
+                            if (offer.description != null && offer.description!.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(
                                 offer.description!,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.grey,
-                                  height: 1.3,
-                                ),
+                                style: const TextStyle(fontSize: 11, color: AppTheme.grey),
                               ),
                             ],
                           ],
                         ),
                       ),
-
-                      const Divider(color: AppTheme.border, height: 1),
-
-                      // Action Bar
+                      const Divider(height: 1, color: AppTheme.border),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'COST: ',
+                                  'COST',
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 9,
                                     fontWeight: FontWeight.w700,
                                     color: AppTheme.grey,
-                                    letterSpacing: 0.8,
+                                    letterSpacing: 1.0,
                                   ),
                                 ),
                                 Text(
                                   '${NumberFormat('#,###').format(offer.pointsCost)} PTS',
                                   style: const TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 14,
                                     fontFamily: AppTheme.monoFont,
                                     fontWeight: FontWeight.w700,
                                     color: AppTheme.black,
@@ -465,22 +470,13 @@ class RewardsScreen extends ConsumerWidget {
                             SizedBox(
                               height: 32,
                               child: ElevatedButton(
-                                onPressed: isAvailable && !rewardsState.isRedeeming
+                                onPressed: isAvailable
                                     ? () => _showRedeemBottomSheet(context, ref, offer, userBalance)
                                     : null,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: isAvailable
-                                      ? AppTheme.black
-                                      : AppTheme.greyLight,
-                                  foregroundColor: isAvailable
-                                      ? AppTheme.white
-                                      : AppTheme.grey,
                                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                                  ),
                                   textStyle: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.8,
                                   ),
@@ -489,8 +485,8 @@ class RewardsScreen extends ConsumerWidget {
                                   !inStock
                                       ? 'SOLD OUT'
                                       : !canAfford
-                                          ? 'INSUFFICIENT PTS'
-                                          : 'REDEEM',
+                                          ? 'NEED ${offer.pointsCost - userBalance} PTS'
+                                          : 'REDEEM VOUCHER',
                                 ),
                               ),
                             ),
@@ -502,18 +498,10 @@ class RewardsScreen extends ConsumerWidget {
                 );
               })
             else if (rewardsState.isLoading)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
-                  ),
-                ),
-              )
+              const SwissSkeletonList(itemCount: 3, itemHeight: 110)
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 28),
+                padding: const EdgeInsets.symmetric(vertical: 36),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppTheme.white,

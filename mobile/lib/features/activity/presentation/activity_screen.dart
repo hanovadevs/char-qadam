@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/activity_provider.dart';
 
@@ -155,9 +156,53 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
             ),
             const SizedBox(height: 8),
 
+            // Daily Walking Streak Banner
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.white,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.local_fire_department, size: 15, color: AppTheme.black),
+                      const SizedBox(width: 6),
+                      Text(
+                        'STREAK: ${activityState.currentStreakDays} ${activityState.currentStreakDays == 1 ? 'DAY' : 'DAYS'}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontFamily: AppTheme.monoFont,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.black,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    activityState.currentStreakDays > 0 ? '🔥 ACTIVE WALKER' : '1,000+ STEPS/DAY GOAL',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontFamily: AppTheme.monoFont,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
             // Community Leaderboard Strip
             InkWell(
-              onTap: () => context.push('/leaderboard'),
+              onTap: () {
+                HapticsService.light();
+                context.push('/leaderboard');
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
@@ -381,9 +426,12 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                         child: SizedBox(
                           height: 34,
                           child: OutlinedButton(
-                            onPressed: () => ref.read(activityProvider.notifier).syncManualSteps(
-                              steps: displaySteps + 1000,
-                            ),
+                            onPressed: () {
+                              HapticsService.medium();
+                              ref.read(activityProvider.notifier).syncManualSteps(
+                                    steps: displaySteps + 1000,
+                                  );
+                            },
                             style: OutlinedButton.styleFrom(
                               padding: EdgeInsets.zero,
                               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
@@ -397,9 +445,12 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                         child: SizedBox(
                           height: 34,
                           child: OutlinedButton(
-                            onPressed: () => ref.read(activityProvider.notifier).syncManualSteps(
-                              steps: displaySteps + 5000,
-                            ),
+                            onPressed: () {
+                              HapticsService.medium();
+                              ref.read(activityProvider.notifier).syncManualSteps(
+                                    steps: displaySteps + 5000,
+                                  );
+                            },
                             style: OutlinedButton.styleFrom(
                               padding: EdgeInsets.zero,
                               textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
@@ -436,6 +487,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                   ],
                   selected: {activityState.selectedRange},
                   onSelectionChanged: (Set<String> selection) {
+                    HapticsService.selection();
                     ref.read(activityProvider.notifier).loadHistory(selection.first);
                   },
                 ),

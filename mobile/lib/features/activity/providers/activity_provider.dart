@@ -33,6 +33,30 @@ class ActivityState {
     this.lastSyncTime,
   });
 
+  /// Calculate consecutive daily streak (days with >= 1,000 steps)
+  int get currentStreakDays {
+    final effectiveToday = todaySteps > 0 ? todaySteps : serverSteps;
+    int streak = effectiveToday >= 1000 ? 1 : 0;
+
+    if (history == null || history!.days.isEmpty) {
+      return streak;
+    }
+
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final sortedDays = List<ActivityPeriodModel>.from(history!.days)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    for (final day in sortedDays) {
+      if (day.date == todayStr) continue; // handled above
+      if (day.eligibleSteps >= 1000) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
   ActivityState copyWith({
     int? todaySteps,
     int? serverSteps,

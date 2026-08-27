@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 /// Minimalist Swiss Light Style navigation bar.
@@ -15,6 +16,9 @@ class MainScaffold extends StatelessWidget {
   });
 
   void _onTap(int index) {
+    if (index != navigationShell.currentIndex) {
+      HapticsService.selection();
+    }
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,

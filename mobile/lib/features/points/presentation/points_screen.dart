@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/swiss_skeleton.dart';
 import '../providers/points_provider.dart';
 
 class PointsScreen extends ConsumerWidget {
@@ -55,7 +57,10 @@ class PointsScreen extends ConsumerWidget {
                     ),
                   )
                 : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
-            onPressed: () => ref.read(pointsProvider.notifier).refresh(),
+            onPressed: () {
+              HapticsService.light();
+              ref.read(pointsProvider.notifier).refresh();
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -292,15 +297,7 @@ class PointsScreen extends ConsumerWidget {
                 );
               })
             else if (pointsState.isLoading)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
-                  ),
-                ),
-              )
+              const SwissSkeletonList(itemCount: 4, itemHeight: 54)
             else
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 28),
