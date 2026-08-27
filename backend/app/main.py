@@ -1,7 +1,6 @@
 """FastAPI application entry point for the Qadam backend.
 
-Wires up config, PostgreSQL lifespan, CORS, and a /health endpoint.
-Feature routers will be registered here as each backend phase completes.
+Wires up config, PostgreSQL lifespan, CORS, Middlewares, and all Feature routers.
 """
 from contextlib import asynccontextmanager
 
@@ -10,8 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db.postgres import dispose_engine, get_engine
+from app.middleware.logging_middleware import StructuredLoggingMiddleware
+from app.middleware.rate_limiter import RateLimiterMiddleware
 from app.routers import (
     activity,
+    admin,
     auth,
     health,
     leaderboard,
@@ -41,6 +43,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Core middlewares
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],  # Tighten before production.
@@ -48,7 +51,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(RateLimiterMiddleware)
+    app.add_middleware(StructuredLoggingMiddleware)
 
+    # Feature routers
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(users.router)
@@ -58,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(vouchers.router)
     app.include_router(partner.router)
     app.include_router(leaderboard.router)
+    app.include_router(admin.router)
 
     @app.get("/", tags=["root"])
     async def root() -> dict:
