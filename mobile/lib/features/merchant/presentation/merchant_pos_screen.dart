@@ -405,12 +405,16 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: _pasteFromClipboard,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            SizedBox(
+              height: 48,
+              width: 48,
+              child: OutlinedButton(
+                onPressed: _pasteFromClipboard,
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                ),
+                child: const Icon(Icons.content_paste, size: 18),
               ),
-              child: const Icon(Icons.content_paste, size: 18),
             ),
           ],
         ),
