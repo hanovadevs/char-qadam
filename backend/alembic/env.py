@@ -11,6 +11,7 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
+# pyrefly: ignore [missing-import]
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # Make sure all models are imported so their tables appear in metadata.

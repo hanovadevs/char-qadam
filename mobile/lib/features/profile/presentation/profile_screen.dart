@@ -23,17 +23,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.darkCardElevated,
+      backgroundColor: AppTheme.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
+        side: BorderSide(color: AppTheme.borderDark, width: 1),
       ),
       builder: (context) {
         return Padding(
           padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
+            left: 18,
+            right: 18,
             top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -41,56 +42,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               Center(
                 child: Container(
-                  width: 40,
-                  height: 4,
+                  width: 32,
+                  height: 3,
                   decoration: BoxDecoration(
-                    color: AppTheme.darkBorderLight,
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppTheme.borderDark,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               const Text(
-                'Edit Preferences',
+                'EDIT PREFERENCES',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: AppTheme.grey,
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Customize your region and timezone for accurate step daily caps',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                'Timezone & region for daily step conversion',
+                style: TextStyle(fontSize: 13, color: AppTheme.grey),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
+              const Text(
+                'COUNTRY CODE (ISO-2)',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppTheme.grey),
+              ),
+              const SizedBox(height: 6),
               TextField(
                 controller: countryController,
                 decoration: const InputDecoration(
-                  labelText: 'Country Code (ISO-2)',
-                  hintText: 'e.g. PK, US, UK',
-                  prefixIcon: Icon(Icons.public_rounded),
+                  hintText: 'e.g. PK, US, GB',
                 ),
               ),
               const SizedBox(height: 14),
+              const Text(
+                'TIMEZONE',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppTheme.grey),
+              ),
+              const SizedBox(height: 6),
               TextField(
                 controller: timezoneController,
                 decoration: const InputDecoration(
-                  labelText: 'Timezone',
                   hintText: 'e.g. Asia/Karachi, UTC',
-                  prefixIcon: Icon(Icons.schedule_rounded),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: const Text('CANCEL'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -106,20 +114,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           );
                           await ref.read(authStateProvider.notifier).refreshProfile();
                           messenger.showSnackBar(
-                            const SnackBar(content: Text('Preferences updated successfully!')),
+                            const SnackBar(content: Text('Preferences updated successfully')),
                           );
                         } catch (e) {
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text('Error: ${e.toString()}'),
-                              backgroundColor: AppTheme.accentRose,
+                              backgroundColor: AppTheme.accentRed,
                             ),
                           );
                         } finally {
                           if (mounted) setState(() => _isUpdating = false);
                         }
                       },
-                      child: const Text('Save Changes'),
+                      child: const Text('SAVE CHANGES'),
                     ),
                   ),
                 ],
@@ -135,58 +143,66 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.darkCardElevated,
+      backgroundColor: AppTheme.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
+        side: BorderSide(color: AppTheme.borderDark, width: 1),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppTheme.accentRose.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.delete_forever_rounded,
-                color: AppTheme.accentRose,
-                size: 32,
+            Center(
+              child: Container(
+                width: 32,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: AppTheme.borderDark,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             const Text(
-              'Delete Account?',
+              'DELETE ACCOUNT',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppTheme.accentRed,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Soft-delete account & revoke access?',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.black,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
-              'This action soft-deletes your account and revokes access. Your points and vouchers will be anonymized per privacy rules.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+              'Your activity logs, points, and vouchers will be immediately revoked and anonymized per privacy compliance.',
+              style: TextStyle(fontSize: 12, color: AppTheme.grey, height: 1.4),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Keep Account'),
+                    child: const Text('KEEP ACCOUNT'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accentRose,
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppTheme.accentRed,
+                      foregroundColor: AppTheme.white,
                     ),
                     onPressed: () async {
                       Navigator.pop(context);
@@ -200,14 +216,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         messenger.showSnackBar(
                           SnackBar(
                             content: Text('Error: ${e.toString()}'),
-                            backgroundColor: AppTheme.accentRose,
+                            backgroundColor: AppTheme.accentRed,
                           ),
                         );
                       } finally {
                         if (mounted) setState(() => _isUpdating = false);
                       }
                     },
-                    child: const Text('Yes, Delete'),
+                    child: const Text('CONFIRM DELETE'),
                   ),
                 ),
               ],
@@ -224,202 +240,171 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = authState.user;
 
     return Scaffold(
+      backgroundColor: AppTheme.white,
       appBar: AppBar(
-        title: Row(
+        backgroundColor: AppTheme.white,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: Color(0xFF38BDF8),
-                size: 22,
+            Text(
+              'PROFILE & SETTINGS',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppTheme.black,
               ),
             ),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Profile & Settings',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  'Account management',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Text(
+              'ACCOUNT DETAILS & REGION',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.grey,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
             ),
           ],
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         children: [
           if (_isUpdating)
             const Padding(
-              padding: EdgeInsets.only(bottom: 12.0),
+              padding: EdgeInsets.only(bottom: 10.0),
               child: LinearProgressIndicator(
-                color: AppTheme.primaryColor,
-                backgroundColor: AppTheme.darkCardElevated,
+                color: AppTheme.black,
+                backgroundColor: AppTheme.border,
+                minHeight: 2,
               ),
             ),
 
-          // User Card Header
+          // User Card Block (Swiss Beige Surface #F5F1E8)
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.darkCard,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppTheme.darkBorder),
+              color: AppTheme.beige,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              border: Border.all(color: AppTheme.borderDark, width: 1),
             ),
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Stack(
-                  alignment: Alignment.center,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.6),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                          ),
-                        ],
+                    Text(
+                      user?.email ?? 'USER',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                        color: AppTheme.black,
                       ),
                     ),
-                    const CircleAvatar(
-                      radius: 38,
-                      backgroundColor: Color(0xFF1E293D),
-                      child: Icon(Icons.person_rounded, size: 44, color: AppTheme.primaryColor),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.white,
+                        border: Border.all(color: AppTheme.borderDark),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                      ),
+                      child: Text(
+                        user?.status ?? 'ACTIVE',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontFamily: AppTheme.monoFont,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.black,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  user?.email ?? 'Athlete',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    user?.status ?? 'ACTIVE',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.primaryColor,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Divider(color: AppTheme.darkBorder),
                 const SizedBox(height: 14),
-                _buildDetailRow('Country Code', user?.country ?? 'PK'),
-                const SizedBox(height: 10),
-                _buildDetailRow('Timezone', user?.timezone ?? 'Asia/Karachi'),
-                const SizedBox(height: 10),
+                const Divider(color: AppTheme.borderDark, height: 1),
+                const SizedBox(height: 12),
+                _buildDetailRow('COUNTRY CODE', user?.country ?? 'PK'),
+                const SizedBox(height: 8),
+                _buildDetailRow('TIMEZONE', user?.timezone ?? 'Asia/Karachi'),
+                const SizedBox(height: 8),
                 _buildDetailRow(
-                  'Member Since',
+                  'JOINED',
                   user != null
-                      ? DateFormat('MMMM yyyy').format(user.createdAt.toLocal())
+                      ? DateFormat('yyyy-MM-dd').format(user.createdAt.toLocal())
                       : '—',
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
           // Actions List
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.darkCard,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppTheme.darkBorder),
+              color: AppTheme.white,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              border: Border.all(color: AppTheme.border),
             ),
             child: Column(
               children: [
                 ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.tune_rounded, color: AppTheme.primaryColor, size: 20),
+                  dense: true,
+                  title: const Text(
+                    'EDIT PREFERENCES',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
                   ),
-                  title: const Text('Edit Preferences', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: const Text('Country code & daily reset timezone', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-                  trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+                  subtitle: const Text(
+                    'Country code & step reset timezone',
+                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward, size: 14, color: AppTheme.grey),
                   onTap: () => _showEditProfileBottomSheet(context),
                 ),
-                const Divider(height: 1, color: AppTheme.darkBorder),
+                const Divider(height: 1, color: AppTheme.border),
                 ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentGold.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.logout_rounded, color: AppTheme.accentGold, size: 20),
+                  dense: true,
+                  title: const Text(
+                    'SIGN OUT',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
                   ),
-                  title: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: const Text('Keep token persistent until explicit logout', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-                  trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+                  subtitle: const Text(
+                    'Revoke session on this device',
+                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
+                  ),
+                  trailing: const Icon(Icons.logout, size: 14, color: AppTheme.grey),
                   onTap: () => ref.read(authStateProvider.notifier).logout(),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
           // Dangerous Zone
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.accentRose.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppTheme.accentRose.withValues(alpha: 0.3)),
+              color: AppTheme.white,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              border: Border.all(color: AppTheme.accentRed.withValues(alpha: 0.4)),
             ),
             child: ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentRose.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.delete_outline_rounded, color: AppTheme.accentRose, size: 20),
-              ),
+              dense: true,
               title: const Text(
-                'Delete Account',
-                style: TextStyle(color: AppTheme.accentRose, fontWeight: FontWeight.w800),
+                'DELETE ACCOUNT',
+                style: TextStyle(
+                  color: AppTheme.accentRed,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
               ),
               subtitle: const Text(
-                'Soft-delete account & revoke access immediately',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                'Permanently remove user data & ledger access',
+                style: TextStyle(fontSize: 11, color: AppTheme.grey),
               ),
+              trailing: const Icon(Icons.delete_outline, size: 16, color: AppTheme.accentRed),
               onTap: () => _confirmDeleteAccount(context),
             ),
           ),
@@ -434,11 +419,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.grey,
+            letterSpacing: 0.8,
+          ),
         ),
         Text(
           value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            fontSize: 12,
+            fontFamily: AppTheme.monoFont,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.black,
+          ),
         ),
       ],
     );

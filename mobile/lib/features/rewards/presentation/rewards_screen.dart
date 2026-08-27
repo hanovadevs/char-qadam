@@ -18,84 +18,72 @@ class RewardsScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.darkCardElevated,
+      backgroundColor: AppTheme.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
+        side: BorderSide(color: AppTheme.borderDark, width: 1),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag Handle
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.darkBorderLight,
-                  borderRadius: BorderRadius.circular(2),
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderDark,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
-
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppTheme.secondaryColor.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.local_offer_rounded,
-                  color: AppTheme.secondaryColor,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(height: 16),
-
+              const SizedBox(height: 18),
               const Text(
-                'Confirm Redemption',
+                'CONFIRM REDEMPTION',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: AppTheme.grey,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 title,
-                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textMuted,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.black,
+                  letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
 
-              // Points Breakdown Box
+              // Points Math Breakdown Box (Swiss Grid Light)
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppTheme.darkCard,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppTheme.darkBorder),
+                  color: AppTheme.beige,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.borderDark),
                 ),
                 child: Column(
                   children: [
-                    _buildMathRow('Current Balance', '${NumberFormat('#,###').format(userBalance)} pts', AppTheme.textMuted),
-                    const SizedBox(height: 10),
-                    _buildMathRow('Points Cost', '-${NumberFormat('#,###').format(cost)} pts', AppTheme.accentRose),
+                    _buildMathRow('CURRENT BALANCE', '${NumberFormat('#,###').format(userBalance)} PTS', AppTheme.black),
+                    const SizedBox(height: 8),
+                    _buildMathRow('POINTS COST', '-${NumberFormat('#,###').format(cost)} PTS', AppTheme.taupe),
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Divider(color: AppTheme.darkBorder, height: 1),
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(color: AppTheme.borderDark, height: 1),
                     ),
-                    _buildMathRow('Remaining Balance', '${NumberFormat('#,###').format(remainingAfter)} pts', AppTheme.primaryColor, isBold: true),
+                    _buildMathRow('REMAINING BALANCE', '${NumberFormat('#,###').format(remainingAfter)} PTS', AppTheme.black, isBold: true),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Action Buttons
               Row(
@@ -103,10 +91,10 @@ class RewardsScreen extends ConsumerWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: const Text('CANCEL'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -121,12 +109,12 @@ class RewardsScreen extends ConsumerWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(error),
-                              backgroundColor: AppTheme.accentRose,
+                              backgroundColor: AppTheme.accentRed,
                             ),
                           );
                         }
                       },
-                      child: const Text('Redeem Voucher'),
+                      child: const Text('CONFIRM & REDEEM'),
                     ),
                   ),
                 ],
@@ -142,45 +130,48 @@ class RewardsScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.darkCardElevated,
+      backgroundColor: AppTheme.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
+        side: BorderSide(color: AppTheme.borderDark, width: 1),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 30),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  color: AppTheme.primaryColor,
-                  size: 36,
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderDark,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               const Text(
-                'Voucher Unlocked!',
+                'VOUCHER MINTED',
                 style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: AppTheme.grey,
                 ),
               ),
               const SizedBox(height: 6),
               const Text(
-                'Your pass has been minted and added to your wallet.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                'Single-use pass added to wallet',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.black,
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Code Capsule
               InkWell(
@@ -188,52 +179,54 @@ class RewardsScreen extends ConsumerWidget {
                   Clipboard.setData(ClipboardData(text: result.shortCode as String));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Voucher code copied to clipboard!'),
+                      content: Text('Voucher code copied to clipboard'),
                       duration: Duration(seconds: 2),
                     ),
                   );
                 },
-                borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.5),
-                    ),
+                    color: AppTheme.beige,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(color: AppTheme.borderDark),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         result.shortCode as String,
                         style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 3,
-                          color: AppTheme.primaryColor,
+                          fontSize: 20,
+                          fontFamily: AppTheme.monoFont,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.0,
+                          color: AppTheme.black,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.copy_rounded, size: 18, color: AppTheme.textMuted),
+                      const Icon(Icons.copy, size: 16, color: AppTheme.grey),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
-                'Spent ${result.pointsSpent} pts • Balance: ${result.balance} pts',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                'SPENT ${result.pointsSpent} PTS  •  REMAINING: ${result.balance} PTS',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontFamily: AppTheme.monoFont,
+                  color: AppTheme.grey,
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
                   context.go('/wallet');
                 },
-                child: const Text('View in My Wallet'),
+                child: const Text('OPEN IN WALLET'),
               ),
             ],
           ),
@@ -251,38 +244,29 @@ class RewardsScreen extends ConsumerWidget {
     final offers = rewardsState.offers;
 
     return Scaffold(
+      backgroundColor: AppTheme.white,
       appBar: AppBar(
-        title: Row(
+        backgroundColor: AppTheme.white,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.secondaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.local_offer_rounded,
-                color: AppTheme.secondaryColor,
-                size: 22,
+            Text(
+              'REWARDS MARKET',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppTheme.black,
               ),
             ),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Rewards Catalog',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  'Exclusive perks & discounts',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Text(
+              'PARTNER OFFERS & VOUCHERS',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.grey,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
             ),
           ],
         ),
@@ -290,106 +274,85 @@ class RewardsScreen extends ConsumerWidget {
           IconButton(
             icon: rewardsState.isLoading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
                     ),
                   )
-                : const Icon(Icons.refresh_rounded, color: AppTheme.secondaryColor),
+                : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
             onPressed: () => ref.read(rewardsProvider.notifier).fetchOffers(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.secondaryColor,
-        backgroundColor: AppTheme.darkCardElevated,
+        color: AppTheme.black,
+        backgroundColor: AppTheme.white,
         onRefresh: () => ref.read(rewardsProvider.notifier).fetchOffers(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           children: [
-            // Floating Balance Banner
+            // Available Balance Strip (Swiss Beige Bar)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.25),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                color: AppTheme.beige,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.borderDark),
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(14),
+                  const Text(
+                    'REDEEMABLE BALANCE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.grey,
+                      letterSpacing: 1.2,
                     ),
-                    child: const Icon(Icons.stars_rounded, color: AppTheme.accentGold, size: 26),
                   ),
-                  const SizedBox(width: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'POINTS TO REDEEM',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white70,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      Text(
-                        '${NumberFormat('#,###').format(userBalance)} pts',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '${NumberFormat('#,###').format(userBalance)} PTS',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontFamily: AppTheme.monoFont,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.black,
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Catalog Header
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Featured Perks',
+                  'ACTIVE CATALOG',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    color: AppTheme.black,
                   ),
                 ),
                 Text(
-                  'Partner Vouchers',
+                  'SINGLE-USE PASSES',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSubtle,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 9,
+                    fontFamily: AppTheme.monoFont,
+                    color: AppTheme.grey,
+                    letterSpacing: 0.8,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // Offers List
             if (offers.isNotEmpty)
@@ -399,140 +362,136 @@ class RewardsScreen extends ConsumerWidget {
                 final isAvailable = canAfford && inStock;
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: isAvailable
-                          ? AppTheme.darkBorderLight.withValues(alpha: 0.6)
-                          : AppTheme.darkBorder,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    color: AppTheme.white,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(color: AppTheme.border),
                   ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(18.0),
-                        child: Row(
+                        padding: const EdgeInsets.all(14.0),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Discount Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.35),
-                                ),
-                              ),
-                              child: Text(
-                                _discountLabel(offer.discountType, offer.discountValue),
-                                style: const TextStyle(
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    offer.title,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.black,
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                                  ),
+                                  child: Text(
+                                    _discountLabel(offer.discountType, offer.discountValue),
                                     style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.3,
+                                      color: AppTheme.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: AppTheme.monoFont,
+                                      fontSize: 10,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
-                                  if (offer.description != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      offer.description!,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.textMuted,
-                                      ),
+                                ),
+                                if (offer.inventory != null)
+                                  Text(
+                                    '${offer.inventory} IN STOCK',
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontFamily: AppTheme.monoFont,
+                                      color: AppTheme.grey,
                                     ),
-                                  ],
-                                ],
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              offer.title,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                                color: AppTheme.black,
                               ),
                             ),
+                            if (offer.description != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                offer.description!,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.grey,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
 
-                      // Perforated divider line with cutouts effect
-                      const Divider(color: AppTheme.darkBorder, height: 1),
+                      const Divider(color: AppTheme.border, height: 1),
 
-                      // Bottom action bar
+                      // Action Bar
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.stars_rounded, color: AppTheme.accentGold, size: 20),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${NumberFormat('#,###').format(offer.pointsCost)} pts',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppTheme.accentGold,
+                                const Text(
+                                  'COST: ',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.grey,
+                                    letterSpacing: 0.8,
                                   ),
                                 ),
-                                if (offer.inventory != null) ...[
-                                  const SizedBox(width: 10),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E293D),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '${offer.inventory} left',
-                                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                                    ),
+                                Text(
+                                  '${NumberFormat('#,###').format(offer.pointsCost)} PTS',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontFamily: AppTheme.monoFont,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.black,
                                   ),
-                                ],
+                                ),
                               ],
                             ),
-                            ElevatedButton(
-                              onPressed: isAvailable && !rewardsState.isRedeeming
-                                  ? () => _showRedeemBottomSheet(context, ref, offer, userBalance)
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isAvailable
-                                    ? AppTheme.primaryColor
-                                    : const Color(0xFF1E293D),
-                                foregroundColor: isAvailable
-                                    ? const Color(0xFF080C14)
-                                    : AppTheme.textSubtle,
-                                minimumSize: const Size(110, 42),
-                                padding: const EdgeInsets.symmetric(horizontal: 18),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                            SizedBox(
+                              height: 32,
+                              child: ElevatedButton(
+                                onPressed: isAvailable && !rewardsState.isRedeeming
+                                    ? () => _showRedeemBottomSheet(context, ref, offer, userBalance)
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isAvailable
+                                      ? AppTheme.black
+                                      : AppTheme.greyLight,
+                                  foregroundColor: isAvailable
+                                      ? AppTheme.white
+                                      : AppTheme.grey,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                !inStock
-                                    ? 'Sold Out'
-                                    : !canAfford
-                                        ? 'Need Pts'
-                                        : 'Redeem',
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                child: Text(
+                                  !inStock
+                                      ? 'SOLD OUT'
+                                      : !canAfford
+                                          ? 'INSUFFICIENT PTS'
+                                          : 'REDEEM',
+                                ),
                               ),
                             ),
                           ],
@@ -547,23 +506,28 @@ class RewardsScreen extends ConsumerWidget {
                 padding: EdgeInsets.all(40),
                 child: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryColor),
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
                   ),
                 ),
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 40.0),
+                padding: const EdgeInsets.symmetric(vertical: 28),
                 alignment: Alignment.center,
-                child: const Column(
-                  children: [
-                    Icon(Icons.local_offer_outlined, size: 40, color: AppTheme.textSubtle),
-                    SizedBox(height: 10),
-                    Text(
-                      'No rewards catalog items available currently.',
-                      style: TextStyle(color: AppTheme.textSubtle, fontSize: 13),
-                    ),
-                  ],
+                decoration: BoxDecoration(
+                  color: AppTheme.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: const Text(
+                  'NO ACTIVE OFFERS IN CATALOG',
+                  style: TextStyle(
+                    color: AppTheme.grey,
+                    fontSize: 11,
+                    fontFamily: AppTheme.monoFont,
+                    letterSpacing: 1.0,
+                  ),
                 ),
               ),
           ],
@@ -579,16 +543,18 @@ class RewardsScreen extends ConsumerWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
-            color: isBold ? Colors.white : AppTheme.textMuted,
-            fontWeight: isBold ? FontWeight.w800 : FontWeight.w500,
+            fontSize: 11,
+            color: isBold ? AppTheme.black : AppTheme.grey,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+            letterSpacing: 0.5,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: 14,
-            fontWeight: isBold ? FontWeight.w900 : FontWeight.w700,
+            fontSize: 12,
+            fontFamily: AppTheme.monoFont,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
             color: color,
           ),
         ),
@@ -601,11 +567,11 @@ class RewardsScreen extends ConsumerWidget {
       case 'PERCENT':
         return '${value.toInt()}% OFF';
       case 'FIXED':
-        return '\$${value.toStringAsFixed(0)} OFF';
+        return 'PKR ${value.toStringAsFixed(0)} OFF';
       case 'FREE_ITEM':
         return 'FREE ITEM';
       default:
-        return 'SPECIAL';
+        return 'OFFER';
     }
   }
 }

@@ -14,6 +14,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
+# pyrefly: ignore [missing-import]
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -27,6 +28,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base

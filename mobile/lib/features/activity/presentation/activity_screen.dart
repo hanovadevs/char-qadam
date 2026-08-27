@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/activity_provider.dart';
@@ -20,7 +21,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     super.initState();
     _syncAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 900),
     );
   }
 
@@ -33,7 +34,6 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
   @override
   Widget build(BuildContext context) {
     final activityState = ref.watch(activityProvider);
-    final theme = Theme.of(context);
 
     if (activityState.isSyncing) {
       if (!_syncAnimController.isAnimating) {
@@ -52,292 +52,336 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     final cap = activityState.dailyCap > 0 ? activityState.dailyCap : 20000;
     final progress = (displaySteps / cap).clamp(0.0, 1.0);
     final percentInt = (progress * 100).toInt();
+    final remainingSteps = (cap - displaySteps).clamp(0, cap);
 
-    // Approximate distance & calories
-    final km = (displaySteps * 0.00076).toStringAsFixed(1);
+    // Metric estimates
+    final km = (displaySteps * 0.00076).toStringAsFixed(2);
     final kcal = (displaySteps * 0.04).toStringAsFixed(0);
 
     return Scaffold(
+      backgroundColor: AppTheme.white,
       appBar: AppBar(
-        title: Row(
+        backgroundColor: AppTheme.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.directions_walk_rounded,
-                color: AppTheme.primaryColor,
-                size: 22,
+            const Text(
+              'DAILY MOVEMENT',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppTheme.black,
               ),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Daily Movement',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  DateFormat('EEEE, MMM d').format(DateTime.now()),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Text(
+              DateFormat('EEEE, MMM d, yyyy').format(DateTime.now()).toUpperCase(),
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppTheme.grey,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
             ),
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: RotationTransition(
-              turns: _syncAnimController,
-              child: IconButton(
-                icon: const Icon(Icons.sync_rounded, color: AppTheme.primaryColor),
-                onPressed: activityState.isSyncing
-                    ? null
-                    : () => ref.read(activityProvider.notifier).initAndSync(),
-              ),
+          RotationTransition(
+            turns: _syncAnimController,
+            child: IconButton(
+              icon: const Icon(Icons.refresh, size: 20, color: AppTheme.black),
+              onPressed: activityState.isSyncing
+                  ? null
+                  : () => ref.read(activityProvider.notifier).initAndSync(),
             ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.primaryColor,
-        backgroundColor: AppTheme.darkCardElevated,
+        color: AppTheme.black,
+        backgroundColor: AppTheme.white,
         onRefresh: () => ref.read(activityProvider.notifier).initAndSync(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           children: [
-            // Hero Step Counter Card
+            // Quick Points Bar (Instant link between steps & balance)
+            InkWell(
+              onTap: () => context.go('/points'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.offWhite,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.toll, size: 14, color: AppTheme.black),
+                        const SizedBox(width: 6),
+                        Text(
+                          'EARNED TODAY: +${activityState.pointsEarnedToday} PTS',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontFamily: AppTheme.monoFont,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.black,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'BALANCE: ${activityState.userBalance} PTS',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontFamily: AppTheme.monoFont,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_forward_ios, size: 9, color: AppTheme.grey),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Hero Movement Card (Swiss Beige Surface #F5F1E8)
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.darkCard,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: AppTheme.darkBorderLight.withValues(alpha: 0.5),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.05),
-                    blurRadius: 30,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                color: AppTheme.beige,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.borderDark, width: 1),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'TODAY\'S TARGET',
+                        'STEP PROGRESS',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.grey,
                           letterSpacing: 1.5,
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
+                          color: AppTheme.white,
+                          border: Border.all(color: AppTheme.borderDark),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                         ),
                         child: Text(
-                          '$percentInt% Completed',
+                          '$percentInt% COMPLETED',
                           style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.primaryColor,
+                            fontSize: 10,
+                            fontFamily: AppTheme.monoFont,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.black,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
-                  // Animated Radial Progress Ring
-                  TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: progress),
-                    duration: const Duration(milliseconds: 900),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, _) {
-                      return Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Background track
-                          SizedBox(
-                            width: 200,
-                            height: 200,
-                            child: CircularProgressIndicator(
-                              value: 1.0,
-                              strokeWidth: 16,
-                              backgroundColor: Colors.transparent,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF1E293D),
-                              ),
-                            ),
-                          ),
-                          // Active Glow Ring
-                          SizedBox(
-                            width: 200,
-                            height: 200,
-                            child: CircularProgressIndicator(
-                              value: value,
-                              strokeWidth: 16,
-                              strokeCap: StrokeCap.round,
-                              backgroundColor: Colors.transparent,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                AppTheme.primaryColor,
-                              ),
-                            ),
-                          ),
-                          // Inner Content
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.directions_walk_rounded,
-                                size: 28,
-                                color: AppTheme.primaryColor,
-                              ),
-                              const SizedBox(height: 4),
-                              TweenAnimationBuilder<int>(
-                                tween: IntTween(begin: 0, end: displaySteps),
-                                duration: const Duration(milliseconds: 900),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, val, _) {
-                                  return Text(
-                                    NumberFormat('#,###').format(val),
-                                    style: theme.textTheme.headlineLarge?.copyWith(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 34,
-                                      letterSpacing: -1,
-                                      color: Colors.white,
-                                    ),
-                                  );
-                                },
-                              ),
-                              Text(
-                                'of ${NumberFormat('#,###').format(cap)} cap',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Mini Stats Row (KM, KCAL)
+                  // Large Step Count Display
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
-                      _buildMetricBadge(Icons.straighten_rounded, '$km km', 'Distance'),
-                      const SizedBox(width: 20),
-                      Container(width: 1, height: 24, color: AppTheme.darkBorder),
-                      const SizedBox(width: 20),
-                      _buildMetricBadge(Icons.local_fire_department_rounded, '$kcal kcal', 'Burned'),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(color: AppTheme.darkBorder, height: 1),
-                  const SizedBox(height: 18),
-
-                  // Points stats bottom section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatTile(
-                        icon: Icons.stars_rounded,
-                        iconColor: AppTheme.accentGold,
-                        label: 'Earned Today',
-                        value: '+${activityState.pointsEarnedToday} pts',
+                      Text(
+                        NumberFormat('#,###').format(displaySteps),
+                        style: const TextStyle(
+                          fontFamily: AppTheme.monoFont,
+                          fontSize: 44,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.black,
+                          letterSpacing: -1.5,
+                          height: 1.0,
+                        ),
                       ),
-                      Container(width: 1, height: 36, color: AppTheme.darkBorder),
-                      _buildStatTile(
-                        icon: Icons.account_balance_wallet_rounded,
-                        iconColor: AppTheme.secondaryColor,
-                        label: 'Total Balance',
-                        value: '${activityState.userBalance} pts',
+                      const SizedBox(width: 8),
+                      const Text(
+                        'STEPS',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.grey,
+                          letterSpacing: 1.0,
+                        ),
                       ),
                     ],
                   ),
-                  if (activityState.lastSyncTime != null) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      'Synced at ${activityState.lastSyncTime}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textSubtle,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  const SizedBox(height: 12),
+
+                  // Linear Progress Bar (Clean Black on Beige)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: AppTheme.borderDark,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.black),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '0',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontFamily: AppTheme.monoFont,
+                          color: AppTheme.grey,
+                        ),
+                      ),
+                      Text(
+                        'CAP ${NumberFormat('#,###').format(cap)}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontFamily: AppTheme.monoFont,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: AppTheme.borderDark, height: 1),
+                  const SizedBox(height: 14),
+
+                  // 3-Column Metrics Grid
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetricTile('DISTANCE', '$km KM'),
+                      ),
+                      Container(width: 1, height: 30, color: AppTheme.borderDark),
+                      Expanded(
+                        child: _buildMetricTile('CALORIES', '$kcal KCAL'),
+                      ),
+                      Container(width: 1, height: 30, color: AppTheme.borderDark),
+                      Expanded(
+                        child: _buildMetricTile(
+                          'REMAINING',
+                          NumberFormat('#,###').format(remainingSteps),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Ingestion Sandbox & Conversion Rule
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.white,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'STEP INGESTION & CONVERSION',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                          color: AppTheme.grey,
+                        ),
+                      ),
+                      Text(
+                        '100 STEPS = 1 PT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontFamily: AppTheme.monoFont,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 34,
+                          child: OutlinedButton(
+                            onPressed: () => ref.read(activityProvider.notifier).syncManualSteps(
+                              steps: displaySteps + 1000,
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                            child: const Text('+1,000 STEPS'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SizedBox(
+                          height: 34,
+                          child: OutlinedButton(
+                            onPressed: () => ref.read(activityProvider.notifier).syncManualSteps(
+                              steps: displaySteps + 5000,
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                            child: const Text('+5,000 STEPS'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // Earning Rule Banner
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.25),
-                ),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.bolt_rounded, color: AppTheme.primaryColor, size: 22),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Rate: 100 steps = 1 Point • Max 20,000 steps counted daily',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
 
             // History Section Header & Filter
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Activity History',
+                  'ACTIVITY LOG',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    color: AppTheme.black,
                   ),
                 ),
                 SegmentedButton<String>(
                   segments: const [
-                    ButtonSegment(value: 'today', label: Text('Today')),
+                    ButtonSegment(value: 'today', label: Text('TODAY')),
                     ButtonSegment(value: 'week', label: Text('7D')),
                     ButtonSegment(value: 'month', label: Text('30D')),
                   ],
@@ -348,7 +392,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // History List
             if (activityState.history != null && activityState.history!.days.isNotEmpty)
@@ -359,58 +403,56 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 final dayProgress = (day.eligibleSteps / cap).clamp(0.0, 1.0);
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppTheme.darkBorder),
+                    color: AppTheme.white,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(color: AppTheme.border),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppTheme.offWhite,
+                          border: Border.all(color: AppTheme.border),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                         ),
                         child: const Icon(
-                          Icons.directions_walk_rounded,
-                          color: AppTheme.primaryColor,
-                          size: 22,
+                          Icons.directions_walk,
+                          color: AppTheme.black,
+                          size: 16,
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              dateFormatted,
+                              dateFormatted.toUpperCase(),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                                fontSize: 12,
+                                letterSpacing: 0.5,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: dayProgress,
-                                minHeight: 4,
-                                backgroundColor: const Color(0xFF1E293D),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primaryColor,
-                                ),
-                              ),
+                            LinearProgressIndicator(
+                              value: dayProgress,
+                              minHeight: 3,
+                              backgroundColor: AppTheme.border,
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.black),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '$stepsFmt steps',
+                              '$stepsFmt STEPS',
                               style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textMuted,
+                                fontSize: 11,
+                                fontFamily: AppTheme.monoFont,
+                                color: AppTheme.grey,
                               ),
                             ),
                           ],
@@ -418,20 +460,19 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                       ),
                       const SizedBox(width: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentGold.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppTheme.accentGold.withValues(alpha: 0.3),
-                          ),
+                          color: AppTheme.offWhite,
+                          border: Border.all(color: AppTheme.border),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                         ),
                         child: Text(
-                          '+$pts pts',
+                          '+$pts PTS',
                           style: const TextStyle(
-                            color: AppTheme.accentGold,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
+                            color: AppTheme.black,
+                            fontFamily: AppTheme.monoFont,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -441,32 +482,46 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               })
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 36),
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.border),
+                ),
                 child: const Text(
-                  'No step records for this period yet.',
-                  style: TextStyle(color: AppTheme.textSubtle, fontSize: 14),
+                  'NO STEP RECORDS FOR THIS PERIOD',
+                  style: TextStyle(
+                    color: AppTheme.grey,
+                    fontSize: 11,
+                    fontFamily: AppTheme.monoFont,
+                    letterSpacing: 1.0,
+                  ),
                 ),
               ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
-            // Privacy Guarantee Capsule
+            // Privacy Guarantee Note (Swiss Minimalist Light)
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.darkCardElevated.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.darkBorder),
+                color: AppTheme.offWhite,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.border),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.verified_user_outlined, color: AppTheme.textMuted, size: 20),
-                  SizedBox(width: 12),
+                  Icon(Icons.shield_outlined, color: AppTheme.grey, size: 16),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Zero GPS Tracking: Steps are converted directly on your device. Location data is never collected or stored.',
-                      style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                      'ZERO GPS TRACKING — Steps are computed locally on your device sensor. Location data is never collected or transmitted.',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.grey,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
@@ -478,57 +533,27 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     );
   }
 
-  Widget _buildMetricBadge(IconData icon, String value, String label) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppTheme.primaryColor),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: AppTheme.textSubtle,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatTile({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String value,
-  }) {
+  Widget _buildMetricTile(String label, String value) {
     return Column(
       children: [
-        Row(
-          children: [
-            Icon(icon, color: iconColor, size: 18),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-            ),
-          ],
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.grey,
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          style: const TextStyle(
+            fontSize: 13,
+            fontFamily: AppTheme.monoFont,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.black,
+          ),
         ),
       ],
     );

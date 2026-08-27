@@ -140,6 +140,16 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     }
   }
 
+  /// Manually sync step count (for testing/sandbox or manual entry)
+  Future<bool> syncManualSteps({required int steps}) async {
+    state = state.copyWith(isSyncing: true, todaySteps: steps);
+    return _performSync(
+      steps: steps,
+      source: 'manual_debug',
+      date: _getTodayString(),
+    );
+  }
+
   /// Load activity history for the selected range ('today', 'week', 'month').
   Future<void> loadHistory(String range) async {
     try {

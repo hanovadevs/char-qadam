@@ -42,8 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error),
-            backgroundColor: AppTheme.accentRose,
-            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.accentRed,
           ),
         );
       }
@@ -57,14 +56,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         scopes: ['email'],
       );
       final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return; // User canceled
+      if (googleUser == null) return;
 
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken ?? 'mock_google_token:${googleUser.email}';
 
       await ref.read(authStateProvider.notifier).loginWithGoogle(idToken: idToken);
     } catch (_) {
-      // Fallback for emulator / web dev without Play Services config
       await ref.read(authStateProvider.notifier).loginWithGoogle(
         idToken: 'mock_google_token:demo_google_user@gmail.com',
       );
@@ -76,107 +74,116 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
 
     return Scaffold(
+      backgroundColor: AppTheme.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Brand Glowing Header
-                  Center(
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryColor.withValues(alpha: 0.25),
-                            AppTheme.secondaryColor.withValues(alpha: 0.15),
+                  // Swiss Typographic Brand Header (Beige Surface #F5F1E8)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.beige,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                      border: Border.all(color: AppTheme.borderDark),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'QADAM',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.0,
+                                color: AppTheme.black,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.white,
+                                border: Border.all(color: AppTheme.borderDark),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                              ),
+                              child: const Text(
+                                'NETWORK',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontFamily: AppTheme.monoFont,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.black,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ),
                           ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
                         ),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                            blurRadius: 30,
-                            spreadRadius: 2,
+                        const SizedBox(height: 6),
+                        const Text(
+                          'STEP-TO-EARN REWARDS & PROMOS',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontFamily: AppTheme.monoFont,
+                            color: AppTheme.grey,
+                            letterSpacing: 1.0,
                           ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.directions_walk_rounded,
-                        size: 44,
-                        color: AppTheme.primaryColor,
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Qadam',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.primaryColor,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Walk, earn points, unlock real world perks',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 24),
 
                   // Error banner if any
                   if (authState.errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.accentRose.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.accentRose.withValues(alpha: 0.3)),
+                        color: AppTheme.white,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                        border: Border.all(color: AppTheme.accentRed),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: AppTheme.accentRose, size: 20),
-                          const SizedBox(width: 10),
+                          const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 16),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               authState.errorMessage!,
-                              style: const TextStyle(color: AppTheme.accentRose, fontSize: 13, fontWeight: FontWeight.w600),
+                              style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                   ],
 
-                  // Email Field
+                  // Email Field with Fixed Top Label
+                  const Text(
+                    'EMAIL ADDRESS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      hintText: 'you@example.com',
-                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                      hintText: 'name@domain.com',
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -189,20 +196,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-                  // Password Field
+                  // Password Field with Fixed Top Label
+                  const Text(
+                    'PASSWORD',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      hintText: 'Enter your password',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          size: 18,
                         ),
                         onPressed: () {
                           setState(() {
@@ -218,90 +235,65 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 22),
 
                   // Submit Button
                   ElevatedButton(
                     onPressed: authState.isLoading ? null : _submit,
                     child: authState.isLoading
                         ? const SizedBox(
-                            width: 22,
-                            height: 22,
+                            width: 18,
+                            height: 18,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF080C14)),
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
                             ),
                           )
-                        : const Text('Sign In'),
+                        : const Text('SIGN IN'),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Divider
                   const Row(
                     children: [
-                      Expanded(child: Divider(color: AppTheme.darkBorder)),
+                      Expanded(child: Divider(color: AppTheme.border)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        padding: EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
                           'OR',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSubtle),
+                          style: TextStyle(fontSize: 10, fontFamily: AppTheme.monoFont, color: AppTheme.grey),
                         ),
                       ),
-                      Expanded(child: Divider(color: AppTheme.darkBorder)),
+                      Expanded(child: Divider(color: AppTheme.border)),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Google Sign-In Button
-                  OutlinedButton(
+                  OutlinedButton.icon(
                     onPressed: authState.isLoading ? null : _handleGoogleSignIn,
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      side: const BorderSide(color: AppTheme.darkBorderLight),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.network(
-                          'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
-                          width: 20,
-                          height: 20,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.g_mobiledata_rounded, color: Colors.white, size: 24),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+                    icon: const Icon(Icons.account_circle_outlined, size: 18),
+                    label: const Text('CONTINUE WITH GOOGLE'),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // Navigation to Register
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
-                        "Don't have an account?",
-                        style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                        'NEW USER?',
+                        style: TextStyle(color: AppTheme.grey, fontSize: 11, letterSpacing: 0.5),
                       ),
                       TextButton(
                         onPressed: () => context.go('/register'),
                         child: const Text(
-                          'Create Account',
+                          'CREATE ACCOUNT',
                           style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
+                            color: AppTheme.black,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            letterSpacing: 0.8,
                           ),
                         ),
                       ),

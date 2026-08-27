@@ -23,8 +23,8 @@ class QadamApp extends ConsumerWidget {
       title: 'Qadam',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark, // Default to dark theme
+      darkTheme: AppTheme.lightTheme,
+      themeMode: ThemeMode.light, // Default to Swiss Light theme
       routerConfig: router,
     );
   }

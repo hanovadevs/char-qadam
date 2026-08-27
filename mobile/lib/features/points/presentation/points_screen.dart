@@ -10,7 +10,6 @@ class PointsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pointsState = ref.watch(pointsProvider);
-    final theme = Theme.of(context);
 
     final balance = pointsState.balanceData?.balance ?? 0;
     final totalEarned = pointsState.balanceData?.totalEarned ?? 0;
@@ -18,38 +17,29 @@ class PointsScreen extends ConsumerWidget {
     final entries = pointsState.ledgerPage?.entries ?? [];
 
     return Scaffold(
+      backgroundColor: AppTheme.white,
       appBar: AppBar(
-        title: Row(
+        backgroundColor: AppTheme.white,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.accentGold.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.stars_rounded,
-                color: AppTheme.accentGold,
-                size: 22,
+            Text(
+              'POINTS & LEDGER',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppTheme.black,
               ),
             ),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Points & Ledger',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  'Earn with every step',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Text(
+              'APPEND-ONLY TRANSACTION BALANCE',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.grey,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
             ),
           ],
         ),
@@ -57,73 +47,130 @@ class PointsScreen extends ConsumerWidget {
           IconButton(
             icon: pointsState.isLoading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
                     ),
                   )
-                : const Icon(Icons.refresh_rounded, color: AppTheme.accentGold),
+                : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
             onPressed: () => ref.read(pointsProvider.notifier).refresh(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.accentGold,
-        backgroundColor: AppTheme.darkCardElevated,
+        color: AppTheme.black,
+        backgroundColor: AppTheme.white,
         onRefresh: () => ref.read(pointsProvider.notifier).refresh(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           children: [
-            // Balance Hero Card
+            // Balance Hero Block (Swiss Warm Beige Surface #F5F1E8)
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF1E2235),
-                    Color(0xFF131826),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: AppTheme.accentGold.withValues(alpha: 0.3),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.accentGold.withValues(alpha: 0.08),
-                    blurRadius: 32,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+                color: AppTheme.beige,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.borderDark, width: 1),
               ),
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    'CURRENT AVAILABLE BALANCE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.grey,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accentGold.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
+                      Text(
+                        NumberFormat('#,###').format(balance),
+                        style: const TextStyle(
+                          fontFamily: AppTheme.monoFont,
+                          fontSize: 44,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.black,
+                          letterSpacing: -1.5,
+                          height: 1.0,
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'PTS',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.taupe,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: AppTheme.borderDark, height: 1),
+                  const SizedBox(height: 14),
+
+                  // Split Lifetime Metrics
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.bolt_rounded, size: 14, color: AppTheme.accentGold),
-                            SizedBox(width: 4),
-                            Text(
-                              'AVAILABLE BALANCE',
+                            const Text(
+                              'LIFETIME EARNED',
                               style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.accentGold,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.grey,
                                 letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '+${NumberFormat('#,###').format(totalEarned)} PTS',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontFamily: AppTheme.monoFont,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 30, color: AppTheme.borderDark),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'LIFETIME REDEEMED',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.grey,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '-${NumberFormat('#,###').format(totalSpent)} PTS',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontFamily: AppTheme.monoFont,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.grey,
                               ),
                             ),
                           ],
@@ -131,177 +178,112 @@ class PointsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      const Icon(
-                        Icons.stars_rounded,
-                        color: AppTheme.accentGold,
-                        size: 36,
-                      ),
-                      const SizedBox(width: 10),
-                      TweenAnimationBuilder<int>(
-                        tween: IntTween(begin: 0, end: balance),
-                        duration: const Duration(milliseconds: 800),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, val, _) {
-                          return Text(
-                            NumberFormat('#,###').format(val),
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 44,
-                              letterSpacing: -1,
-                              color: AppTheme.accentGold,
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'PTS',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.accentGold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(color: AppTheme.darkBorder),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatColumn(
-                        label: 'Lifetime Earned',
-                        value: '+${NumberFormat('#,###').format(totalEarned)}',
-                        color: AppTheme.primaryColor,
-                        icon: Icons.trending_up_rounded,
-                      ),
-                      Container(
-                        width: 1,
-                        height: 40,
-                        color: AppTheme.darkBorder,
-                      ),
-                      _buildStatColumn(
-                        label: 'Lifetime Spent',
-                        value: '-${NumberFormat('#,###').format(totalSpent)}',
-                        color: AppTheme.secondaryColor,
-                        icon: Icons.shopping_bag_outlined,
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 16),
 
             // Ledger Section Title
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Transaction History',
+                  'TRANSACTION HISTORY',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    color: AppTheme.black,
                   ),
                 ),
                 Text(
-                  'Verified Ledger',
+                  'IMMUTABLE LEDGER',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSubtle,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 9,
+                    fontFamily: AppTheme.monoFont,
+                    color: AppTheme.grey,
+                    letterSpacing: 0.8,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // Ledger List
             if (entries.isNotEmpty)
               ...entries.map((entry) {
                 final isEarn = entry.delta > 0;
-                final dateStr = DateFormat('MMM d, yyyy • hh:mm a')
+                final dateStr = DateFormat('MMM d, yyyy  •  HH:mm')
                     .format(entry.createdAt.toLocal());
                 final deltaStr = isEarn
-                    ? '+${NumberFormat('#,###').format(entry.delta)} pts'
-                    : '${NumberFormat('#,###').format(entry.delta)} pts';
+                    ? '+${NumberFormat('#,###').format(entry.delta)} PTS'
+                    : '${NumberFormat('#,###').format(entry.delta)} PTS';
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppTheme.darkBorder),
+                    color: AppTheme.white,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(color: AppTheme.border),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
-                          color: isEarn
-                              ? AppTheme.primaryColor.withValues(alpha: 0.12)
-                              : AppTheme.secondaryColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppTheme.offWhite,
+                          border: Border.all(color: AppTheme.border),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                         ),
                         child: Icon(
-                          isEarn
-                              ? Icons.arrow_downward_rounded
-                              : Icons.shopping_bag_rounded,
-                          color: isEarn
-                              ? AppTheme.primaryColor
-                              : AppTheme.secondaryColor,
-                          size: 20,
+                          isEarn ? Icons.add : Icons.remove,
+                          color: isEarn ? AppTheme.black : AppTheme.taupe,
+                          size: 16,
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _reasonTitle(entry.reason),
+                              _reasonTitle(entry.reason).toUpperCase(),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                                color: AppTheme.black,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 2),
                             Text(
                               dateStr,
                               style: const TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textMuted,
+                                fontSize: 10,
+                                fontFamily: AppTheme.monoFont,
+                                color: AppTheme.grey,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: (isEarn ? AppTheme.primaryColor : AppTheme.accentRose)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                          color: AppTheme.offWhite,
+                          border: Border.all(color: AppTheme.border),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                         ),
                         child: Text(
                           deltaStr,
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: isEarn
-                                ? AppTheme.primaryColor
-                                : AppTheme.accentRose,
+                            fontSize: 12,
+                            fontFamily: AppTheme.monoFont,
+                            fontWeight: FontWeight.w700,
+                            color: isEarn ? AppTheme.black : AppTheme.taupe,
                           ),
                         ),
                       ),
@@ -314,23 +296,28 @@ class PointsScreen extends ConsumerWidget {
                 padding: EdgeInsets.all(40),
                 child: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
                   ),
                 ),
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 40.0),
+                padding: const EdgeInsets.symmetric(vertical: 28),
                 alignment: Alignment.center,
-                child: const Column(
-                  children: [
-                    Icon(Icons.receipt_long_outlined, size: 40, color: AppTheme.textSubtle),
-                    SizedBox(height: 10),
-                    Text(
-                      'No transactions yet. Start walking to earn points!',
-                      style: TextStyle(color: AppTheme.textSubtle, fontSize: 13),
-                    ),
-                  ],
+                decoration: BoxDecoration(
+                  color: AppTheme.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: const Text(
+                  'NO LEDGER ENTRIES RECORDED YET',
+                  style: TextStyle(
+                    color: AppTheme.grey,
+                    fontSize: 11,
+                    fontFamily: AppTheme.monoFont,
+                    letterSpacing: 1.0,
+                  ),
                 ),
               ),
           ],
@@ -339,46 +326,14 @@ class PointsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatColumn({
-    required String label,
-    required String value,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
   String _reasonTitle(String reason) {
     switch (reason) {
       case 'STEP_EARN':
-        return 'Daily Steps Converted';
+        return 'Steps Converted';
       case 'OFFER_SPEND':
-        return 'Voucher Offer Redemption';
+        return 'Offer Redemption';
       case 'ADJUST':
-        return 'Account Adjustment';
+        return 'Manual Adjustment';
       default:
         return reason;
     }

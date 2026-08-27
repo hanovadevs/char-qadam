@@ -14,135 +14,126 @@ class WalletScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.darkCardElevated,
+      backgroundColor: AppTheme.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
+        side: BorderSide(color: AppTheme.borderDark, width: 1),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag Handle
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.darkBorderLight,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              Text(
-                voucher.offerTitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _discountLabel(voucher.offerDiscountType, voucher.offerDiscountValue),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.primaryColor,
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderDark,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // QR Code High Contrast Box
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.25),
-                      blurRadius: 30,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: QrImageView(
-                  data: voucher.shortCode,
-                  version: QrVersions.auto,
-                  size: 200.0,
-                  backgroundColor: Colors.white,
+              const SizedBox(height: 18),
+              const Text(
+                'VOUCHER PASS',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: AppTheme.grey,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 4),
+              Text(
+                voucher.offerTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.black,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 18),
 
-              // Short Code Copy Pill
+              // QR Code High Contrast Box (Swiss Sharp Square Light)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.beige,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(color: AppTheme.borderDark, width: 1),
+                  ),
+                  child: QrImageView(
+                    data: voucher.shortCode,
+                    version: QrVersions.auto,
+                    size: 180.0,
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Short Code Copy Box
               InkWell(
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: voucher.shortCode));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Voucher short code copied to clipboard!'),
+                      content: Text('Voucher short code copied to clipboard'),
                       duration: Duration(seconds: 2),
                     ),
                   );
                 },
-                borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                      width: 1.2,
-                    ),
+                    color: AppTheme.offWhite,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(color: AppTheme.borderDark),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         voucher.shortCode,
                         style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 3,
-                          color: AppTheme.primaryColor,
+                          fontSize: 18,
+                          fontFamily: AppTheme.monoFont,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.0,
+                          color: AppTheme.black,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.copy_rounded, size: 18, color: AppTheme.textMuted),
+                      const Icon(Icons.copy, size: 16, color: AppTheme.grey),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-              const Text(
-                'Present this QR code or short code to cashier at checkout',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.schedule_rounded, size: 14, color: AppTheme.accentGold),
-                  const SizedBox(width: 4),
+                  const Text(
+                    'PRESENT QR AT POS CHECKOUT',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontFamily: AppTheme.monoFont,
+                      color: AppTheme.grey,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                   Text(
-                    'Expires ${DateFormat('MMM d, yyyy').format(voucher.expiresAt.toLocal())}',
+                    'EXP: ${DateFormat('yyyy-MM-dd').format(voucher.expiresAt.toLocal())}',
                     style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.accentGold,
+                      fontSize: 9,
+                      fontFamily: AppTheme.monoFont,
+                      color: AppTheme.grey,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -161,38 +152,29 @@ class WalletScreen extends ConsumerWidget {
     final vouchers = walletState.vouchers;
 
     return Scaffold(
+      backgroundColor: AppTheme.white,
       appBar: AppBar(
-        title: Row(
+        backgroundColor: AppTheme.white,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.confirmation_number_rounded,
-                color: AppTheme.primaryColor,
-                size: 22,
+            Text(
+              'MY WALLET',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppTheme.black,
               ),
             ),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'My Passes',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  'Redeemed vouchers & discounts',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Text(
+              'REDEEMED PROMOS & PASSES',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppTheme.grey,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
             ),
           ],
         ),
@@ -200,38 +182,39 @@ class WalletScreen extends ConsumerWidget {
           IconButton(
             icon: walletState.isLoading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
                     ),
                   )
-                : const Icon(Icons.refresh_rounded, color: AppTheme.primaryColor),
+                : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
             onPressed: () => ref.read(walletProvider.notifier).refresh(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.primaryColor,
-        backgroundColor: AppTheme.darkCardElevated,
+        color: AppTheme.black,
+        backgroundColor: AppTheme.white,
         onRefresh: () => ref.read(walletProvider.notifier).refresh(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           children: [
-            // Status Tab Filter
+            // Status Tab Filter (Swiss Segmented Button)
             SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: 'active', label: Text('Active')),
-                ButtonSegment(value: 'redeemed', label: Text('Used')),
-                ButtonSegment(value: 'expired', label: Text('Expired')),
+                ButtonSegment(value: 'active', label: Text('ACTIVE')),
+                ButtonSegment(value: 'redeemed', label: Text('USED')),
+                ButtonSegment(value: 'expired', label: Text('EXPIRED')),
               ],
               selected: {walletState.selectedStatus},
               onSelectionChanged: (Set<String> selection) {
                 ref.read(walletProvider.notifier).fetchVouchers(selection.first);
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
             // Voucher List
             if (vouchers.isNotEmpty)
@@ -239,24 +222,21 @@ class WalletScreen extends ConsumerWidget {
                 final isIssued = v.status == 'ISSUED';
                 final isRedeemed = v.status == 'REDEEMED';
                 final dateLabel = isRedeemed
-                    ? 'Used on ${DateFormat('MMM d, yyyy').format(v.redeemedAt?.toLocal() ?? DateTime.now())}'
-                    : 'Expires ${DateFormat('MMM d, yyyy').format(v.expiresAt.toLocal())}';
+                    ? 'USED: ${DateFormat('yyyy-MM-dd HH:mm').format(v.redeemedAt?.toLocal() ?? DateTime.now())}'
+                    : 'EXPIRES: ${DateFormat('yyyy-MM-dd').format(v.expiresAt.toLocal())}';
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: isIssued
-                          ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                          : AppTheme.darkBorder,
-                    ),
+                    color: AppTheme.white,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(color: AppTheme.border),
                   ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(18.0),
+                        padding: const EdgeInsets.all(14.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -264,89 +244,89 @@ class WalletScreen extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor.withValues(alpha: 0.14),
-                                    borderRadius: BorderRadius.circular(10),
+                                    color: AppTheme.black,
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                                   ),
                                   child: Text(
                                     _discountLabel(v.offerDiscountType, v.offerDiscountValue),
                                     style: const TextStyle(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12,
+                                      color: AppTheme.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: AppTheme.monoFont,
+                                      fontSize: 10,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _statusColor(v.status).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    v.status,
-                                    style: TextStyle(
-                                      color: _statusColor(v.status),
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 11,
-                                    ),
+                                Text(
+                                  v.status,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontFamily: AppTheme.monoFont,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.grey,
+                                    letterSpacing: 0.8,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             Text(
                               v.offerTitle,
                               style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
                                 letterSpacing: -0.3,
+                                color: AppTheme.black,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               dateLabel,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontFamily: AppTheme.monoFont,
+                                color: AppTheme.grey,
+                              ),
                             ),
                           ],
                         ),
                       ),
 
-                      // Perforated Divider
-                      const Divider(color: AppTheme.darkBorder, height: 1),
+                      const Divider(color: AppTheme.border, height: 1),
 
-                      // Action row
+                      // Action Row
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               v.shortCode,
                               style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 2,
-                                color: AppTheme.accentGold,
+                                fontSize: 14,
+                                fontFamily: AppTheme.monoFont,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.5,
+                                color: AppTheme.black,
                               ),
                             ),
                             if (isIssued)
-                              ElevatedButton.icon(
-                                onPressed: () => _showVoucherQrModal(context, v),
-                                icon: const Icon(Icons.qr_code_rounded, size: 18),
-                                label: const Text('Show Pass'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryColor,
-                                  foregroundColor: const Color(0xFF080C14),
-                                  minimumSize: const Size(120, 38),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  textStyle: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
+                              SizedBox(
+                                height: 32,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _showVoucherQrModal(context, v),
+                                  icon: const Icon(Icons.qr_code, size: 14),
+                                  label: const Text('SHOW QR'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    textStyle: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.8,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -362,39 +342,27 @@ class WalletScreen extends ConsumerWidget {
                 padding: EdgeInsets.all(40),
                 child: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
                   ),
                 ),
               )
             else
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 48.0),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.darkCard,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.darkBorder),
-                        ),
-                        child: const Icon(
-                          Icons.confirmation_number_outlined,
-                          size: 36,
-                          color: AppTheme.textSubtle,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'No ${walletState.selectedStatus} passes found.',
-                        style: const TextStyle(
-                          color: AppTheme.textSubtle,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 28),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: Text(
+                  'NO ${walletState.selectedStatus.toUpperCase()} PASSES FOUND',
+                  style: const TextStyle(
+                    color: AppTheme.grey,
+                    fontSize: 11,
+                    fontFamily: AppTheme.monoFont,
+                    letterSpacing: 1.0,
                   ),
                 ),
               ),
@@ -409,24 +377,11 @@ class WalletScreen extends ConsumerWidget {
       case 'PERCENT':
         return '${value.toInt()}% OFF';
       case 'FIXED':
-        return '\$${value.toStringAsFixed(0)} OFF';
+        return 'PKR ${value.toStringAsFixed(0)} OFF';
       case 'FREE_ITEM':
         return 'FREE ITEM';
       default:
         return 'VOUCHER';
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'ISSUED':
-        return AppTheme.primaryColor;
-      case 'REDEEMED':
-        return AppTheme.secondaryColor;
-      case 'EXPIRED':
-        return AppTheme.accentRose;
-      default:
-        return AppTheme.textMuted;
     }
   }
 }

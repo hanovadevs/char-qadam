@@ -77,8 +77,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error),
-            backgroundColor: AppTheme.accentRose,
-            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.accentRed,
           ),
         );
       }
@@ -90,72 +89,82 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final authState = ref.watch(authStateProvider);
 
     return Scaffold(
+      backgroundColor: AppTheme.white,
       appBar: AppBar(
-        title: const Text('Create Account'),
+        backgroundColor: AppTheme.white,
+        title: const Text('CREATE ACCOUNT'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: const Icon(Icons.arrow_back, size: 20),
           onPressed: () => context.go('/login'),
         ),
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Join the Movement',
+                    'NEW MEMBERSHIP',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
+                      letterSpacing: 1.0,
+                      color: AppTheme.black,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   const Text(
-                    'Step up, earn points, and unlock exclusive rewards with every stride.',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    'Convert daily steps to verifiable network points and partner perks.',
+                    style: TextStyle(color: AppTheme.grey, fontSize: 12),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
 
                   // Error banner if any
                   if (authState.errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.accentRose.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.accentRose.withValues(alpha: 0.3)),
+                        color: AppTheme.white,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                        border: Border.all(color: AppTheme.accentRed),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: AppTheme.accentRose, size: 20),
-                          const SizedBox(width: 10),
+                          const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 16),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               authState.errorMessage!,
-                              style: const TextStyle(color: AppTheme.accentRose, fontSize: 13, fontWeight: FontWeight.w600),
+                              style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                   ],
 
                   // Email Field
+                  const Text(
+                    'EMAIL ADDRESS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      hintText: 'you@example.com',
-                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                      hintText: 'name@domain.com',
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -168,20 +177,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // Password Field
+                  const Text(
+                    'PASSWORD (MIN 8 CHARS)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
-                      labelText: 'Password',
                       hintText: 'At least 8 characters',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          size: 18,
                         ),
                         onPressed: () {
                           setState(() {
@@ -200,20 +218,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // Confirm Password Field
+                  const Text(
+                    'CONFIRM PASSWORD',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
-                      labelText: 'Confirm Password',
-                      prefixIcon: const Icon(Icons.lock_reset_rounded),
+                      hintText: 'Re-enter your password',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          size: 18,
                         ),
                         onPressed: () {
                           setState(() {
@@ -232,90 +260,65 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 22),
 
                   // Submit Button
                   ElevatedButton(
                     onPressed: authState.isLoading ? null : _submit,
                     child: authState.isLoading
                         ? const SizedBox(
-                            width: 22,
-                            height: 22,
+                            width: 18,
+                            height: 18,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF080C14)),
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
                             ),
                           )
-                        : const Text('Create Account'),
+                        : const Text('CREATE ACCOUNT'),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Divider
                   const Row(
                     children: [
-                      Expanded(child: Divider(color: AppTheme.darkBorder)),
+                      Expanded(child: Divider(color: AppTheme.border)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        padding: EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
                           'OR',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSubtle),
+                          style: TextStyle(fontSize: 10, fontFamily: AppTheme.monoFont, color: AppTheme.grey),
                         ),
                       ),
-                      Expanded(child: Divider(color: AppTheme.darkBorder)),
+                      Expanded(child: Divider(color: AppTheme.border)),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Google Sign-In Button
-                  OutlinedButton(
+                  OutlinedButton.icon(
                     onPressed: authState.isLoading ? null : _handleGoogleSignIn,
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      side: const BorderSide(color: AppTheme.darkBorderLight),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.network(
-                          'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
-                          width: 20,
-                          height: 20,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.g_mobiledata_rounded, color: Colors.white, size: 24),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+                    icon: const Icon(Icons.account_circle_outlined, size: 18),
+                    label: const Text('CONTINUE WITH GOOGLE'),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // Navigation to Login
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
-                        'Already have an account?',
-                        style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                        'ALREADY REGISTERED?',
+                        style: TextStyle(color: AppTheme.grey, fontSize: 11, letterSpacing: 0.5),
                       ),
                       TextButton(
                         onPressed: () => context.go('/login'),
                         child: const Text(
-                          'Sign In',
+                          'SIGN IN',
                           style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
+                            color: AppTheme.black,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            letterSpacing: 0.8,
                           ),
                         ),
                       ),
