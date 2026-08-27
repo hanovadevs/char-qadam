@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/merchant_models.dart';
 import '../providers/merchant_provider.dart';
 
 class MerchantPosScreen extends ConsumerStatefulWidget {
@@ -20,6 +22,16 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
   final _storeIdController = TextEditingController(text: 'STORE-01');
 
   @override
+  void initState() {
+    super.initState();
+    final state = ref.read(merchantProvider);
+    if (state.partnerApiKey != null) {
+      _apiKeyController.text = state.partnerApiKey!;
+      _storeIdController.text = state.storeId;
+    }
+  }
+
+  @override
   void dispose() {
     _codeController.dispose();
     _orderRefController.dispose();
@@ -29,6 +41,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
   }
 
   Future<void> _pasteFromClipboard() async {
+    HapticsService.light();
     final data = await Clipboard.getData('text/plain');
     if (data?.text != null && data!.text!.isNotEmpty) {
       _codeController.text = data.text!.trim().toUpperCase();
@@ -40,6 +53,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
     final code = _codeController.text.trim();
     if (code.isEmpty) return;
 
+    HapticsService.medium();
     await ref.read(merchantProvider.notifier).validateCode(code);
   }
 
@@ -50,6 +64,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
         );
 
     if (success) {
+      HapticsService.heavy();
       _codeController.clear();
       _orderRefController.clear();
     }
@@ -60,6 +75,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
     final store = _storeIdController.text.trim();
     if (key.isEmpty) return;
 
+    HapticsService.medium();
     await ref.read(merchantProvider.notifier).setCredentials(
           apiKey: key,
           storeId: store.isNotEmpty ? store : 'STORE-01',
@@ -67,6 +83,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
   }
 
   void _useTestCredentials() {
+    HapticsService.light();
     _apiKeyController.text = 'demo-partner-api-key';
     _storeIdController.text = 'STORE-MAIN';
     _saveCredentials();
@@ -110,15 +127,45 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
             IconButton(
               icon: const Icon(Icons.logout, size: 18, color: AppTheme.black),
               tooltip: 'Disconnect Terminal',
-              onPressed: () => ref.read(merchantProvider.notifier).disconnectTerminal(),
+              onPressed: () {
+                HapticsService.light();
+                ref.read(merchantProvider.notifier).disconnectTerminal();
+              },
             ),
           const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
-        child: state.partnerApiKey == null || partner == null
-            ? _buildConfigView(state)
-            : _buildTerminalView(state, partner, validation),
+        child: state.isLoading && partner == null
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                      ),
+                    ),
+                    SizedBox(height: 14),
+                    Text(
+                      'CONNECTING TO TERMINAL...',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontFamily: AppTheme.monoFont,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: AppTheme.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : partner == null
+                ? _buildConfigView(state)
+                : _buildTerminalView(state, partner, validation),
       ),
     );
   }
@@ -212,8 +259,8 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
 
   Widget _buildTerminalView(
     MerchantState state,
-    partner,
-    validation,
+    PartnerInfoModel partner,
+    VoucherValidationModel? validation,
   ) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

@@ -41,11 +41,12 @@ class MerchantState {
     String? successMessage,
     bool clearValidation = false,
     bool clearMessages = false,
+    bool clearPartnerInfo = false,
   }) {
     return MerchantState(
       partnerApiKey: partnerApiKey ?? this.partnerApiKey,
       storeId: storeId ?? this.storeId,
-      partnerInfo: partnerInfo ?? this.partnerInfo,
+      partnerInfo: clearPartnerInfo ? null : (partnerInfo ?? this.partnerInfo),
       activeValidation: clearValidation ? null : (activeValidation ?? this.activeValidation),
       lastRedemption: lastRedemption ?? this.lastRedemption,
       history: history ?? this.history,
@@ -74,13 +75,15 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
   }
 
   Future<void> _loadSavedCredentials() async {
-    final savedKey = await _storage.read(key: _keyStore);
-    final savedStoreId = await _storage.read(key: _storeIdKey) ?? 'STORE-01';
+    try {
+      final savedKey = await _storage.read(key: _keyStore);
+      final savedStoreId = await _storage.read(key: _storeIdKey) ?? 'STORE-01';
 
-    if (savedKey != null && savedKey.isNotEmpty) {
-      state = state.copyWith(partnerApiKey: savedKey, storeId: savedStoreId);
-      await verifyApiKey(savedKey);
-    }
+      if (savedKey != null && savedKey.isNotEmpty) {
+        state = state.copyWith(partnerApiKey: savedKey, storeId: savedStoreId);
+        await verifyApiKey(savedKey);
+      }
+    } catch (_) {}
   }
 
   Future<bool> setCredentials({required String apiKey, required String storeId}) async {
@@ -107,11 +110,19 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
   }
 
   Future<void> verifyApiKey(String apiKey) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final info = await repository.getPartnerInfo(apiKey);
-      state = state.copyWith(partnerInfo: info);
+      final info = await repository.getPartnerInfo(apiKey.trim());
+      state = state.copyWith(partnerInfo: info, isLoading: false);
       await loadHistory();
-    } catch (_) {}
+    } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
+      state = state.copyWith(
+        isLoading: false,
+        clearPartnerInfo: true,
+        errorMessage: 'Credentials verification failed: $msg',
+      );
+    }
   }
 
   Future<bool> validateCode(String codeOrToken) async {
@@ -195,8 +206,10 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
   }
 
   Future<void> disconnectTerminal() async {
-    await _storage.delete(key: _keyStore);
-    await _storage.delete(key: _storeIdKey);
+    try {
+      await _storage.delete(key: _keyStore);
+      await _storage.delete(key: _storeIdKey);
+    } catch (_) {}
     state = const MerchantState();
   }
 }
