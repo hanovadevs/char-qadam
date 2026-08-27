@@ -153,6 +153,55 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+
+            // Community Leaderboard Strip
+            InkWell(
+              onTap: () => context.push('/leaderboard'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.leaderboard_outlined, size: 14, color: AppTheme.black),
+                        SizedBox(width: 6),
+                        Text(
+                          'COMMUNITY LEADERBOARD',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: AppTheme.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'VIEW TOP WALKERS',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontFamily: AppTheme.monoFont,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.grey,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_ios, size: 9, color: AppTheme.grey),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 10),
 
             // Hero Movement Card (Swiss Beige Surface #F5F1E8)

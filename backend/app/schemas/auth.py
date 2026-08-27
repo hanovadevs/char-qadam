@@ -52,3 +52,21 @@ class UserOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordOut(BaseModel):
+    message: str
+    reset_token: str | None = None  # Populated in debug/dev mode
+
+
+class ResetPasswordIn(BaseModel):
+    reset_token: str = Field(min_length=10)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ResetPasswordOut(BaseModel):
+    message: str

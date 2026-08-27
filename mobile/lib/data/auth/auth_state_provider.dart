@@ -182,6 +182,38 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<String?> forgotPassword({required String email}) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final token = await authRepository.forgotPassword(email: email);
+      state = state.copyWith(isLoading: false);
+      return token;
+    } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: msg);
+      return null;
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String resetToken,
+    required String newPassword,
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      await authRepository.resetPassword(
+        resetToken: resetToken,
+        newPassword: newPassword,
+      );
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: msg);
+      return false;
+    }
+  }
+
   Future<void> refreshProfile() async {
     if (state.status == AuthStatus.authenticated) {
       try {

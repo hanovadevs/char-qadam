@@ -1,14 +1,13 @@
-"""Pydantic schemas for the partner-facing B4 API."""
+"""Pydantic schemas for the partner-facing POS API."""
 from __future__ import annotations
 
 from datetime import datetime
-
 from pydantic import BaseModel, Field
 
 
 class ValidateIn(BaseModel):
     """Body for POST /partner/v1/vouchers/validate."""
-    token: str = Field(min_length=10, description="Raw token from the QR code or manual entry.")
+    token: str = Field(min_length=6, description="Raw token from QR code OR human short_code.")
 
 
 class ValidateOut(BaseModel):
@@ -36,3 +35,21 @@ class PartnerRedeemOut(BaseModel):
     redeemed_at: datetime
     discount_type: str
     discount_value: float
+
+
+class PartnerInfoOut(BaseModel):
+    """Response for GET /partner/v1/info."""
+    partner_id: str
+    name: str
+    status: str
+
+
+class RedemptionHistoryItemOut(BaseModel):
+    """Item for GET /partner/v1/redemptions."""
+    id: str
+    voucher_id: str
+    short_code: str
+    store_id: str | None
+    order_reference: str | None
+    discount_value: float
+    redeemed_at: datetime

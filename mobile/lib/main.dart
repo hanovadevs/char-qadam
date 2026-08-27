@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/services/background_sync_service.dart';
 import 'core/theme/app_theme.dart';
 import 'routing/app_router.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await BackgroundSyncService.initialize();
+
   runApp(
     const ProviderScope(
       child: QadamApp(),

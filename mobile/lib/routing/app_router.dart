@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/app_theme.dart';
 import '../data/auth/auth_state_provider.dart';
 import '../features/activity/presentation/activity_screen.dart';
+import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/home/presentation/main_scaffold.dart';
+import '../features/leaderboard/presentation/leaderboard_screen.dart';
+import '../features/merchant/presentation/merchant_pos_screen.dart';
 import '../features/points/presentation/points_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/rewards/presentation/rewards_screen.dart';
@@ -24,7 +28,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final status = authState.status;
       final isSplash = state.matchedLocation == '/splash';
-      final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+      final isAuthRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register' ||
+          state.matchedLocation == '/forgot-password';
 
       if (status == AuthStatus.initial) {
         return isSplash ? null : '/splash';
@@ -52,6 +58,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/leaderboard',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LeaderboardScreen(),
+      ),
+      GoRoute(
+        path: '/merchant-pos',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const MerchantPosScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -104,76 +124,59 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Dedicated splash screen shown during app startup and auth token resolution.
+/// Dedicated splash screen shown during app startup and auth token resolution (Swiss Light Style).
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF080C14),
+      backgroundColor: AppTheme.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 90,
-              height: 90,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF00F59B).withValues(alpha: 0.3),
-                    const Color(0xFF6366F1).withValues(alpha: 0.15),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF00F59B).withValues(alpha: 0.5),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF00F59B).withValues(alpha: 0.25),
-                    blurRadius: 36,
-                    spreadRadius: 4,
-                  ),
-                ],
+                color: AppTheme.beige,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.borderDark, width: 1.5),
               ),
               child: const Icon(
-                Icons.directions_walk_rounded,
-                size: 50,
-                color: Color(0xFF00F59B),
+                Icons.directions_walk,
+                size: 40,
+                color: AppTheme.black,
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
             const Text(
               'QADAM',
               style: TextStyle(
-                fontSize: 26,
+                fontSize: 24,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 6,
-                color: Colors.white,
+                letterSpacing: 4,
+                color: AppTheme.black,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             const Text(
-              'Step • Earn • Elevate',
+              'STEP-BASED VALUE NETWORK',
               style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.5,
+                fontSize: 10,
+                fontFamily: AppTheme.monoFont,
+                color: AppTheme.grey,
+                letterSpacing: 1.0,
               ),
             ),
-            const SizedBox(height: 36),
+            const SizedBox(height: 28),
             const SizedBox(
-              width: 24,
-              height: 24,
+              width: 18,
+              height: 18,
               child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00F59B)),
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
               ),
             ),
           ],

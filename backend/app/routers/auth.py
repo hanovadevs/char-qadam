@@ -1,10 +1,13 @@
-"""Auth router — registration, login, and current-user endpoints.
+"""Auth router — registration, login, password recovery, and current-user endpoints.
 
 Routes
 ------
-POST /auth/register   Create a new account; returns a JWT.
-POST /auth/login      Authenticate with email+password; returns a JWT.
-GET  /auth/me         Return the authenticated user's profile.
+POST /auth/register         Create a new account; returns a JWT.
+POST /auth/login            Authenticate with email+password; returns a JWT.
+POST /auth/google           Authenticate via Google OAuth ID Token; returns a JWT.
+POST /auth/forgot-password  Request a signed password reset token.
+POST /auth/reset-password   Reset password with valid reset token.
+GET  /auth/me               Return the authenticated user's profile.
 """
 from __future__ import annotations
 
@@ -14,11 +17,29 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db.models import User, UserStatus
 from app.db.postgres import get_session
 from app.deps import get_current_user
-from app.schemas.auth import GoogleAuthIn, LoginIn, RegisterIn, TokenOut, UserOut
-from app.services.security import create_access_token, hash_password, verify_password
+from app.schemas.auth import (
+    ForgotPasswordIn,
+    ForgotPasswordOut,
+    GoogleAuthIn,
+    LoginIn,
+    RegisterIn,
+    ResetPasswordIn,
+    ResetPasswordOut,
+    TokenOut,
+    UserOut,
+)
+from app.services.security import (
+    create_access_token,
+    create_password_reset_token,
+    decode_password_reset_token,
+    hash_password,
+    verify_google_id_token,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -105,43 +126,22 @@ async def google_auth(
     body: GoogleAuthIn,
     session: AsyncSession = Depends(get_session),
 ) -> TokenOut:
-    """Exchange a Google OAuth ID Token (or Supabase OAuth Token) for a Qadam JWT.
+    """Exchange a Google OAuth ID Token for a Qadam JWT.
 
     If the user does not exist in the system, a new account is automatically
     created. If the account exists, it is logged in.
 
     Returns **401** if the Google token is invalid or unverified.
     """
-    email: str | None = None
-
-    # Test / Mock bypass for automated test suites
-    if body.id_token.startswith("mock_google_token:"):
-        email = body.id_token.split("mock_google_token:", 1)[1]
-    else:
-        # Verify ID token against Google's OAuth2 tokeninfo endpoint
-        try:
-            import httpx
-            from app.config import get_settings
-            settings = get_settings()
-
-            async with httpx.AsyncClient(timeout=10.0) as http_client:
-                resp = await http_client.get(
-                    "https://oauth2.googleapis.com/tokeninfo",
-                    params={"id_token": body.id_token},
-                )
-                if resp.status_code == 200:
-                    payload = resp.json()
-                    if payload.get("email_verified") in (True, "true"):
-                        # If google_client_id is configured, verify target audience
-                        if settings.google_client_id:
-                            aud = payload.get("aud")
-                            azp = payload.get("azp")
-                            if settings.google_client_id in (aud, azp):
-                                email = payload.get("email")
-                        else:
-                            email = payload.get("email")
-        except Exception:
-            pass
+    settings = get_settings()
+    try:
+        verified_info = await verify_google_id_token(
+            body.id_token,
+            client_id=settings.google_client_id if settings.google_client_id else None,
+        )
+        email = verified_info.get("email")
+    except Exception:
+        email = None
 
     if not email:
         raise HTTPException(
@@ -176,6 +176,71 @@ async def google_auth(
             )
 
     return TokenOut(access_token=create_access_token(user.id))
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordOut,
+    summary="Request a password reset token",
+)
+async def forgot_password(
+    body: ForgotPasswordIn,
+    session: AsyncSession = Depends(get_session),
+) -> ForgotPasswordOut:
+    """Request a password reset token for the given email address.
+
+    Returns 200 regardless of whether the email exists to prevent enumeration.
+    """
+    result = await session.execute(
+        select(User).where(User.email == body.email)
+    )
+    user = result.scalar_one_or_none()
+
+    reset_token: str | None = None
+    if user is not None and user.status == UserStatus.ACTIVE:
+        reset_token = create_password_reset_token(user.id)
+
+    return ForgotPasswordOut(
+        message="If this email is registered, password reset instructions have been generated.",
+        reset_token=reset_token,
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordOut,
+    summary="Reset password using a valid reset token",
+)
+async def reset_password(
+    body: ResetPasswordIn,
+    session: AsyncSession = Depends(get_session),
+) -> ResetPasswordOut:
+    """Reset user password using a verified reset token."""
+    try:
+        user_id = decode_password_reset_token(body.reset_token)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset token",
+        )
+
+    result = await session.execute(
+        select(User).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if user is None or user.status != UserStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found or account is inactive",
+        )
+
+    user.password_hash = hash_password(body.new_password)
+    await session.commit()
+
+    return ResetPasswordOut(
+        message="Password has been successfully updated. Please log in with your new credentials."
+    )
 
 
 @router.get(

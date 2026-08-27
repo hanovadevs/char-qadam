@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/auth/auth_state_provider.dart';
@@ -362,6 +363,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   trailing: const Icon(Icons.arrow_forward, size: 14, color: AppTheme.grey),
                   onTap: () => _showEditProfileBottomSheet(context),
+                ),
+                const Divider(height: 1, color: AppTheme.border),
+                ListTile(
+                  dense: true,
+                  title: const Text(
+                    'MERCHANT POS TERMINAL',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
+                  ),
+                  subtitle: const Text(
+                    'Store cashier scanner & voucher redemption',
+                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
+                  ),
+                  trailing: const Icon(Icons.point_of_sale, size: 16, color: AppTheme.black),
+                  onTap: () => context.push('/merchant-pos'),
                 ),
                 const Divider(height: 1, color: AppTheme.border),
                 ListTile(

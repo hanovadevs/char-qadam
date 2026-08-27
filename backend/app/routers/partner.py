@@ -1,19 +1,13 @@
-"""Partner-facing voucher validation and redemption API.
+"""Partner-facing voucher validation, redemption, and POS terminal API.
 
-Routes (versioned — partners get /partner/v1 so we can break the contract
-without affecting the consumer app which uses /auth, /activity, etc.)
-
-POST /partner/v1/vouchers/validate   Look up a voucher by raw token; return nonce.
-POST /partner/v1/vouchers/redeem     Consume the nonce; atomically mark voucher REDEEMED.
+Routes (versioned — /partner/v1)
+--------------------------------
+GET  /partner/v1/info                 Verify partner API key and return profile info.
+GET  /partner/v1/redemptions          List recent in-store redemptions for store audit.
+POST /partner/v1/vouchers/validate   Look up voucher by raw token OR short_code; return nonce.
+POST /partner/v1/vouchers/redeem     Consume nonce; atomically mark voucher REDEEMED.
 
 Auth: X-Partner-Key header (hashed API key stored in partners.api_key_hash).
-
-Double-redeem guard
--------------------
-The redeem UPDATE uses a conditional WHERE clause:
-    WHERE id = :id AND status = 'ISSUED' AND expires_at > now()
-PostgreSQL guarantees atomicity — exactly one concurrent transaction will
-update the row; all others will see rowcount == 0 and receive 409.
 """
 from __future__ import annotations
 
@@ -21,13 +15,12 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.models import (
-    DiscountType,
     Offer,
     Partner,
     Redemption,
@@ -36,36 +29,96 @@ from app.db.models import (
 )
 from app.db.postgres import get_session
 from app.deps import get_current_partner
-from app.schemas.partner import PartnerRedeemIn, PartnerRedeemOut, ValidateIn, ValidateOut
+from app.schemas.partner import (
+    PartnerInfoOut,
+    PartnerRedeemIn,
+    PartnerRedeemOut,
+    RedemptionHistoryItemOut,
+    ValidateIn,
+    ValidateOut,
+)
 from app.services.partner_auth import decode_nonce, generate_nonce
 
 router = APIRouter(prefix="/partner/v1", tags=["partner"])
 
 
+@router.get(
+    "/info",
+    response_model=PartnerInfoOut,
+    summary="Return authenticated partner details for POS terminal",
+)
+async def get_partner_info(
+    partner: Partner = Depends(get_current_partner),
+) -> PartnerInfoOut:
+    """Verify partner API key credentials and return store details."""
+    return PartnerInfoOut(
+        partner_id=partner.id,
+        name=partner.name,
+        status=partner.status.value,
+    )
+
+
+@router.get(
+    "/redemptions",
+    response_model=list[RedemptionHistoryItemOut],
+    summary="List recent in-store redemptions for partner POS",
+)
+async def list_redemptions(
+    limit: int = Query(25, ge=1, le=100),
+    partner: Partner = Depends(get_current_partner),
+    session: AsyncSession = Depends(get_session),
+) -> list[RedemptionHistoryItemOut]:
+    """Fetch audit history of vouchers redeemed at this partner's POS."""
+    result = await session.execute(
+        select(Redemption, Voucher)
+        .join(Voucher, Redemption.voucher_id == Voucher.id)
+        .where(Redemption.partner_id == partner.id)
+        .order_by(Redemption.redeemed_at.desc())
+        .limit(limit)
+    )
+    rows = result.all()
+    return [
+        RedemptionHistoryItemOut(
+            id=r.id,
+            voucher_id=v.id,
+            short_code=v.short_code,
+            store_id=r.store_id,
+            order_reference=r.order_reference,
+            discount_value=float(r.discount_value),
+            redeemed_at=r.redeemed_at,
+        )
+        for r, v in rows
+    ]
+
+
 @router.post(
     "/vouchers/validate",
     response_model=ValidateOut,
-    summary="Validate a voucher token (partner POS step 1)",
+    summary="Validate a voucher token or short code (POS step 1)",
 )
 async def validate_voucher(
     body: ValidateIn,
     partner: Partner = Depends(get_current_partner),
     session: AsyncSession = Depends(get_session),
 ) -> ValidateOut:
-    """Look up a voucher by its raw QR token.
+    """Look up a voucher by its raw QR token OR human short_code (e.g. SR-XXXX-XXXX).
 
-    Returns the discount details and a short-lived ``nonce`` the POS must
+    Returns discount details and a short-lived HMAC ``nonce`` the POS must
     submit to ``/redeem`` within ``nonce_max_age_seconds``.
 
-    - **404** Token not recognised.
+    - **404** Token/Code not recognised.
     - **409** Voucher already redeemed, expired, or cancelled.
     """
-    token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+    input_str = body.token.strip()
+    token_hash = hashlib.sha256(input_str.encode()).hexdigest()
 
     result = await session.execute(
         select(Voucher, Offer)
         .join(Offer, Voucher.offer_id == Offer.id)
-        .where(Voucher.token_hash == token_hash)
+        .where(
+            (Voucher.token_hash == token_hash)
+            | (Voucher.short_code == input_str.upper())
+        )
     )
     row = result.one_or_none()
 
@@ -103,7 +156,7 @@ async def validate_voucher(
 @router.post(
     "/vouchers/redeem",
     response_model=PartnerRedeemOut,
-    summary="Redeem a voucher at POS (partner step 2)",
+    summary="Redeem a voucher at POS (POS step 2)",
 )
 async def redeem_voucher(
     body: PartnerRedeemIn,

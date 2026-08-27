@@ -198,15 +198,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // Password Field with Fixed Top Label
-                  const Text(
-                    'PASSWORD',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: AppTheme.grey,
-                    ),
+                  // Password Field with Fixed Top Label and Forgot Password link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'PASSWORD',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                          color: AppTheme.grey,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => context.push('/forgot-password'),
+                        child: const Text(
+                          'FORGOT PASSWORD?',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: AppTheme.black,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   TextFormField(

@@ -10,7 +10,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db.postgres import dispose_engine, get_engine
-from app.routers import activity, auth, health, offers, partner, points, users, vouchers
+from app.routers import (
+    activity,
+    auth,
+    health,
+    leaderboard,
+    offers,
+    partner,
+    points,
+    users,
+    vouchers,
+)
 
 
 @asynccontextmanager
@@ -47,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(offers.router)
     app.include_router(vouchers.router)
     app.include_router(partner.router)
+    app.include_router(leaderboard.router)
 
     @app.get("/", tags=["root"])
     async def root() -> dict:

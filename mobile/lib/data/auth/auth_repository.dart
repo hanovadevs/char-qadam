@@ -105,6 +105,44 @@ class AuthRepository {
     }
   }
 
+  /// Request a password reset token for given email.
+  Future<String?> forgotPassword({required String email}) async {
+    try {
+      final response = await apiClient.post(
+        '/auth/forgot-password',
+        data: {'email': email},
+      );
+      final data = response.data as Map<String, dynamic>;
+      return data['reset_token'] as String?;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Failed to request password reset: $e');
+    }
+  }
+
+  /// Reset password using a valid reset token.
+  Future<String> resetPassword({
+    required String resetToken,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await apiClient.post(
+        '/auth/reset-password',
+        data: {
+          'reset_token': resetToken,
+          'new_password': newPassword,
+        },
+      );
+      final data = response.data as Map<String, dynamic>;
+      return data['message'] as String? ?? 'Password updated successfully';
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Failed to reset password: $e');
+    }
+  }
+
   Exception _handleDioError(DioException error) {
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
