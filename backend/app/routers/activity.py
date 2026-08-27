@@ -1,4 +1,4 @@
-"""Activity router — step sync and historical aggregates.
+"""Activity router — step sync and historical aggregates with anti-fraud date verification.
 
 Routes
 ------
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/activity", tags=["activity"])
 @router.post(
     "/sync",
     response_model=SyncOut,
-    summary="Sync daily step count (idempotent)",
+    summary="Sync daily step count (idempotent & anti-fraud verified)",
 )
 async def sync(
     body: SyncIn,
@@ -35,10 +35,35 @@ async def sync(
 ) -> SyncOut:
     """Ingest a step reading for a calendar day.
 
+    Anti-Fraud invariants enforced:
+    - Rejects future dates (> today).
+    - Rejects stale historical dates (> 7 days past).
     - Steps are clamped to the server-configured daily cap.
     - Only the **increase** vs the previously stored total is awarded as points.
     - Replaying the same ``sync_key`` is a no-op (returns current state, 0 new points).
     """
+    # 1. Anti-Fraud: Validate date bounds
+    try:
+        sync_date = date.fromisoformat(body.local_date)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Expected YYYY-MM-DD",
+        )
+
+    today = date.today()
+    if sync_date > today:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot sync steps for a future date",
+        )
+    if sync_date < today - timedelta(days=7):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Sync window expired. Steps can only be synced within 7 days.",
+        )
+
+    # 2. Execute sync service
     settings = get_settings()
     result = await sync_activity(
         user_id=current_user.id,

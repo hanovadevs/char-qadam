@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -115,13 +116,14 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     final hasPerm = await healthService.requestPermissions();
     state = state.copyWith(hasPermission: hasPerm);
 
-    final steps = await healthService.fetchTodaySteps();
-    state = state.copyWith(todaySteps: steps);
+    final rawSteps = await healthService.fetchTodaySteps();
+    final effectiveSteps = math.max(rawSteps, state.todaySteps);
+    state = state.copyWith(todaySteps: effectiveSteps);
 
     // If steps > 0, sync to server
-    if (steps > 0) {
+    if (effectiveSteps > 0) {
       await _performSync(
-        steps: steps,
+        steps: effectiveSteps,
         source: 'health',
         date: _getTodayString(),
       );
