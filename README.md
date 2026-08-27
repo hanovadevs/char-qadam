@@ -29,6 +29,8 @@ python -m venv .venv && .venv\Scripts\Activate.ps1   # Windows
 pip install -r requirements.txt
 uvicorn app.main:app --reload        # http://127.0.0.1:8000/health
 ```
+& "d:\Personal projects\char-qadam\backend\.venv\Scripts\uvicorn.exe" app.main:app --host 127.0.0.1 --port 8000 --reload
+
 
 **Mobile**
 ```bash
