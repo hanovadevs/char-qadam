@@ -14,12 +14,13 @@ class ActivityScreen extends ConsumerStatefulWidget {
 }
 
 class _ActivityScreenState extends ConsumerState<ActivityScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _syncAnimController;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _syncAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -27,7 +28,15 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(activityProvider.notifier).initAndSync();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _syncAnimController.dispose();
     super.dispose();
   }

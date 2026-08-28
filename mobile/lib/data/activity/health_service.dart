@@ -22,6 +22,7 @@ final healthServiceProvider = Provider<HealthService>((ref) {
 /// 2. Hardware Pedometer (`Sensor.TYPE_STEP_COUNTER` + `TYPE_STEP_DETECTOR`)
 ///    - Continuous background stream with ongoing notification.
 /// 3. Persistent daily baseline calibrated against device reboots & midnight rollovers.
+///    - Accurately tracks steps taken while app is closed/killed.
 class HealthService {
   final Health _health = Health();
   final StreamController<int> _stepStreamController = StreamController<int>.broadcast();
@@ -93,7 +94,6 @@ class HealthService {
       _statusSubscription = Pedometer.pedestrianStatusStream.listen(
         (PedestrianStatus event) {
           _pedestrianStatus = event.status;
-          debugPrint('Pedestrian status: $_pedestrianStatus');
         },
         onError: (error) {
           debugPrint('Pedestrian status stream error: $error');
@@ -116,8 +116,16 @@ class HealthService {
     final today = _todayString();
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Day Rollover or Fresh Baseline
-    if (_dailyBaselineDate != today || _dailyBaseline == null) {
+    final storedDate = prefs.getString(_prefBaselineDate);
+    final storedVal = prefs.getInt(_prefBaselineValue);
+
+    // 1. If we already have a baseline saved on disk for today, use it (do not overwrite!)
+    if (storedDate == today && storedVal != null) {
+      _dailyBaselineDate = storedDate;
+      _dailyBaseline = storedVal;
+    }
+    // 2. Fresh baseline on day rollover or very first run
+    else if (_dailyBaselineDate != today || _dailyBaseline == null) {
       _dailyBaselineDate = today;
       _dailyBaseline = hardwareCount;
       _currentTodaySteps = 0;
@@ -126,16 +134,17 @@ class HealthService {
       await prefs.setInt(_prefBaselineValue, hardwareCount);
       await prefs.setInt(_prefLastStepsToday, 0);
     }
-    // 2. Device Reboot Detection (Hardware count dropped below baseline)
-    else if (hardwareCount < _dailyBaseline!) {
+
+    // 3. Device Reboot Detection (Hardware count dropped below baseline)
+    if (_dailyBaseline != null && hardwareCount < _dailyBaseline!) {
       final carriedOver = _currentTodaySteps;
       _dailyBaseline = hardwareCount - carriedOver;
       if (_dailyBaseline! < 0) _dailyBaseline = 0;
 
       await prefs.setInt(_prefBaselineValue, _dailyBaseline!);
     }
-    // 3. Normal Step Accumulation
-    else {
+    // 4. Normal Step Accumulation (Tracks all steps taken even while app was closed)
+    else if (_dailyBaseline != null) {
       final computed = hardwareCount - _dailyBaseline!;
       if (computed >= _currentTodaySteps) {
         _currentTodaySteps = computed;
