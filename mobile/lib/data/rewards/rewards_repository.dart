@@ -1,27 +1,37 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/services/cache_service.dart';
 import '../api/api_client.dart';
 import '../models/offer_models.dart';
 
 final rewardsRepositoryProvider = Provider<RewardsRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return RewardsRepository(apiClient: apiClient);
+  final cacheService = ref.watch(cacheServiceProvider);
+  return RewardsRepository(apiClient: apiClient, cacheService: cacheService);
 });
 
 class RewardsRepository {
   final ApiClient apiClient;
+  final CacheService cacheService;
 
-  RewardsRepository({required this.apiClient});
+  RewardsRepository({required this.apiClient, required this.cacheService});
 
-  /// Fetch active redeemable offers catalog.
+  /// Fetch active redeemable offers catalog (with offline cache fallback).
   Future<List<OfferModel>> getOffers() async {
+    const cacheKey = 'offers_catalog';
     try {
       final response = await apiClient.get('/offers');
       final list = response.data as List<dynamic>;
+      await cacheService.cacheData(cacheKey, list);
       return list.map((json) => OfferModel.fromJson(json as Map<String, dynamic>)).toList();
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load offers catalog');
     } catch (e) {
+      final cached = await cacheService.getCachedData(cacheKey);
+      if (cached != null && cached is List<dynamic>) {
+        return cached.map((json) => OfferModel.fromJson(json as Map<String, dynamic>)).toList();
+      }
+      if (e is DioException) {
+        throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load offers catalog');
+      }
       throw Exception('Unexpected error loading catalog: $e');
     }
   }

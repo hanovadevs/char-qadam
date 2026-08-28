@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/haptics_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/auth/auth_state_provider.dart';
 import '../../../data/profile/profile_repository.dart';
@@ -377,6 +379,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   trailing: const Icon(Icons.point_of_sale, size: 16, color: AppTheme.black),
                   onTap: () => context.push('/merchant-pos'),
+                ),
+                const Divider(height: 1, color: AppTheme.border),
+                ListTile(
+                  dense: true,
+                  title: const Text(
+                    'NOTIFICATIONS & ALERTS',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
+                  ),
+                  subtitle: const Text(
+                    'Step goal reminders & voucher expiry alerts',
+                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
+                  ),
+                  trailing: const Icon(Icons.notifications_outlined, size: 16, color: AppTheme.black),
+                  onTap: () async {
+                    HapticsService.light();
+                    await NotificationService.requestPermissions();
+                    await NotificationService.showNotification(
+                      id: 999,
+                      title: 'QADAM • SYSTEM ACTIVE',
+                      body: 'Local notifications enabled: step milestones and voucher alerts are active.',
+                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Notifications active • Test alert sent'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
                 ),
                 const Divider(height: 1, color: AppTheme.border),
                 ListTile(

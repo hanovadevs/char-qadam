@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/services/notification_service.dart';
 
 import '../../../data/activity/activity_repository.dart';
 import '../../../data/activity/health_service.dart';
@@ -155,6 +156,13 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
         userBalance: syncResponse.balance,
         lastSyncTime: nowFormatted,
       );
+
+      if (syncResponse.pointsAwarded > 0) {
+        NotificationService.showPointsEarned(
+          pointsAwarded: syncResponse.pointsAwarded,
+          totalBalance: syncResponse.balance,
+        );
+      }
 
       await loadHistory(state.selectedRange);
       state = state.copyWith(isSyncing: false);

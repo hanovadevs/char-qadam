@@ -6,17 +6,44 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/swiss_skeleton.dart';
 import '../providers/points_provider.dart';
 
-class PointsScreen extends ConsumerWidget {
+class PointsScreen extends ConsumerStatefulWidget {
   const PointsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PointsScreen> createState() => _PointsScreenState();
+}
+
+class _PointsScreenState extends ConsumerState<PointsScreen> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(pointsProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pointsState = ref.watch(pointsProvider);
 
     final balance = pointsState.balanceData?.balance ?? 0;
     final totalEarned = pointsState.balanceData?.totalEarned ?? 0;
     final totalSpent = pointsState.balanceData?.totalSpent ?? 0;
-    final entries = pointsState.ledgerPage?.entries ?? [];
+    final entries = pointsState.entries;
 
     return Scaffold(
       backgroundColor: AppTheme.white,
@@ -70,6 +97,7 @@ class PointsScreen extends ConsumerWidget {
         backgroundColor: AppTheme.white,
         onRefresh: () => ref.read(pointsProvider.notifier).refresh(),
         child: ListView(
+          controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           children: [
             // Balance Hero Block (Swiss Warm Beige Surface #F5F1E8)
@@ -189,10 +217,10 @@ class PointsScreen extends ConsumerWidget {
             const SizedBox(height: 16),
 
             // Ledger Section Title
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                const Text(
                   'TRANSACTION HISTORY',
                   style: TextStyle(
                     fontSize: 11,
@@ -202,8 +230,8 @@ class PointsScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'IMMUTABLE LEDGER',
-                  style: TextStyle(
+                  '${entries.length} OF ${pointsState.total}',
+                  style: const TextStyle(
                     fontSize: 9,
                     fontFamily: AppTheme.monoFont,
                     color: AppTheme.grey,
@@ -314,6 +342,37 @@ class PointsScreen extends ConsumerWidget {
                     fontSize: 11,
                     fontFamily: AppTheme.monoFont,
                     letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+
+            // Load More Indicator
+            if (pointsState.isLoadingMore)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                    ),
+                  ),
+                ),
+              )
+            else if (!pointsState.hasMore && entries.isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: Text(
+                    'ALL ENTRIES LOADED',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontFamily: AppTheme.monoFont,
+                      color: AppTheme.grey,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ),
               ),

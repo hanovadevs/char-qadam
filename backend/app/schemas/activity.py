@@ -29,6 +29,7 @@ class ActivityPeriod(BaseModel):
     """Single period row in GET /activity response."""
     date: str                     # YYYY-MM-DD
     eligible_steps: int
+    source: str | None = None     # health | manual_debug | background_workmanager
 
 
 class ActivityRangeOut(BaseModel):

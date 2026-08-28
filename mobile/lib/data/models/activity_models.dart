@@ -27,17 +27,34 @@ class SyncResponse {
 class ActivityPeriodModel {
   final String date;
   final int eligibleSteps;
+  final String? source;
 
   ActivityPeriodModel({
     required this.date,
     required this.eligibleSteps,
+    this.source,
   });
 
   factory ActivityPeriodModel.fromJson(Map<String, dynamic> json) {
     return ActivityPeriodModel(
       date: json['date'] as String,
       eligibleSteps: json['eligible_steps'] as int,
+      source: json['source'] as String?,
     );
+  }
+
+  /// Human-readable label for the step data source
+  String get sourceLabel {
+    switch (source) {
+      case 'health':
+        return 'HEALTH';
+      case 'manual_debug':
+        return 'MANUAL';
+      case 'background_workmanager':
+        return 'BG SYNC';
+      default:
+        return source?.toUpperCase() ?? 'DEVICE';
+    }
   }
 }
 

@@ -120,7 +120,7 @@ async def get_activity(
     )
     rows = rows_result.scalars().all()
 
-    days = [ActivityPeriod(date=r.local_date, eligible_steps=r.eligible_steps) for r in rows]
+    days = [ActivityPeriod(date=r.local_date, eligible_steps=r.eligible_steps, source=r.source) for r in rows]
     total_steps = sum(d.eligible_steps for d in days)
 
     return ActivityRangeOut(range=range, total_steps=total_steps, days=days)

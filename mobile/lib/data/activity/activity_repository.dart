@@ -1,17 +1,20 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/services/cache_service.dart';
 import '../api/api_client.dart';
 import '../models/activity_models.dart';
 
 final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return ActivityRepository(apiClient: apiClient);
+  final cacheService = ref.watch(cacheServiceProvider);
+  return ActivityRepository(apiClient: apiClient, cacheService: cacheService);
 });
 
 class ActivityRepository {
   final ApiClient apiClient;
+  final CacheService cacheService;
 
-  ActivityRepository({required this.apiClient});
+  ActivityRepository({required this.apiClient, required this.cacheService});
 
   /// Post a daily step count to the backend server.
   /// Idempotent via [syncKey].
@@ -40,18 +43,26 @@ class ActivityRepository {
     }
   }
 
-  /// Get aggregated step history for range: 'today' | 'week' | 'month'.
+  /// Get aggregated step history for range: 'today' | 'week' | 'month' (with offline cache fallback).
   Future<ActivityRangeModel> getActivityHistory({String range = 'today'}) async {
+    final cacheKey = 'activity_history_$range';
     try {
       final response = await apiClient.get(
         '/activity',
         queryParameters: {'range': range},
       );
-      return ActivityRangeModel.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      final detail = e.response?.data?['detail']?.toString() ?? 'Failed to load activity history';
-      throw Exception(detail);
+      final data = response.data as Map<String, dynamic>;
+      await cacheService.cacheData(cacheKey, data);
+      return ActivityRangeModel.fromJson(data);
     } catch (e) {
+      final cached = await cacheService.getCachedData(cacheKey);
+      if (cached != null && cached is Map<String, dynamic>) {
+        return ActivityRangeModel.fromJson(cached);
+      }
+      if (e is DioException) {
+        final detail = e.response?.data?['detail']?.toString() ?? 'Failed to load activity history';
+        throw Exception(detail);
+      }
       throw Exception('Unexpected error loading activity: $e');
     }
   }

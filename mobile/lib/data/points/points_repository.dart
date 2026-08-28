@@ -1,41 +1,64 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/services/cache_service.dart';
 import '../api/api_client.dart';
 import '../models/points_models.dart';
 
 final pointsRepositoryProvider = Provider<PointsRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return PointsRepository(apiClient: apiClient);
+  final cacheService = ref.watch(cacheServiceProvider);
+  return PointsRepository(apiClient: apiClient, cacheService: cacheService);
 });
 
 class PointsRepository {
   final ApiClient apiClient;
+  final CacheService cacheService;
 
-  PointsRepository({required this.apiClient});
+  PointsRepository({required this.apiClient, required this.cacheService});
 
-  /// Fetch current balance and lifetime earned/spent stats.
+  /// Fetch current balance and lifetime earned/spent stats (with offline cache fallback).
   Future<BalanceModel> getBalance() async {
+    const cacheKey = 'points_balance';
     try {
       final response = await apiClient.get('/points/balance');
-      return BalanceModel.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load balance');
+      final data = response.data as Map<String, dynamic>;
+      await cacheService.cacheData(cacheKey, data);
+      return BalanceModel.fromJson(data);
     } catch (e) {
+      final cached = await cacheService.getCachedData(cacheKey);
+      if (cached != null && cached is Map<String, dynamic>) {
+        return BalanceModel.fromJson(cached);
+      }
+      if (e is DioException) {
+        throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load balance');
+      }
       throw Exception('Unexpected error loading balance: $e');
     }
   }
 
-  /// Fetch paginated points ledger entries (newest first).
+  /// Fetch paginated points ledger entries (newest first, with offline cache fallback for initial page).
   Future<LedgerPageModel> getHistory({int limit = 20, int offset = 0}) async {
+    final cacheKey = 'points_history_offset_$offset';
     try {
       final response = await apiClient.get(
         '/points/history',
         queryParameters: {'limit': limit, 'offset': offset},
       );
-      return LedgerPageModel.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load history');
+      final data = response.data as Map<String, dynamic>;
+      if (offset == 0) {
+        await cacheService.cacheData(cacheKey, data);
+      }
+      return LedgerPageModel.fromJson(data);
     } catch (e) {
+      if (offset == 0) {
+        final cached = await cacheService.getCachedData(cacheKey);
+        if (cached != null && cached is Map<String, dynamic>) {
+          return LedgerPageModel.fromJson(cached);
+        }
+      }
+      if (e is DioException) {
+        throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load history');
+      }
       throw Exception('Unexpected error loading history: $e');
     }
   }

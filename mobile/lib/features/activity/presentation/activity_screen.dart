@@ -556,6 +556,29 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                                 color: AppTheme.grey,
                               ),
                             ),
+                            if (day.source != null) ...[
+                              const SizedBox(height: 3),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: day.source == 'manual_debug'
+                                      ? AppTheme.beige
+                                      : AppTheme.offWhite,
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                                  border: Border.all(color: AppTheme.border),
+                                ),
+                                child: Text(
+                                  day.sourceLabel,
+                                  style: const TextStyle(
+                                    fontSize: 8,
+                                    fontFamily: AppTheme.monoFont,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.grey,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

@@ -1,14 +1,41 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/voucher_models.dart';
 import '../providers/wallet_provider.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
+
+  Future<void> _shareVoucher(BuildContext context, VoucherModel voucher) async {
+    HapticsService.light();
+    final link = 'https://qadam.app/v/${voucher.shortCode}';
+    final shareText = 'Redeem my ${voucher.offerTitle} voucher on Qadam!\nCode: ${voucher.shortCode}\nLink: $link';
+
+    try {
+      if (!kIsWeb) {
+        await Share.share(shareText, subject: 'Qadam Voucher: ${voucher.offerTitle}');
+      } else {
+        await Clipboard.setData(ClipboardData(text: link));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Voucher link copied to clipboard!'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: link));
+    }
+  }
 
   void _showVoucherQrModal(BuildContext context, VoucherModel voucher) {
     showModalBottomSheet(
@@ -139,6 +166,14 @@ class WalletScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _shareVoucher(context, voucher),
+                  icon: const Icon(Icons.share, size: 16),
+                  label: const Text('SHARE VOUCHER PASS LINK'),
+                ),
+              ),
             ],
           ),
         );
@@ -314,21 +349,37 @@ class WalletScreen extends ConsumerWidget {
                               ),
                             ),
                             if (isIssued)
-                              SizedBox(
-                                height: 32,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _showVoucherQrModal(context, v),
-                                  icon: const Icon(Icons.qr_code, size: 14),
-                                  label: const Text('SHOW QR'),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                    textStyle: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.8,
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    height: 32,
+                                    width: 36,
+                                    child: OutlinedButton(
+                                      onPressed: () => _shareVoucher(context, v),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                      ),
+                                      child: const Icon(Icons.share, size: 14),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(width: 6),
+                                  SizedBox(
+                                    height: 32,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _showVoucherQrModal(context, v),
+                                      icon: const Icon(Icons.qr_code, size: 14),
+                                      label: const Text('SHOW QR'),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        textStyle: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                           ],
                         ),
@@ -377,11 +428,11 @@ class WalletScreen extends ConsumerWidget {
       case 'PERCENT':
         return '${value.toInt()}% OFF';
       case 'FIXED':
-        return 'PKR ${value.toStringAsFixed(0)} OFF';
+        return 'Rs. ${value.toInt()} OFF';
       case 'FREE_ITEM':
         return 'FREE ITEM';
       default:
-        return 'VOUCHER';
+        return 'OFFER';
     }
   }
 }
