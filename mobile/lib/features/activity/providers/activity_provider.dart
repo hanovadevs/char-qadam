@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -14,12 +14,13 @@ class ActivityState {
   final int pointsEarnedToday;
   final int userBalance;
   final int dailyCap;
+  final int currentStreakDays;
   final bool isSyncing;
   final bool hasPermission;
-  final String selectedRange;
-  final ActivityRangeModel? history;
   final String? errorMessage;
   final String? lastSyncTime;
+  final String selectedRange;
+  final ActivityRangeModel? history;
 
   const ActivityState({
     this.todaySteps = 0,
@@ -27,37 +28,14 @@ class ActivityState {
     this.pointsEarnedToday = 0,
     this.userBalance = 0,
     this.dailyCap = 20000,
+    this.currentStreakDays = 0,
     this.isSyncing = false,
     this.hasPermission = false,
-    this.selectedRange = 'today',
-    this.history,
     this.errorMessage,
     this.lastSyncTime,
+    this.selectedRange = 'today',
+    this.history,
   });
-
-  /// Calculate consecutive daily streak (days with >= 1,000 steps)
-  int get currentStreakDays {
-    final effectiveToday = todaySteps > 0 ? todaySteps : serverSteps;
-    int streak = effectiveToday >= 1000 ? 1 : 0;
-
-    if (history == null || history!.days.isEmpty) {
-      return streak;
-    }
-
-    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final sortedDays = List<ActivityPeriodModel>.from(history!.days)
-      ..sort((a, b) => b.date.compareTo(a.date));
-
-    for (final day in sortedDays) {
-      if (day.date == todayStr) continue; // handled above
-      if (day.eligibleSteps >= 1000) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-    return streak;
-  }
 
   ActivityState copyWith({
     int? todaySteps,
@@ -65,12 +43,13 @@ class ActivityState {
     int? pointsEarnedToday,
     int? userBalance,
     int? dailyCap,
+    int? currentStreakDays,
     bool? isSyncing,
     bool? hasPermission,
-    String? selectedRange,
-    ActivityRangeModel? history,
     String? errorMessage,
     String? lastSyncTime,
+    String? selectedRange,
+    ActivityRangeModel? history,
   }) {
     return ActivityState(
       todaySteps: todaySteps ?? this.todaySteps,
@@ -78,12 +57,13 @@ class ActivityState {
       pointsEarnedToday: pointsEarnedToday ?? this.pointsEarnedToday,
       userBalance: userBalance ?? this.userBalance,
       dailyCap: dailyCap ?? this.dailyCap,
+      currentStreakDays: currentStreakDays ?? this.currentStreakDays,
       isSyncing: isSyncing ?? this.isSyncing,
       hasPermission: hasPermission ?? this.hasPermission,
-      selectedRange: selectedRange ?? this.selectedRange,
-      history: history ?? this.history,
       errorMessage: errorMessage,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      selectedRange: selectedRange ?? this.selectedRange,
+      history: history ?? this.history,
     );
   }
 }
@@ -103,11 +83,37 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   final ActivityRepository activityRepository;
   final _uuid = const Uuid();
 
+  StreamSubscription<int>? _stepStreamSub;
+  Timer? _debounceTimer;
+
   ActivityNotifier({
     required this.healthService,
     required this.activityRepository,
   }) : super(const ActivityState()) {
+    _listenToStepStream();
     initAndSync();
+  }
+
+  void _listenToStepStream() {
+    _stepStreamSub = healthService.stepStream.listen((liveSteps) {
+      if (liveSteps > state.todaySteps) {
+        state = state.copyWith(todaySteps: liveSteps);
+        _scheduleDebouncedSync();
+      }
+    });
+  }
+
+  void _scheduleDebouncedSync() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(seconds: 10), () {
+      if (state.todaySteps > state.serverSteps) {
+        _performSync(
+          steps: state.todaySteps,
+          source: 'health',
+          date: _getTodayString(),
+        );
+      }
+    });
   }
 
   /// Initialize health permissions, fetch steps, sync with server, and load history.
@@ -118,13 +124,12 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     state = state.copyWith(hasPermission: hasPerm);
 
     final rawSteps = await healthService.fetchTodaySteps();
-    final effectiveSteps = math.max(rawSteps, state.todaySteps);
-    state = state.copyWith(todaySteps: effectiveSteps);
+    state = state.copyWith(todaySteps: rawSteps);
 
     // If steps > 0, sync to server
-    if (effectiveSteps > 0) {
+    if (rawSteps > 0) {
       await _performSync(
-        steps: effectiveSteps,
+        steps: rawSteps,
         source: 'health',
         date: _getTodayString(),
       );
@@ -151,6 +156,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       final nowFormatted = DateFormat('hh:mm a').format(DateTime.now());
 
       state = state.copyWith(
+        todaySteps: syncResponse.eligibleSteps,
         serverSteps: syncResponse.eligibleSteps,
         pointsEarnedToday: syncResponse.pointsAwarded,
         userBalance: syncResponse.balance,
@@ -188,14 +194,32 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   Future<void> loadHistory(String range) async {
     try {
       final historyData = await activityRepository.getActivityHistory(range: range);
+      int streak = 0;
+      if (historyData.days.isNotEmpty) {
+        for (final day in historyData.days.reversed) {
+          if (day.eligibleSteps >= 1000) {
+            streak++;
+          } else {
+            break;
+          }
+        }
+      }
       state = state.copyWith(
         selectedRange: range,
         history: historyData,
+        currentStreakDays: streak,
       );
     } catch (_) {}
   }
 
   String _getTodayString() {
     return DateFormat('yyyy-MM-dd').format(DateTime.now());
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _stepStreamSub?.cancel();
+    super.dispose();
   }
 }

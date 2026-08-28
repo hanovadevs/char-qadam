@@ -3,12 +3,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:workmanager/workmanager.dart';
 import '../config/env_config.dart';
 
-const String backgroundStepSyncTask = 'qadam_bg_step_sync_task';
-const String backgroundStepSyncUniqueName = 'qadam_bg_step_sync';
+const String backgroundStepSyncTask = 'walk_n_save_bg_step_sync_task';
+const String backgroundStepSyncUniqueName = 'walk_n_save_bg_step_sync';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -24,13 +25,13 @@ void callbackDispatcher() {
         final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
         final syncKey = const Uuid().v4();
 
-        // In a headless background worker, read today's hardware baseline steps
-        final baselineDate = await storage.read(key: 'pedometer_baseline_date');
-        final baselineValueStr = await storage.read(key: 'pedometer_baseline_value');
-        int? baseline = int.tryParse(baselineValueStr ?? '');
+        final prefs = await SharedPreferences.getInstance();
+        final storedDate = prefs.getString('ws_pedometer_baseline_date');
+        final stepsToday = (storedDate == todayStr)
+            ? (prefs.getInt('ws_pedometer_last_steps_today') ?? 0)
+            : 0;
 
-        // If no baseline exists for today, skip sync until foreground initializes
-        if (baselineDate != todayStr || baseline == null) {
+        if (stepsToday <= 0) {
           return true;
         }
 
@@ -46,12 +47,12 @@ void callbackDispatcher() {
           ),
         );
 
-        // Best effort background sync with server
+        // Sync validated steps to server
         await dio.post(
           '/activity/sync',
           data: {
             'local_date': todayStr,
-            'eligible_steps': 0, // Server preserves max steps if higher
+            'eligible_steps': stepsToday,
             'source': 'background_workmanager',
             'sync_key': syncKey,
           },
@@ -60,7 +61,7 @@ void callbackDispatcher() {
         return true;
       } catch (e) {
         debugPrint('Background sync task error: $e');
-        return true; // Don't crash worker on network timeout
+        return true;
       }
     }
     return true;
