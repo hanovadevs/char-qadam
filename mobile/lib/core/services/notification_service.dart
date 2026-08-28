@@ -84,6 +84,38 @@ class NotificationService {
     }
   }
 
+  /// Display an ongoing 24/7 background step tracking notification (keeps pedometer active)
+  static Future<void> updateOngoingStepNotification({
+    required int stepsToday,
+    required int dailyGoal,
+  }) async {
+    if (kIsWeb) return;
+    try {
+      await initialize();
+      const androidOngoingDetails = AndroidNotificationDetails(
+        'walk_n_save_tracking_channel',
+        'Walk n Save 24/7 Step Tracking',
+        channelDescription: 'Ongoing background pedometer tracking service',
+        importance: Importance.low,
+        priority: Priority.low,
+        ongoing: true,
+        autoCancel: false,
+        showWhen: false,
+        icon: '@mipmap/ic_launcher',
+      );
+      const details = NotificationDetails(android: androidOngoingDetails);
+      await _plugin.show(
+        9999,
+        'WALK N SAVE • TRACKING STEPS',
+        '$stepsToday / $dailyGoal steps today • Earning rewards',
+        details,
+        payload: '/steps',
+      );
+    } catch (e) {
+      debugPrint('Error updating ongoing tracking notification: $e');
+    }
+  }
+
   /// Display an instant notification
   static Future<void> showNotification({
     required int id,

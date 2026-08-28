@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/notification_service.dart';
 
 final healthServiceProvider = Provider<HealthService>((ref) {
   final service = HealthService();
@@ -13,14 +14,14 @@ final healthServiceProvider = Provider<HealthService>((ref) {
   return service;
 });
 
-/// High-accuracy step counter service.
+/// High-accuracy 24/7 step counter service.
 ///
 /// Multi-layer Architecture:
-/// 1. Primary Source: Google Health Connect (Android) / Apple HealthKit (iOS)
-///    - Handles background aggregation, sensor fusion, and multi-source deduplication.
-/// 2. Fallback Source: Hardware Pedometer (`Sensor.TYPE_STEP_COUNTER`)
-///    - Calibrated against a persistent daily baseline stored in SharedPreferences.
-///    - Handles device reboots, day rollovers at midnight, and sensor warm-up cleanly.
+/// 1. Google Health Connect (Android) / Apple HealthKit (iOS)
+///    - OS-level 24/7 background step aggregation.
+/// 2. Hardware Pedometer (`Sensor.TYPE_STEP_COUNTER` + `TYPE_STEP_DETECTOR`)
+///    - Continuous background stream with ongoing notification.
+/// 3. Persistent daily baseline calibrated against device reboots & midnight rollovers.
 class HealthService {
   final Health _health = Health();
   final StreamController<int> _stepStreamController = StreamController<int>.broadcast();
@@ -37,8 +38,10 @@ class HealthService {
   int? _dailyBaseline;
   String? _dailyBaselineDate;
   int _currentTodaySteps = 0;
+  String _pedestrianStatus = 'unknown';
 
   StreamSubscription<StepCount>? _pedometerSubscription;
+  StreamSubscription<PedestrianStatus>? _statusSubscription;
   Completer<int>? _firstReadingCompleter;
 
   HealthService() {
@@ -47,7 +50,7 @@ class HealthService {
 
   Future<void> _init() async {
     await _loadStoredBaseline();
-    _startPedometerStream();
+    _startPedometerStreams();
   }
 
   Future<void> _loadStoredBaseline() async {
@@ -63,7 +66,6 @@ class HealthService {
         _dailyBaseline = storedVal;
         _currentTodaySteps = lastSteps;
       } else {
-        // New day or first run: baseline will be set on the next hardware event
         _dailyBaselineDate = today;
         _dailyBaseline = null;
         _currentTodaySteps = 0;
@@ -73,19 +75,33 @@ class HealthService {
     }
   }
 
-  void _startPedometerStream() {
+  void _startPedometerStreams() {
     if (kIsWeb) return;
     try {
       _firstReadingCompleter = Completer<int>();
+
+      // 1. Step count hardware stream
       _pedometerSubscription = Pedometer.stepCountStream.listen(
         _onPedometerEvent,
         onError: (error) {
-          debugPrint('Pedometer sensor error: $error');
+          debugPrint('Pedometer step count stream error: $error');
+        },
+        cancelOnError: false,
+      );
+
+      // 2. Pedestrian status stream (keeps motion coprocessor sensor active)
+      _statusSubscription = Pedometer.pedestrianStatusStream.listen(
+        (PedestrianStatus event) {
+          _pedestrianStatus = event.status;
+          debugPrint('Pedestrian status: $_pedestrianStatus');
+        },
+        onError: (error) {
+          debugPrint('Pedestrian status stream error: $error');
         },
         cancelOnError: false,
       );
     } catch (e) {
-      debugPrint('Failed to initialize pedometer stream: $e');
+      debugPrint('Failed to initialize pedometer streams: $e');
     }
   }
 
@@ -112,15 +128,13 @@ class HealthService {
     }
     // 2. Device Reboot Detection (Hardware count dropped below baseline)
     else if (hardwareCount < _dailyBaseline!) {
-      // The device was restarted mid-day. Reset baseline to current hardwareCount
-      // but retain existing steps walked today.
       final carriedOver = _currentTodaySteps;
       _dailyBaseline = hardwareCount - carriedOver;
       if (_dailyBaseline! < 0) _dailyBaseline = 0;
 
       await prefs.setInt(_prefBaselineValue, _dailyBaseline!);
     }
-    // 3. Normal Monotonic Step Counting
+    // 3. Normal Step Accumulation
     else {
       final computed = hardwareCount - _dailyBaseline!;
       if (computed >= _currentTodaySteps) {
@@ -130,23 +144,55 @@ class HealthService {
     }
 
     _stepStreamController.add(_currentTodaySteps);
+
+    // Update ongoing persistent notification for 24/7 background tracking
+    NotificationService.updateOngoingStepNotification(
+      stepsToday: _currentTodaySteps,
+      dailyGoal: 20000,
+    );
   }
 
-  /// Request runtime permissions for step tracking.
+  /// Request all permissions needed for continuous 24/7 background tracking:
+  /// - Activity Recognition (Motion sensor)
+  /// - Body Sensors
+  /// - Notifications (POST_NOTIFICATIONS for foreground tracking)
+  /// - Ignore Battery Optimizations (Prevents OEM aggressive killing)
+  /// - Health Connect (OS-level background step ledger)
   Future<bool> requestPermissions() async {
     if (kIsWeb) return false;
 
-    // 1. Runtime Activity Recognition permission (Android 10+)
+    // 1. Activity Recognition
     try {
-      final status = await Permission.activityRecognition.request();
-      if (!status.isGranted) {
-        debugPrint('Activity recognition permission not granted: $status');
-      }
+      await Permission.activityRecognition.request();
     } catch (e) {
-      debugPrint('Activity recognition permission error: $e');
+      debugPrint('Activity recognition error: $e');
     }
 
-    // 2. Health Connect / Apple HealthKit authorization
+    // 2. Body Sensors
+    try {
+      await Permission.sensors.request();
+    } catch (e) {
+      debugPrint('Sensors permission error: $e');
+    }
+
+    // 3. Notifications (for 24/7 ongoing service and rewards)
+    try {
+      await Permission.notification.request();
+    } catch (e) {
+      debugPrint('Notification permission error: $e');
+    }
+
+    // 4. Request Battery Optimization Exemption
+    try {
+      final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+      if (!batteryStatus.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    } catch (e) {
+      debugPrint('Battery optimization request error: $e');
+    }
+
+    // 5. Health Connect / Apple HealthKit
     try {
       final hasPermission = await _health.hasPermissions(_types);
       if (hasPermission == true) return true;
@@ -158,15 +204,10 @@ class HealthService {
   }
 
   /// Fetch total step count for today (local midnight 00:00:00 to now).
-  ///
-  /// Priority:
-  /// 1. HealthKit / Health Connect (aggregated by OS)
-  /// 2. Calibrated hardware pedometer
-  /// 3. Last saved step count in SharedPreferences
   Future<int> fetchTodaySteps() async {
     if (kIsWeb) return 0;
 
-    // 1. Try HealthKit / Health Connect first
+    // 1. Check Google Health Connect / Apple HealthKit first
     try {
       final now = DateTime.now();
       final midnight = DateTime(now.year, now.month, now.day);
@@ -176,13 +217,19 @@ class HealthService {
         _currentTodaySteps = healthSteps;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt(_prefLastStepsToday, healthSteps);
+
+        NotificationService.updateOngoingStepNotification(
+          stepsToday: healthSteps,
+          dailyGoal: 20000,
+        );
+
         return healthSteps;
       }
     } catch (e) {
-      debugPrint('Health query failed, falling back to pedometer: $e');
+      debugPrint('Health Connect query failed: $e');
     }
 
-    // 2. If hardware pedometer hasn't emitted an event yet, wait up to 800ms
+    // 2. Wait up to 800ms for hardware pedometer stream event
     if (_cumulativeHardwareSteps == null && _firstReadingCompleter != null) {
       try {
         await _firstReadingCompleter!.future.timeout(const Duration(milliseconds: 800));
@@ -194,7 +241,7 @@ class HealthService {
       return _currentTodaySteps;
     }
 
-    // 4. Return last known steps for today from SharedPreferences
+    // 4. Return last known steps for today
     final prefs = await SharedPreferences.getInstance();
     final today = _todayString();
     if (prefs.getString(_prefBaselineDate) == today) {
@@ -210,6 +257,7 @@ class HealthService {
 
   void dispose() {
     _pedometerSubscription?.cancel();
+    _statusSubscription?.cancel();
     _stepStreamController.close();
   }
 }

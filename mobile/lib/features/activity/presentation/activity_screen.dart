@@ -479,17 +479,21 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                     color: AppTheme.black,
                   ),
                 ),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'today', label: Text('TODAY')),
-                    ButtonSegment(value: 'week', label: Text('7D')),
-                    ButtonSegment(value: 'month', label: Text('30D')),
-                  ],
-                  selected: {activityState.selectedRange},
-                  onSelectionChanged: (Set<String> selection) {
-                    HapticsService.selection();
-                    ref.read(activityProvider.notifier).loadHistory(selection.first);
-                  },
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.offWhite,
+                    border: Border.all(color: AppTheme.border),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  padding: const EdgeInsets.all(2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildRangeTab('today', 'TODAY', activityState.selectedRange, ref),
+                      _buildRangeTab('week', '7D', activityState.selectedRange, ref),
+                      _buildRangeTab('month', '30D', activityState.selectedRange, ref),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -680,6 +684,33 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRangeTab(String value, String label, String currentRange, WidgetRef ref) {
+    final isSelected = currentRange == value;
+    return GestureDetector(
+      onTap: () {
+        HapticsService.selection();
+        ref.read(activityProvider.notifier).loadHistory(value);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.black : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontFamily: AppTheme.monoFont,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: isSelected ? AppTheme.white : AppTheme.grey,
+          ),
+        ),
+      ),
     );
   }
 

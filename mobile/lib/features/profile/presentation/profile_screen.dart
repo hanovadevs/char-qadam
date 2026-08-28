@@ -384,27 +384,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ListTile(
                   dense: true,
                   title: const Text(
-                    'NOTIFICATIONS & ALERTS',
+                    '24/7 STEP SENSORS & PERMISSIONS',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
                   ),
                   subtitle: const Text(
-                    'Step goal reminders & voucher expiry alerts',
+                    'Body sensors, physical activity & battery optimization',
                     style: TextStyle(fontSize: 11, color: AppTheme.grey),
                   ),
-                  trailing: const Icon(Icons.notifications_outlined, size: 16, color: AppTheme.black),
+                  trailing: const Icon(Icons.tune, size: 16, color: AppTheme.black),
                   onTap: () async {
                     HapticsService.light();
-                    await NotificationService.requestPermissions();
-                    await NotificationService.showNotification(
-                      id: 999,
-                      title: 'QADAM • SYSTEM ACTIVE',
-                      body: 'Local notifications enabled: step milestones and voucher alerts are active.',
-                    );
+                    final healthService = ref.read(healthServiceProvider);
+                    await healthService.requestPermissions();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Notifications active • Test alert sent'),
-                          duration: Duration(seconds: 2),
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: AppTheme.white,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
+                          side: BorderSide(color: AppTheme.borderDark, width: 1),
+                        ),
+                        builder: (ctx) => Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '24/7 SENSOR PERMISSIONS',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Walk n Save runs in the background to count your steps all day without using GPS.\n\nMake sure "Physical Activity", "Body Sensors", and "Notifications" are Allowed in App Permissions.',
+                                style: TextStyle(fontSize: 11, color: AppTheme.grey, height: 1.4),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    openAppSettings();
+                                    Navigator.pop(ctx);
+                                  },
+                                  child: const Text('OPEN SYSTEM APP SETTINGS'),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }
