@@ -5,8 +5,8 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
-  static const String _channelId = 'qadam_channel';
-  static const String _channelName = 'Qadam Movement & Rewards';
+  static const String _channelId = 'walk_n_save_channel';
+  static const String _channelName = 'Walk n Save Movement & Rewards';
   static const String _channelDesc = 'Daily step tracking reminders and voucher expiry notices';
 
   static const AndroidNotificationDetails _androidDetails = AndroidNotificationDetails(
@@ -108,7 +108,7 @@ class NotificationService {
     final remaining = (goalSteps - currentSteps).clamp(0, goalSteps);
     await showNotification(
       id: 1001,
-      title: 'QADAM • EVENING STEP CHECK-IN',
+      title: 'WALK N SAVE • EVENING STEP CHECK-IN',
       body: remaining > 0
           ? 'You have $remaining steps left to hit your daily $goalSteps goal! Take a quick walk.'
           : 'You hit your daily goal of $goalSteps steps! Points minted to your balance.',
@@ -124,7 +124,7 @@ class NotificationService {
   }) async {
     await showNotification(
       id: 2000 + shortCode.hashCode.abs() % 1000,
-      title: 'QADAM • VOUCHER EXPIRING SOON',
+      title: 'WALK N SAVE • VOUCHER EXPIRING SOON',
       body: 'Your pass for $offerTitle ($shortCode) expires in $daysLeft ${daysLeft == 1 ? "day" : "days"}! Redeem at store.',
       payload: '/wallet',
     );
@@ -137,7 +137,7 @@ class NotificationService {
   }) async {
     await showNotification(
       id: 3000 + shortCode.hashCode.abs() % 1000,
-      title: 'QADAM • VOUCHER READY IN WALLET',
+      title: 'WALK N SAVE • VOUCHER READY IN WALLET',
       body: '$offerTitle ($shortCode) pass is ready to present at store checkout.',
       payload: '/wallet',
     );
@@ -151,7 +151,7 @@ class NotificationService {
     if (pointsAwarded <= 0) return;
     await showNotification(
       id: 4001,
-      title: 'QADAM • POINTS MINTED',
+      title: 'WALK N SAVE • POINTS MINTED',
       body: '+$pointsAwarded PTS earned from today\'s movement! Balance: $totalBalance PTS.',
       payload: '/points',
     );

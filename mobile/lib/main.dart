@@ -12,20 +12,20 @@ void main() async {
 
   runApp(
     const ProviderScope(
-      child: QadamApp(),
+      child: WalkNSaveApp(),
     ),
   );
 }
 
-class QadamApp extends ConsumerWidget {
-  const QadamApp({super.key});
+class WalkNSaveApp extends ConsumerWidget {
+  const WalkNSaveApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Qadam',
+      title: 'Walk n Save',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.lightTheme,
@@ -34,3 +34,6 @@ class QadamApp extends ConsumerWidget {
     );
   }
 }
+
+// Alias for test compatibility
+typedef QadamApp = WalkNSaveApp;

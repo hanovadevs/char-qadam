@@ -15,12 +15,12 @@ class WalletScreen extends ConsumerWidget {
 
   Future<void> _shareVoucher(BuildContext context, VoucherModel voucher) async {
     HapticsService.light();
-    final link = 'https://qadam.app/v/${voucher.shortCode}';
-    final shareText = 'Redeem my ${voucher.offerTitle} voucher on Qadam!\nCode: ${voucher.shortCode}\nLink: $link';
+    final link = 'https://walknsave.app/v/${voucher.shortCode}';
+    final shareText = 'Redeem my ${voucher.offerTitle} voucher on Walk n Save!\nCode: ${voucher.shortCode}\nLink: $link';
 
     try {
       if (!kIsWeb) {
-        await Share.share(shareText, subject: 'Qadam Voucher: ${voucher.offerTitle}');
+        await Share.share(shareText, subject: 'Walk n Save Voucher: ${voucher.offerTitle}');
       } else {
         await Clipboard.setData(ClipboardData(text: link));
         if (context.mounted) {

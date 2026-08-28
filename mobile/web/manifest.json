@@ -1,11 +1,11 @@
 {
-    "name": "qadam",
-    "short_name": "qadam",
+    "name": "Walk n Save",
+    "short_name": "Walk n Save",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#000000",
-    "description": "A new Flutter project.",
+    "description": "Walk n Save — Step-based rewards and partner voucher network",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

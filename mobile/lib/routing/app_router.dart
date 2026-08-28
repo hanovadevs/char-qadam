@@ -195,11 +195,11 @@ class SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const Text(
-              'QADAM',
+              'WALK N SAVE',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 4,
+                letterSpacing: 3,
                 color: AppTheme.black,
               ),
             ),

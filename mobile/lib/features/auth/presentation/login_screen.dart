@@ -99,11 +99,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              'QADAM',
+                              'WALK N SAVE',
                               style: TextStyle(
-                                fontSize: 24,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w900,
-                                letterSpacing: 2.0,
+                                letterSpacing: 1.5,
                                 color: AppTheme.black,
                               ),
                             ),

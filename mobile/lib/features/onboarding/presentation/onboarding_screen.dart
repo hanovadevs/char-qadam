@@ -207,11 +207,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
           const SizedBox(height: 32),
           const Text(
-            'WELCOME TO QADAM',
+            'WELCOME TO WALK N SAVE',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
+              letterSpacing: 1.5,
               color: AppTheme.black,
             ),
           ),
@@ -374,7 +374,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Text(
             _permissionGranted
                 ? 'Your device will automatically count your steps in the background. Walk naturally and earn points throughout the day.'
-                : 'Qadam needs access to your step counter to track daily movement. This uses Apple HealthKit (iOS) or Health Connect (Android).',
+                : 'Walk n Save needs access to your step counter to track daily movement. This uses Apple HealthKit (iOS) or Health Connect (Android).',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 14,
