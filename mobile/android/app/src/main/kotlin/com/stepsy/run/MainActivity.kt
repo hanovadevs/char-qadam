@@ -1,4 +1,4 @@
-package com.qadam.qadam
+package com.stepsy.run
 
 import io.flutter.embedding.android.FlutterActivity
 

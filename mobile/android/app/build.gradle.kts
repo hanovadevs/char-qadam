@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.qadam.qadam"
+    namespace = "com.stepsy.run"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.qadam.qadam"
+        applicationId = "com.stepsy.run"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 26

@@ -99,7 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              'WALK N SAVE',
+                              'STEPSY',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,

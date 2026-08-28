@@ -207,7 +207,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
           const SizedBox(height: 32),
           const Text(
-            'WELCOME TO WALK N SAVE',
+            'WELCOME TO STEPSY',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
@@ -374,7 +374,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Text(
             _permissionGranted
                 ? 'Your device will automatically count your steps in the background. Walk naturally and earn points throughout the day.'
-                : 'Walk n Save needs access to your step counter to track daily movement. This uses Apple HealthKit (iOS) or Health Connect (Android).',
+                : 'Stepsy needs access to your step counter to track daily movement. This uses Apple HealthKit (iOS) or Health Connect (Android).',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 14,

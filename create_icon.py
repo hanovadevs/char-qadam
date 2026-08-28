@@ -1,7 +1,7 @@
 import os
 from PIL import Image, ImageDraw, ImageFont
 
-def create_walk_n_save_icon():
+def create_stepsy_icon():
     os.makedirs('mobile/assets/icon', exist_ok=True)
     size = 1024
     img = Image.new('RGBA', (size, size), (255, 255, 255, 255))
@@ -76,7 +76,7 @@ def create_walk_n_save_icon():
     draw.ellipse([badge_x - 24, badge_y - 26, badge_x - 10, badge_y - 12], fill=(255, 255, 255, 255))
     draw.ellipse([badge_x + 10, badge_y + 12, badge_x + 24, badge_y + 26], fill=(255, 255, 255, 255))
 
-    # 5. Swiss Architectural Bottom Bar: "WALK N SAVE"
+    # 5. Swiss Architectural Bottom Bar: "STEPSY"
     bar_y = box_top + box_h + 50
     bar_w = 480
     bar_h = 56
@@ -93,7 +93,7 @@ def create_walk_n_save_icon():
 
     output_path = 'mobile/assets/icon/app_icon.png'
     img.save(output_path, 'PNG')
-    print(f"Walk n Save app icon created successfully at {output_path} ({size}x{size})")
+    print(f"Stepsy app icon created successfully at {output_path} ({size}x{size})")
 
 if __name__ == '__main__':
-    create_walk_n_save_icon()
+    create_stepsy_icon()

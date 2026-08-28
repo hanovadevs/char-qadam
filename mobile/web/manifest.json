@@ -1,11 +1,11 @@
 {
-    "name": "Walk n Save",
-    "short_name": "Walk n Save",
+    "name": "Stepsy",
+    "short_name": "Stepsy",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#000000",
-    "description": "Walk n Save — Step-based rewards and partner voucher network",
+    "description": "Stepsy — Step-based rewards and partner voucher network",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

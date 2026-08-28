@@ -421,7 +421,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                               const SizedBox(height: 8),
                               const Text(
-                                'Walk n Save runs in the background to count your steps all day without using GPS.\n\nMake sure "Physical Activity", "Body Sensors", and "Notifications" are Allowed in App Permissions.',
+                                'Stepsy runs in the background to count your steps all day without using GPS.\n\nMake sure "Physical Activity", "Body Sensors", and "Notifications" are Allowed in App Permissions.',
                                 style: TextStyle(fontSize: 11, color: AppTheme.grey, height: 1.4),
                               ),
                               const SizedBox(height: 16),
