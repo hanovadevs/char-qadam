@@ -1,16 +1,34 @@
 services:
   - type: web
-    name: qadam-api
+    name: walk-n-save-api
     env: python
     region: singapore # Or frankfurt / oregon
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.9
       - key: APP_NAME
-        value: Qadam API
+        value: Walk n Save API
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
         value: false
+      - key: CORS_ORIGINS
+        sync: false # Set in Render Dashboard: e.g. https://walknsave.app,https://walknsave.onrender.com
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard: postgresql+asyncpg://...
+      - key: JWT_SECRET
+        generateValue: true # Render will generate a cryptographically random secret
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 525600
+      - key: STEPS_PER_POINT
+        value: 100
+      - key: DAILY_STEP_CAP
+        value: 20000
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
