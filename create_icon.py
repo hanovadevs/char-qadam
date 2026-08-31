@@ -1,4 +1,5 @@
 import os
+# pyrefly: ignore [missing-import]
 from PIL import Image, ImageDraw, ImageFont
 
 def create_walk_n_save_icon():
