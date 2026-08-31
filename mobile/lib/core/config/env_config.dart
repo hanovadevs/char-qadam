@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Environment configuration for the Walk n Save mobile app.
+/// Environment configuration for the Stepsy mobile app.
 ///
 /// Base URL & Google Client ID can be overridden at build/run time via:
 ///   `flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000`

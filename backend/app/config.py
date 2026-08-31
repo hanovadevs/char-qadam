@@ -12,12 +12,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # App
-    app_name: str = "Walk n Save API"
+    app_name: str = "Stepsy API"
     environment: str = "development"
     debug: bool = True
 
     # CORS Configuration
-    # Accepts comma-separated string (e.g. "https://walknsave.app,https://admin.walknsave.app") or list
+    # Accepts comma-separated string (e.g. "https://stepsy.app,https://admin.stepsy.app") or list
     cors_origins: Union[str, list[str]] = ["*"]
 
     @field_validator("cors_origins", mode="before")

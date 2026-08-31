@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: walk-n-save-api
+    name: stepsy-api
     env: python
     region: singapore # Or frankfurt / oregon
     buildCommand: pip install -r requirements.txt && alembic upgrade head
@@ -9,13 +9,13 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.9
       - key: APP_NAME
-        value: Walk n Save API
+        value: Stepsy API
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
         value: false
       - key: CORS_ORIGINS
-        sync: false # Set in Render Dashboard: e.g. https://walknsave.app,https://walknsave.onrender.com
+        sync: false # Set in Render Dashboard: e.g. https://stepsy.app,https://stepsy.onrender.com
       - key: DATABASE_URL
         sync: false # Set in Render Dashboard: postgresql+asyncpg://...
       - key: JWT_SECRET

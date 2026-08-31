@@ -12,20 +12,20 @@ void main() async {
 
   runApp(
     const ProviderScope(
-      child: WalkNSaveApp(),
+      child: StepsyApp(),
     ),
   );
 }
 
-class WalkNSaveApp extends ConsumerWidget {
-  const WalkNSaveApp({super.key});
+class StepsyApp extends ConsumerWidget {
+  const StepsyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Walk n Save',
+      title: 'Stepsy',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.lightTheme,
@@ -36,4 +36,4 @@ class WalkNSaveApp extends ConsumerWidget {
 }
 
 // Alias for test compatibility
-typedef QadamApp = WalkNSaveApp;
+typedef QadamApp = StepsyApp;

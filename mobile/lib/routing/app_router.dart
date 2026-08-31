@@ -195,7 +195,7 @@ class SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const Text(
-              'WALK N SAVE',
+              'STEPSY',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,

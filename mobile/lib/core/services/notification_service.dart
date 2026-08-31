@@ -5,8 +5,8 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
-  static const String _channelId = 'walk_n_save_channel';
-  static const String _channelName = 'Walk n Save Movement & Rewards';
+  static const String _channelId = 'stepsy_channel';
+  static const String _channelName = 'Stepsy Movement & Rewards';
   static const String _channelDesc = 'Daily step tracking reminders and voucher expiry notices';
 
   static const AndroidNotificationDetails _androidDetails = AndroidNotificationDetails(
@@ -93,8 +93,8 @@ class NotificationService {
     try {
       await initialize();
       const androidOngoingDetails = AndroidNotificationDetails(
-        'walk_n_save_tracking_channel',
-        'Walk n Save 24/7 Step Tracking',
+        'stepsy_tracking_channel',
+        'Stepsy 24/7 Step Tracking',
         channelDescription: 'Ongoing background pedometer tracking service',
         importance: Importance.low,
         priority: Priority.low,
@@ -106,7 +106,7 @@ class NotificationService {
       const details = NotificationDetails(android: androidOngoingDetails);
       await _plugin.show(
         9999,
-        'WALK N SAVE • TRACKING STEPS',
+        'STEPSY • TRACKING STEPS',
         '$stepsToday / $dailyGoal steps today • Earning rewards',
         details,
         payload: '/steps',
@@ -140,7 +140,7 @@ class NotificationService {
     final remaining = (goalSteps - currentSteps).clamp(0, goalSteps);
     await showNotification(
       id: 1001,
-      title: 'WALK N SAVE • EVENING STEP CHECK-IN',
+      title: 'STEPSY • EVENING STEP CHECK-IN',
       body: remaining > 0
           ? 'You have $remaining steps left to hit your daily $goalSteps goal! Take a quick walk.'
           : 'You hit your daily goal of $goalSteps steps! Points minted to your balance.',
@@ -156,7 +156,7 @@ class NotificationService {
   }) async {
     await showNotification(
       id: 2000 + shortCode.hashCode.abs() % 1000,
-      title: 'WALK N SAVE • VOUCHER EXPIRING SOON',
+      title: 'STEPSY • VOUCHER EXPIRING SOON',
       body: 'Your pass for $offerTitle ($shortCode) expires in $daysLeft ${daysLeft == 1 ? "day" : "days"}! Redeem at store.',
       payload: '/wallet',
     );
@@ -169,7 +169,7 @@ class NotificationService {
   }) async {
     await showNotification(
       id: 3000 + shortCode.hashCode.abs() % 1000,
-      title: 'WALK N SAVE • VOUCHER READY IN WALLET',
+      title: 'STEPSY • VOUCHER READY IN WALLET',
       body: '$offerTitle ($shortCode) pass is ready to present at store checkout.',
       payload: '/wallet',
     );
@@ -183,7 +183,7 @@ class NotificationService {
     if (pointsAwarded <= 0) return;
     await showNotification(
       id: 4001,
-      title: 'WALK N SAVE • POINTS MINTED',
+      title: 'STEPSY • POINTS MINTED',
       body: '+$pointsAwarded PTS earned from today\'s movement! Balance: $totalBalance PTS.',
       payload: '/points',
     );
