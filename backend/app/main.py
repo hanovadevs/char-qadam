@@ -4,7 +4,10 @@ Wires up config, PostgreSQL lifespan, CORS, Middlewares, and all Feature routers
 """
 from contextlib import asynccontextmanager
 
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
@@ -65,6 +68,37 @@ def create_app() -> FastAPI:
     app.include_router(partner.router)
     app.include_router(leaderboard.router)
     app.include_router(admin.router)
+
+
+    # Mount Static Web Admin Portal
+    web_dist = Path(__file__).resolve().parents[2] / "web" / "dist"
+    if web_dist.is_dir():
+        assets_dir = web_dist / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="web_assets")
+
+        @app.get("/favicon.svg", include_in_schema=False)
+        async def favicon_svg():
+            fav = web_dist / "favicon.svg"
+            if fav.is_file():
+                return FileResponse(fav)
+            return {"detail": "not found"}
+
+        @app.get("/portal", include_in_schema=False)
+        @app.get("/portal/{full_path:path}", include_in_schema=False)
+        @app.get("/login", include_in_schema=False)
+        @app.get("/dashboard", include_in_schema=False)
+        @app.get("/partners", include_in_schema=False)
+        @app.get("/offers", include_in_schema=False)
+        @app.get("/pos", include_in_schema=False)
+        @app.get("/users", include_in_schema=False)
+        @app.get("/ledger", include_in_schema=False)
+        @app.get("/audit", include_in_schema=False)
+        async def serve_admin_portal():
+            index_html = web_dist / "index.html"
+            if index_html.is_file():
+                return FileResponse(index_html)
+            return {"detail": "Admin portal build not found"}
 
     @app.get("/", tags=["root"])
     async def root() -> dict:
