@@ -40,6 +40,7 @@ class HealthService {
   String? _dailyBaselineDate;
   int _currentTodaySteps = 0;
   String _pedestrianStatus = 'unknown';
+  String get pedestrianStatus => _pedestrianStatus;
 
   StreamSubscription<StepCount>? _pedometerSubscription;
   StreamSubscription<PedestrianStatus>? _statusSubscription;
@@ -270,3 +271,4 @@ class HealthService {
     _stepStreamController.close();
   }
 }
+
