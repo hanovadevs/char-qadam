@@ -47,9 +47,7 @@ mobile/**/*.pbxuser
 # ---------- Web / Node ----------
 node_modules/
 **/node_modules/
-web/dist/
 web/.next/
-dist/
 
 # ---------- IDE / Editors ----------
 .vscode/

@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 365  # 1 year (persistent login)
 
+    # Admin Portal Credentials
+    admin_email: str = "admin@stepsy.app"
+    admin_password: str = "admin123"
+
     @model_validator(mode="after")
     def _validate_production_invariants(self) -> "Settings":
         """Enforce strict security requirements when deployed in production."""

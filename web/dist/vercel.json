@@ -1,0 +1,17 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/admin/:path*",
+      "destination": "http://72.62.250.191/admin/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "http://72.62.250.191/health"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

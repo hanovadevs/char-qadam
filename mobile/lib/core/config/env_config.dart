@@ -8,25 +8,14 @@ class EnvConfig {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const String _envGoogleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
 
-  /// Production live API URL on Render
-  static const String productionBaseUrl = 'https://char-qadam.onrender.com';
+  /// Production live API URL on Hostinger VPS (Nginx Port 80)
+  static const String productionBaseUrl = 'http://72.62.250.191';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) {
       return _envBaseUrl;
     }
-    // In local development/debug mode, connect to the local FastAPI backend
-    if (kDebugMode) {
-      if (kIsWeb) {
-        return 'http://127.0.0.1:8000';
-      }
-      // Android emulator uses 10.0.2.2 to access host machine localhost
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        return 'http://10.0.2.2:8000';
-      }
-      return 'http://127.0.0.1:8000';
-    }
-    // Default to live production URL for release builds
+    // Default to the live VPS backend URL
     return productionBaseUrl;
   }
 
