@@ -1,53 +1,227 @@
-"""Admin router for partner provisioning, key management, fraud auditing, and maintenance."""
+"""Admin router for partner provisioning, key management, fraud auditing, analytics, and portal management."""
 from __future__ import annotations
 
 import secrets
 import uuid
+from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from pydantic import BaseModel, EmailStr
+from sqlalchemy import delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.db.models import ActivityDaily, Partner, PartnerStatus, User, UserStatus
-from app.db.postgres import get_session
-from app.schemas.admin import (
-    CreatePartnerIn,
-    CreatePartnerOut,
-    FraudAuditItemOut,
-    SweepExpiredOut,
-    UpdateUserStatusIn,
+from app.config import get_settings
+from app.db.models import (
+    ActivityDaily,
+    AuditLog,
+    DiscountType,
+    LedgerReason,
+    Offer,
+    OfferStatus,
+    Partner,
+    PartnerStatus,
+    PointsLedger,
+    Redemption,
+    User,
+    UserStatus,
+    Voucher,
+    VoucherStatus,
 )
+from app.db.postgres import get_session
 from app.services.partner_auth import hash_api_key
+from app.services.security import create_access_token
 from app.services.voucher_sweep import sweep_expired_vouchers
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-@router.post(
-    "/partners",
-    response_model=CreatePartnerOut,
-    status_code=status.HTTP_201_CREATED,
-    summary="Provision a new merchant partner and generate an API key",
-)
-async def create_partner(
-    body: CreatePartnerIn,
-    session: AsyncSession = Depends(get_session),
-) -> CreatePartnerOut:
-    """Create a new merchant partner record and generate a cryptographically secure API key.
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
 
-    Returns the raw API key ONCE. The key is hashed with SHA-256 in the database.
-    """
-    # Check for duplicate partner name
-    existing = await session.execute(
-        select(Partner).where(Partner.name == body.name.strip())
-    )
-    if existing.scalar_one_or_none() is not None:
+class AdminLoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class AdminUserStatusIn(BaseModel):
+    status: str
+
+
+class AdminAdjustPointsIn(BaseModel):
+    delta: int
+    reason_note: str
+
+
+class AdminPartnerIn(BaseModel):
+    name: str
+    status: str | None = "ACTIVE"
+
+
+class AdminPartnerPatchIn(BaseModel):
+    name: str | None = None
+    status: str | None = None
+
+
+class AdminOfferIn(BaseModel):
+    partner_id: str
+    title: str
+    description: str | None = None
+    discount_type: DiscountType
+    discount_value: float
+    points_cost: int
+    min_basket: float | None = None
+    inventory: int | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    status: OfferStatus | None = OfferStatus.ACTIVE
+
+
+class AdminOfferPatchIn(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    discount_type: DiscountType | None = None
+    discount_value: float | None = None
+    points_cost: int | None = None
+    min_basket: float | None = None
+    inventory: int | None = None
+    status: OfferStatus | None = None
+
+
+class AdminVoucherLookupIn(BaseModel):
+    short_code: str
+
+
+class AdminVoucherRedeemIn(BaseModel):
+    short_code: str
+    order_reference: str | None = None
+    store_id: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# 1. Admin Authentication
+# ---------------------------------------------------------------------------
+
+@router.post("/auth/login", summary="Admin Portal Login")
+async def admin_login(body: AdminLoginIn) -> dict[str, Any]:
+    settings = get_settings()
+    if (
+        body.email.strip().lower() != settings.admin_email.strip().lower()
+        or body.password != settings.admin_password
+    ):
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Partner '{body.name}' already exists",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials",
         )
 
-    # Generate a cryptographically secure 32-byte URL-safe API key
+    token = create_access_token(
+        subject="admin_user_root",
+        extra_claims={"email": settings.admin_email, "role": "ADMIN"},
+    )
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": "admin_user_root",
+            "email": settings.admin_email,
+            "role": "ADMIN",
+        },
+    }
+
+
+@router.get("/auth/me", summary="Admin Profile")
+async def admin_get_me() -> dict[str, Any]:
+    settings = get_settings()
+    return {
+        "id": "admin_user_root",
+        "email": settings.admin_email,
+        "role": "ADMIN",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 2. Analytics Overview & Charts
+# ---------------------------------------------------------------------------
+
+@router.get("/analytics/overview", summary="Overview Metrics")
+async def get_analytics_overview(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+    total_users = (await session.execute(select(func.count(User.id)))).scalar_one() or 0
+    total_steps = (await session.execute(select(func.coalesce(func.sum(ActivityDaily.eligible_steps), 0)))).scalar_one() or 0
+    active_partners = (await session.execute(select(func.count(Partner.id)).where(Partner.status == PartnerStatus.ACTIVE))).scalar_one() or 0
+    active_offers = (await session.execute(select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE))).scalar_one() or 0
+    vouchers_issued = (await session.execute(select(func.count(Voucher.id)))).scalar_one() or 0
+    vouchers_redeemed = (await session.execute(select(func.count(Voucher.id)).where(Voucher.status == VoucherStatus.REDEEMED))).scalar_one() or 0
+    total_savings = (await session.execute(select(func.coalesce(func.sum(Redemption.discount_value), 0)))).scalar_one() or 0.0
+
+    return {
+        "total_users": total_users,
+        "total_steps": int(total_steps),
+        "active_partners": active_partners,
+        "active_offers": active_offers,
+        "vouchers_issued": vouchers_issued,
+        "vouchers_redeemed": vouchers_redeemed,
+        "total_customer_savings": float(total_savings),
+    }
+
+
+@router.get("/analytics/charts", summary="Chart Metrics")
+async def get_analytics_charts(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+    # Recent daily steps aggregation
+    steps_query = (
+        select(
+            ActivityDaily.local_date,
+            func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("steps"),
+        )
+        .group_by(ActivityDaily.local_date)
+        .order_by(desc(ActivityDaily.local_date))
+        .limit(14)
+    )
+    steps_rows = (await session.execute(steps_query)).all()
+    steps_data = [{"date": r.local_date, "steps": int(r.steps)} for r in reversed(steps_rows)]
+
+    return {
+        "daily_steps": steps_data,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 3. Partner Management
+# ---------------------------------------------------------------------------
+
+@router.get("/partners", summary="List All Merchant Partners")
+async def list_partners(
+    search: str | None = None,
+    status: str | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    query = select(Partner).order_by(Partner.name)
+    if status and status != "ALL":
+        query = query.where(Partner.status == PartnerStatus(status))
+    if search:
+        query = query.where(Partner.name.ilike(f"%{search}%"))
+
+    result = await session.execute(query)
+    partners = result.scalars().all()
+
+    items = []
+    for p in partners:
+        items.append({
+            "id": p.id,
+            "name": p.name,
+            "status": p.status.value,
+            "has_api_key": bool(p.api_key_hash),
+            "created_at": p.created_at.isoformat(),
+        })
+    return items
+
+
+@router.post("/partners", status_code=status.HTTP_201_CREATED, summary="Create Partner")
+async def create_partner(
+    body: AdminPartnerIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
     raw_api_key = f"pk_live_{secrets.token_urlsafe(32)}"
     api_key_hash = hash_api_key(raw_api_key)
 
@@ -55,113 +229,544 @@ async def create_partner(
         id=str(uuid.uuid4()),
         name=body.name.strip(),
         api_key_hash=api_key_hash,
-        status=PartnerStatus.ACTIVE,
+        status=PartnerStatus(body.status) if body.status else PartnerStatus.ACTIVE,
     )
     session.add(partner)
-    await session.commit()
 
-    return CreatePartnerOut(
-        partner_id=partner.id,
-        name=partner.name,
-        status=partner.status.value,
-        raw_api_key=raw_api_key,
+    # Add audit log
+    audit = AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="CREATE_PARTNER",
+        object_type="PARTNER",
+        object_id=partner.id,
     )
-
-
-@router.post(
-    "/vouchers/sweep-expired",
-    response_model=SweepExpiredOut,
-    summary="Trigger atomic expiration sweep on all past-due vouchers",
-)
-async def trigger_voucher_sweep(
-    session: AsyncSession = Depends(get_session),
-) -> SweepExpiredOut:
-    """Sweep all vouchers with status='ISSUED' and expires_at < now() into 'EXPIRED' status."""
-    result = await sweep_expired_vouchers(session)
-    count = int(result["swept_count"])
-    codes = list(result["swept_codes"])
-
-    return SweepExpiredOut(
-        swept_count=count,
-        swept_codes=codes,
-        message=f"Successfully transitioned {count} past-due vouchers to EXPIRED",
-    )
-
-
-@router.get(
-    "/fraud/flags",
-    response_model=list[FraudAuditItemOut],
-    summary="List users flagged for suspicious step velocity or activity patterns",
-)
-async def list_fraud_flags(
-    limit: int = Query(50, ge=1, le=200),
-    session: AsyncSession = Depends(get_session),
-) -> list[FraudAuditItemOut]:
-    """Audit user activity metrics and return risk flags for anti-fraud review."""
-    result = await session.execute(
-        select(
-            User,
-            func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("lifetime_steps"),
-            func.count(ActivityDaily.id).label("days_count"),
-        )
-        .outerjoin(ActivityDaily, User.id == ActivityDaily.user_id)
-        .group_by(User.id)
-        .order_by(func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).desc())
-        .limit(limit)
-    )
-    rows = result.all()
-
-    audit_items: list[FraudAuditItemOut] = []
-    for user, lifetime_steps, days_count in rows:
-        flags: list[str] = []
-        risk_score = 0
-
-        # Heuristic 1: Extremely high average steps per day (>= 18,000 steps/day)
-        if days_count > 0 and (lifetime_steps / days_count) >= 18000:
-            flags.append("HIGH_DAILY_AVERAGE_CADENCE")
-            risk_score += 40
-
-        # Heuristic 2: Suspended account
-        if user.status == UserStatus.SUSPENDED:
-            flags.append("MANUALLY_SUSPENDED")
-            risk_score += 100
-
-        audit_items.append(
-            FraudAuditItemOut(
-                user_id=user.id,
-                email=user.email,
-                status=user.status.value,
-                total_lifetime_steps=int(lifetime_steps),
-                days_recorded=int(days_count),
-                risk_score=min(risk_score, 100),
-                flags=flags,
-            )
-        )
-
-    return audit_items
-
-
-@router.post(
-    "/users/{user_id}/status",
-    summary="Update a user's account status (suspend, activate, delete)",
-)
-async def update_user_status(
-    user_id: str,
-    body: UpdateUserStatusIn,
-    session: AsyncSession = Depends(get_session),
-) -> dict:
-    """Administratively suspend, re-activate, or delete a user account."""
-    user = await session.get(User, user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    user.status = UserStatus(body.status)
+    session.add(audit)
     await session.commit()
 
     return {
-        "user_id": user.id,
-        "email": user.email,
-        "status": user.status.value,
-        "reason": body.reason,
-        "message": f"User status updated to {user.status.value}",
+        "id": partner.id,
+        "name": partner.name,
+        "status": partner.status.value,
+        "raw_api_key": raw_api_key,
+        "created_at": partner.created_at.isoformat(),
     }
+
+
+@router.patch("/partners/{partner_id}", summary="Update Partner")
+async def update_partner(
+    partner_id: str,
+    body: AdminPartnerPatchIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    partner = await session.get(Partner, partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    if body.name is not None:
+        partner.name = body.name.strip()
+    if body.status is not None:
+        partner.status = PartnerStatus(body.status)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="UPDATE_PARTNER",
+        object_type="PARTNER",
+        object_id=partner.id,
+    ))
+    await session.commit()
+    return {"id": partner.id, "name": partner.name, "status": partner.status.value}
+
+
+@router.post("/partners/{partner_id}/regenerate-key", summary="Regenerate Partner API Key")
+async def regenerate_partner_key(
+    partner_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    partner = await session.get(Partner, partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    raw_api_key = f"pk_live_{secrets.token_urlsafe(32)}"
+    partner.api_key_hash = hash_api_key(raw_api_key)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="REGENERATE_API_KEY",
+        object_type="PARTNER",
+        object_id=partner.id,
+    ))
+    await session.commit()
+    return {"partner_id": partner.id, "raw_api_key": raw_api_key}
+
+
+# ---------------------------------------------------------------------------
+# 4. Offers Management
+# ---------------------------------------------------------------------------
+
+@router.get("/offers", summary="List All Deals/Offers")
+async def list_offers(
+    partner_id: str | None = None,
+    status: str | None = None,
+    search: str | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    query = select(Offer).options(selectinload(Offer.partner)).order_by(desc(Offer.created_at))
+    if partner_id and partner_id != "ALL":
+        query = query.where(Offer.partner_id == partner_id)
+    if status and status != "ALL":
+        query = query.where(Offer.status == OfferStatus(status))
+    if search:
+        query = query.where(Offer.title.ilike(f"%{search}%"))
+
+    result = await session.execute(query)
+    offers = result.scalars().all()
+
+    items = []
+    for o in offers:
+        items.append({
+            "id": o.id,
+            "partner_id": o.partner_id,
+            "partner_name": o.partner.name if o.partner else "Unknown",
+            "title": o.title,
+            "description": o.description,
+            "discount_type": o.discount_type.value,
+            "discount_value": float(o.discount_value),
+            "points_cost": o.points_cost,
+            "min_basket": float(o.min_basket) if o.min_basket else None,
+            "inventory": o.inventory,
+            "status": o.status.value,
+            "starts_at": o.starts_at.isoformat() if o.starts_at else None,
+            "ends_at": o.ends_at.isoformat() if o.ends_at else None,
+            "created_at": o.created_at.isoformat(),
+        })
+    return items
+
+
+@router.post("/offers", status_code=status.HTTP_201_CREATED, summary="Create Offer")
+async def create_offer(
+    body: AdminOfferIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    partner = await session.get(Partner, body.partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    offer = Offer(
+        id=str(uuid.uuid4()),
+        partner_id=body.partner_id,
+        title=body.title.strip(),
+        description=body.description,
+        discount_type=body.discount_type,
+        discount_value=body.discount_value,
+        points_cost=body.points_cost,
+        min_basket=body.min_basket,
+        inventory=body.inventory,
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+        status=body.status or OfferStatus.ACTIVE,
+    )
+    session.add(offer)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="CREATE_OFFER",
+        object_type="OFFER",
+        object_id=offer.id,
+    ))
+    await session.commit()
+    return {"id": offer.id, "title": offer.title, "status": offer.status.value}
+
+
+@router.patch("/offers/{offer_id}", summary="Update Offer")
+async def update_offer(
+    offer_id: str,
+    body: AdminOfferPatchIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    offer = await session.get(Offer, offer_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+
+    if body.title is not None:
+        offer.title = body.title.strip()
+    if body.description is not None:
+        offer.description = body.description
+    if body.discount_type is not None:
+        offer.discount_type = body.discount_type
+    if body.discount_value is not None:
+        offer.discount_value = body.discount_value
+    if body.points_cost is not None:
+        offer.points_cost = body.points_cost
+    if body.min_basket is not None:
+        offer.min_basket = body.min_basket
+    if body.inventory is not None:
+        offer.inventory = body.inventory
+    if body.status is not None:
+        offer.status = body.status
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="UPDATE_OFFER",
+        object_type="OFFER",
+        object_id=offer.id,
+    ))
+    await session.commit()
+    return {"id": offer.id, "title": offer.title, "status": offer.status.value}
+
+
+@router.delete("/offers/{offer_id}", summary="Delete Offer")
+async def delete_offer(
+    offer_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    offer = await session.get(Offer, offer_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+
+    await session.delete(offer)
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="DELETE_OFFER",
+        object_type="OFFER",
+        object_id=offer_id,
+    ))
+    await session.commit()
+    return {"message": "Offer deleted successfully"}
+
+
+# ---------------------------------------------------------------------------
+# 5. Voucher & POS Station
+# ---------------------------------------------------------------------------
+
+@router.get("/vouchers", summary="List Vouchers")
+async def list_vouchers(
+    partner_id: str | None = None,
+    offer_id: str | None = None,
+    status: str | None = None,
+    short_code: str | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    query = (
+        select(Voucher)
+        .options(selectinload(Voucher.user), selectinload(Voucher.offer).selectinload(Offer.partner))
+        .order_by(desc(Voucher.created_at))
+    )
+    if status and status != "ALL":
+        query = query.where(Voucher.status == VoucherStatus(status))
+    if short_code:
+        query = query.where(Voucher.short_code.ilike(f"%{short_code}%"))
+
+    result = await session.execute(query)
+    vouchers = result.scalars().all()
+
+    items = []
+    for v in vouchers:
+        items.append({
+            "id": v.id,
+            "short_code": v.short_code,
+            "user_email": v.user.email if v.user else "App User",
+            "offer_title": v.offer.title if v.offer else "Deal",
+            "partner_name": v.offer.partner.name if (v.offer and v.offer.partner) else "Store",
+            "discount_type": v.offer.discount_type.value if v.offer else "PERCENT",
+            "discount_value": float(v.offer.discount_value) if v.offer else 0.0,
+            "status": v.status.value,
+            "issued_at": v.issued_at.isoformat(),
+            "expires_at": v.expires_at.isoformat(),
+            "redeemed_at": v.redeemed_at.isoformat() if v.redeemed_at else None,
+        })
+    return items
+
+
+@router.post("/vouchers/lookup", summary="Lookup Voucher for POS Validation")
+async def lookup_voucher(
+    body: AdminVoucherLookupIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    code = body.short_code.strip().upper()
+    result = await session.execute(
+        select(Voucher)
+        .options(selectinload(Voucher.offer).selectinload(Offer.partner))
+        .where(Voucher.short_code == code)
+    )
+    v = result.scalar_one_or_none()
+    if not v:
+        raise HTTPException(status_code=404, detail="Voucher code not found")
+
+    is_expired = v.expires_at < datetime.now(timezone.utc)
+    redeemable = v.status == VoucherStatus.ISSUED and not is_expired
+
+    return {
+        "id": v.id,
+        "short_code": v.short_code,
+        "status": v.status.value,
+        "offer_title": v.offer.title if v.offer else "Deal",
+        "partner_name": v.offer.partner.name if (v.offer and v.offer.partner) else "Store",
+        "discount_type": v.offer.discount_type.value if v.offer else "PERCENT",
+        "discount_value": float(v.offer.discount_value) if v.offer else 0.0,
+        "redeemable": redeemable,
+        "reason": "Ready to redeem" if redeemable else ("Expired" if is_expired else f"Already {v.status.value}"),
+    }
+
+
+@router.post("/vouchers/redeem", summary="Redeem Voucher at POS")
+async def redeem_voucher(
+    body: AdminVoucherRedeemIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    code = body.short_code.strip().upper()
+    result = await session.execute(
+        select(Voucher)
+        .options(selectinload(Voucher.offer))
+        .where(Voucher.short_code == code)
+    )
+    v = result.scalar_one_or_none()
+    if not v:
+        raise HTTPException(status_code=404, detail="Voucher code not found")
+
+    if v.status != VoucherStatus.ISSUED:
+        raise HTTPException(status_code=400, detail=f"Voucher is already {v.status.value}")
+
+    now = datetime.now(timezone.utc)
+    if v.expires_at < now:
+        v.status = VoucherStatus.EXPIRED
+        await session.commit()
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+
+    v.status = VoucherStatus.REDEEMED
+    v.redeemed_at = now
+
+    redemption = Redemption(
+        id=str(uuid.uuid4()),
+        voucher_id=v.id,
+        partner_id=v.offer.partner_id,
+        store_id=body.store_id or "MAIN_STORE",
+        order_reference=body.order_reference or f"ORD-{secrets.token_hex(4).upper()}",
+        discount_value=v.offer.discount_value,
+        redeemed_at=now,
+    )
+    session.add(redemption)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="REDEEM_VOUCHER",
+        object_type="VOUCHER",
+        object_id=v.id,
+    ))
+    await session.commit()
+    return {"message": "Voucher redeemed successfully", "short_code": v.short_code}
+
+
+@router.get("/redemptions", summary="List Redemption History")
+async def list_redemptions(
+    partner_id: str | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    query = (
+        select(Redemption)
+        .options(
+            selectinload(Redemption.voucher).selectinload(Voucher.user),
+            selectinload(Redemption.voucher).selectinload(Voucher.offer).selectinload(Offer.partner),
+        )
+        .order_by(desc(Redemption.redeemed_at))
+    )
+    if partner_id:
+        query = query.where(Redemption.partner_id == partner_id)
+
+    result = await session.execute(query)
+    redemptions = result.scalars().all()
+
+    items = []
+    for r in redemptions:
+        items.append({
+            "id": r.id,
+            "short_code": r.voucher.short_code if r.voucher else "—",
+            "partner_name": r.voucher.offer.partner.name if (r.voucher and r.voucher.offer and r.voucher.offer.partner) else "Store",
+            "offer_title": r.voucher.offer.title if (r.voucher and r.voucher.offer) else "Deal",
+            "user_email": r.voucher.user.email if (r.voucher and r.voucher.user) else "Customer",
+            "order_reference": r.order_reference or "—",
+            "discount_value": float(r.discount_value),
+            "redeemed_at": r.redeemed_at.isoformat(),
+        })
+    return items
+
+
+# ---------------------------------------------------------------------------
+# 6. User Directory & Step Management
+# ---------------------------------------------------------------------------
+
+@router.get("/users", summary="List App Users")
+async def list_users(
+    search: str | None = None,
+    status: str | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    query = (
+        select(
+            User,
+            func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("total_steps"),
+        )
+        .outerjoin(ActivityDaily, User.id == ActivityDaily.user_id)
+        .group_by(User.id)
+        .order_by(desc(User.created_at))
+    )
+
+    if status and status != "ALL":
+        query = query.where(User.status == UserStatus(status))
+    if search:
+        query = query.where(User.email.ilike(f"%{search}%"))
+
+    result = await session.execute(query)
+    rows = result.all()
+
+    items = []
+    for u, total_steps in rows:
+        # Calculate points balance
+        pts = (await session.execute(
+            select(func.coalesce(func.sum(PointsLedger.delta), 0)).where(PointsLedger.user_id == u.id)
+        )).scalar_one() or 0
+
+        items.append({
+            "id": u.id,
+            "email": u.email,
+            "status": u.status.value,
+            "total_steps": int(total_steps),
+            "points_balance": int(pts),
+            "country": u.country or "PK",
+            "created_at": u.created_at.isoformat(),
+        })
+    return items
+
+
+@router.patch("/users/{user_id}/status", summary="Update User Status")
+async def update_user_status_patch(
+    user_id: str,
+    body: AdminUserStatusIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.status = UserStatus(body.status)
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action=f"SET_USER_STATUS_{body.status}",
+        object_type="USER",
+        object_id=user.id,
+    ))
+    await session.commit()
+    return {"user_id": user.id, "status": user.status.value}
+
+
+@router.post("/users/{user_id}/adjust-points", summary="Manual Points Adjustment")
+async def adjust_user_points(
+    user_id: str,
+    body: AdminAdjustPointsIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    ledger_entry = PointsLedger(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        delta=body.delta,
+        reason=LedgerReason.ADJUST,
+        campaign_id=body.reason_note.strip(),
+    )
+    session.add(ledger_entry)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="MANUAL_POINTS_ADJUST",
+        object_type="USER",
+        object_id=user.id,
+    ))
+    await session.commit()
+
+    # Get new balance
+    new_bal = (await session.execute(
+        select(func.coalesce(func.sum(PointsLedger.delta), 0)).where(PointsLedger.user_id == user.id)
+    )).scalar_one() or 0
+
+    return {"user_id": user.id, "delta": body.delta, "new_balance": int(new_bal)}
+
+
+@router.get("/users/{user_id}/ledger", summary="Get User Points Ledger")
+async def get_user_ledger(
+    user_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    result = await session.execute(
+        select(PointsLedger).where(PointsLedger.user_id == user_id).order_by(desc(PointsLedger.created_at))
+    )
+    entries = result.scalars().all()
+    return [
+        {
+            "id": e.id,
+            "delta": e.delta,
+            "reason": e.reason.value,
+            "campaign_id": e.campaign_id or e.ref_type or "Ledger Entry",
+            "created_at": e.created_at.isoformat(),
+        }
+        for e in entries
+    ]
+
+
+# ---------------------------------------------------------------------------
+# 7. Global Ledger & Audit Logs
+# ---------------------------------------------------------------------------
+
+@router.get("/ledger", summary="Global Points Ledger")
+async def get_global_ledger(
+    reason: str | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    query = select(PointsLedger).options(selectinload(PointsLedger.user)).order_by(desc(PointsLedger.created_at)).limit(100)
+    if reason and reason != "ALL":
+        query = query.where(PointsLedger.reason == LedgerReason(reason))
+
+    result = await session.execute(query)
+    entries = result.scalars().all()
+    return [
+        {
+            "id": e.id,
+            "user_email": e.user.email if e.user else e.user_id,
+            "delta": e.delta,
+            "reason": e.reason.value,
+            "campaign_id": e.campaign_id or e.ref_type or "System Entry",
+            "created_at": e.created_at.isoformat(),
+        }
+        for e in entries
+    ]
+
+
+@router.get("/audit-logs", summary="System Audit Logs")
+async def list_audit_logs(
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    result = await session.execute(
+        select(AuditLog).order_by(desc(AuditLog.created_at)).limit(100)
+    )
+    logs = result.scalars().all()
+    return [
+        {
+            "id": l.id,
+            "actor": l.actor,
+            "action": l.action,
+            "object_type": l.object_type,
+            "object_id": l.object_id,
+            "created_at": l.created_at.isoformat(),
+        }
+        for l in logs
+    ]
