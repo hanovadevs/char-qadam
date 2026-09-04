@@ -22,12 +22,19 @@ export default function Stores() {
     name: '',
     email: '',
     password: '',
+    category: '',
+    location: '',
     status: 'ACTIVE',
-    generate_api_key: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdPartner, setCreatedPartner] = useState(null);
+  const [createdPassword, setCreatedPassword] = useState('');
   const [copiedKey, setCopiedKey] = useState(null);
+
+  // Password Reset in Store Details
+  const [resetPwd, setResetPwd] = useState('');
+  const [resetPwdLoading, setResetPwdLoading] = useState(false);
+  const [resetPwdSuccess, setResetPwdSuccess] = useState(false);
 
   // New Deal Form in Store
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
@@ -65,23 +72,49 @@ export default function Stores() {
 
   const handleCreateStore = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
+      alert('Please fill in Store Name, Merchant Email, and Initial Password.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const data = await api.createPartner({
         name: formData.name.trim(),
-        email: formData.email.trim() || undefined,
-        password: formData.password || undefined,
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        category: formData.category.trim() || undefined,
+        location: formData.location.trim() || undefined,
         status: formData.status,
-        generate_api_key: formData.generate_api_key,
       });
+      setCreatedPassword(formData.password);
       setCreatedPartner(data);
       fetchStores();
     } catch (err) {
       alert(err.message || 'Failed to create partner store.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!storeDetails || !resetPwd.trim()) return;
+    if (resetPwd.trim().length < 6) {
+      alert('Password must be at least 6 characters.');
+      return;
+    }
+
+    setResetPwdLoading(true);
+    try {
+      await api.resetPartnerPassword(storeDetails.id, resetPwd.trim());
+      setResetPwdSuccess(true);
+      setResetPwd('');
+      setTimeout(() => setResetPwdSuccess(false), 3500);
+    } catch (err) {
+      alert(err.message || 'Failed to reset merchant password.');
+    } finally {
+      setResetPwdLoading(false);
     }
   };
 
@@ -176,14 +209,15 @@ export default function Stores() {
             Partner Stores
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Register new partner stores, provision POS API keys, and manage brand campaigns.
+            Manage partner stores, merchant mobile login accounts, and brand reward campaigns.
           </p>
         </div>
 
         <button
           onClick={() => {
             setCreatedPartner(null);
-            setFormData({ name: '', email: '', password: '', status: 'ACTIVE', generate_api_key: true });
+            setCreatedPassword('');
+            setFormData({ name: '', email: '', password: '', category: '', location: '', status: 'ACTIVE' });
             setIsRegisterOpen(true);
           }}
           className="btn btn-primary"
@@ -353,7 +387,7 @@ export default function Stores() {
               {/* Card Footer */}
               <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '500' }}>
-                  {s.has_api_key ? 'POS Key Active' : 'No API Key'}
+                  Merchant POS Ready
                 </span>
                 <span style={{ color: 'var(--brand-teal)', fontWeight: '600' }}>
                   Manage Store &rarr;
@@ -368,47 +402,62 @@ export default function Stores() {
       <Modal
         isOpen={isRegisterOpen}
         onClose={() => setIsRegisterOpen(false)}
-        title={createdPartner ? 'Store Registered Successfully' : 'Register New Partner Store'}
+        title={createdPartner ? 'Store & Merchant Account Created' : 'Register New Partner Store'}
         subtitle={
           createdPartner
-            ? 'The store is now provisioned on Stepsy. Copy the generated POS API key below.'
-            : 'Enter merchant credentials and machine-to-machine integration settings.'
+            ? 'The store is now live and the merchant mobile account is ready for POS login.'
+            : 'Enter store details and set up the merchant login credentials for the Stepsy mobile app.'
         }
       >
         {createdPartner ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ padding: '16px', background: 'var(--tint-mint)', border: '1px solid rgba(0, 210, 160, 0.4)', borderRadius: 'var(--radius-sm)' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--brand-teal)' }}>
-                {createdPartner.name}
-              </h4>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                Login Email: <strong>{createdPartner.email || 'None configured'}</strong>
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <h4 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--brand-teal)' }}>
+                  {createdPartner.name}
+                </h4>
+                <Badge status="ACTIVE" />
+              </div>
 
-              {createdPartner.raw_api_key && (
-                <div style={{ marginTop: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--brand-dark)', marginBottom: '4px', textTransform: 'uppercase' }}>
-                    Machine-to-Machine POS API Key (Shown Once)
-                  </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      readOnly
-                      className="input-control font-mono"
-                      value={createdPartner.raw_api_key}
-                      style={{ fontSize: '11px' }}
-                    />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                <div>
+                  <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', fontWeight: '700' }}>Merchant Login Email</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-surface)', padding: '6px 10px', borderRadius: 'var(--radius-xs)', marginTop: '2px', border: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{createdPartner.email}</span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(createdPartner.raw_api_key)}
+                      onClick={() => copyToClipboard(createdPartner.email)}
                       className="btn btn-secondary btn-sm"
+                      style={{ padding: '2px 8px', fontSize: '11px' }}
                     >
-                      {copiedKey === createdPartner.raw_api_key ? <Check size={14} /> : <Copy size={14} />}
-                      <span>{copiedKey === createdPartner.raw_api_key ? 'Copied' : 'Copy'}</span>
+                      {copiedKey === createdPartner.email ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedKey === createdPartner.email ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
                 </div>
-              )}
+
+                {createdPassword && (
+                  <div>
+                    <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', fontWeight: '700' }}>Initial Password</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-surface)', padding: '6px 10px', borderRadius: 'var(--radius-xs)', marginTop: '2px', border: '1px solid var(--border-subtle)' }}>
+                      <span style={{ fontWeight: '600', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{createdPassword}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(createdPassword)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '2px 8px', fontSize: '11px' }}
+                      >
+                        {copiedKey === createdPassword ? <Check size={12} /> : <Copy size={12} />}
+                        <span>{copiedKey === createdPassword ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.4' }}>
+                The store manager will use this email and password to log in through the standard Stepsy mobile app. Their account has been automatically configured with the Merchant POS role.
+              </p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
@@ -431,48 +480,73 @@ export default function Stores() {
                 type="text"
                 required
                 className="input-control"
-                placeholder="e.g. Nike Pakistan, Outfitters, Gloria Jean's"
+                placeholder="e.g. Apex Cafe & Bakery, Nike Gulberg"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Merchant Contact Email (Optional)
-              </label>
-              <input
-                type="email"
-                className="input-control"
-                placeholder="store@brand.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+            <div className="grid-cols-2" style={{ gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Merchant Login Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  className="input-control"
+                  placeholder="merchant@brand.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Initial Password *
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  className="input-control"
+                  placeholder="Min. 6 characters"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Initial Password (Optional)
-              </label>
-              <input
-                type="password"
-                className="input-control"
-                placeholder="Minimum 6 characters"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
+            <div className="grid-cols-2" style={{ gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Category (Optional)
+                </label>
+                <input
+                  type="text"
+                  className="input-control"
+                  placeholder="e.g. Cafe, Retail, Dining"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Location / Branch (Optional)
+                </label>
+                <input
+                  type="text"
+                  className="input-control"
+                  placeholder="e.g. Downtown Mall, Floor 1"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '4px' }}>
-              <input
-                type="checkbox"
-                id="gen_key"
-                checked={formData.generate_api_key}
-                onChange={(e) => setFormData({ ...formData, generate_api_key: e.target.checked })}
-              />
-              <label htmlFor="gen_key" style={{ fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                Automatically generate a live POS integration key (pk_live_...)
-              </label>
+            <div style={{ padding: '10px 12px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
+              A linked merchant user account will be created. The merchant can log in from the exact same mobile login screen and will be automatically presented with the POS Terminal.
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
@@ -488,7 +562,7 @@ export default function Stores() {
                 disabled={isSubmitting}
                 className="btn btn-primary"
               >
-                {isSubmitting ? 'Creating...' : 'Create Store'}
+                {isSubmitting ? 'Creating...' : 'Register Store & Account'}
               </button>
             </div>
           </form>
@@ -526,44 +600,52 @@ export default function Stores() {
                 <Badge status={storeDetails.status} />
               </div>
 
-              {/* POS Key section */}
+              {/* Merchant Mobile POS Login Account Section */}
               <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
-                    POS Machine Integration Key
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Merchant Mobile POS Account
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRegenerateKey(storeDetails.id)}
-                    style={{ fontSize: '11px', color: 'var(--brand-teal)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}
-                  >
-                    Regenerate Key
-                  </button>
+                  <span style={{ fontSize: '11px', color: 'var(--brand-teal)', fontWeight: '600' }}>
+                    Unified Mobile Login
+                  </span>
                 </div>
 
-                {storeDetails.raw_api_key ? (
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ background: 'var(--bg-surface)', padding: '10px 14px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Login Email / Username:</span>
+                    <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{storeDetails.email || 'No email assigned'}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Assigned Role:</span>
+                    <span style={{ fontWeight: '600', color: 'var(--brand-teal)' }}>MERCHANT (Auto-routes to POS)</span>
+                  </div>
+
+                  {resetPwdSuccess && (
+                    <div style={{ padding: '6px 10px', background: 'var(--tint-mint)', border: '1px solid rgba(0, 210, 160, 0.4)', borderRadius: 'var(--radius-xs)', fontSize: '12px', color: 'var(--brand-teal)', fontWeight: '600' }}>
+                      Merchant password updated successfully!
+                    </div>
+                  )}
+
+                  <form onSubmit={handleResetPassword} style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed var(--border-light)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
-                      type="text"
-                      readOnly
-                      className="input-control font-mono"
-                      value={storeDetails.raw_api_key}
-                      style={{ fontSize: '11px' }}
+                      type="password"
+                      placeholder="Set new merchant password..."
+                      value={resetPwd}
+                      onChange={(e) => setResetPwd(e.target.value)}
+                      className="input-control"
+                      style={{ fontSize: '12px', flex: 1 }}
                     />
                     <button
-                      type="button"
-                      onClick={() => copyToClipboard(storeDetails.raw_api_key)}
+                      type="submit"
+                      disabled={resetPwdLoading || !resetPwd.trim()}
                       className="btn btn-secondary btn-sm"
                     >
-                      <Copy size={14} />
-                      <span>Copy</span>
+                      {resetPwdLoading ? 'Updating...' : 'Reset Password'}
                     </button>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-surface)', padding: '8px 12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{storeDetails.has_api_key ? '●●●●●●●●●● (Key is securely hashed)' : 'No active POS key'}</span>
-                  </div>
-                )}
+                  </form>
+                </div>
               </div>
             </div>
 

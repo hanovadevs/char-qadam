@@ -97,6 +97,10 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), default="USER", nullable=False)
+    partner_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("partners.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status: Mapped[UserStatus] = mapped_column(
         Enum(UserStatus, name="user_status", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
@@ -112,6 +116,7 @@ class User(Base):
     activity_days: Mapped[list[ActivityDaily]] = relationship(back_populates="user")
     ledger_entries: Mapped[list[PointsLedger]] = relationship(back_populates="user")
     vouchers: Mapped[list[Voucher]] = relationship(back_populates="user")
+    partner: Mapped[Partner | None] = relationship(back_populates="merchants", foreign_keys=[partner_id])
 
 
 class Device(Base):
@@ -183,6 +188,11 @@ class Partner(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     api_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     status: Mapped[PartnerStatus] = mapped_column(
         Enum(PartnerStatus, name="partner_status", values_callable=lambda x: [e.value for e in x]),
@@ -194,6 +204,7 @@ class Partner(Base):
     )
 
     offers: Mapped[list[Offer]] = relationship(back_populates="partner")
+    merchants: Mapped[list[User]] = relationship(back_populates="partner", foreign_keys="User.partner_id")
 
 
 class Offer(Base):

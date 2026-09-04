@@ -63,35 +63,51 @@ async def get_current_user(
 
 _401_partner = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Invalid or missing partner API key",
-    headers={"WWW-Authenticate": "X-Partner-Key"},
+    detail="Authentication required: please log in as a merchant or provide a valid partner key",
+    headers={"WWW-Authenticate": "Bearer"},
 )
 
 
 async def get_current_partner(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     x_partner_key: str | None = Header(default=None, alias="X-Partner-Key"),
     session: AsyncSession = Depends(get_session),
 ) -> Partner:
-    """Validate the ``X-Partner-Key`` header and return the Partner row.
+    """Validate Bearer JWT (for authenticated merchant users) OR ``X-Partner-Key`` header.
 
-    Raises HTTP 401 if the header is missing or the key doesn't match any
-    partner.  Raises HTTP 403 if the partner is INACTIVE.
+    Returns the Partner row. Raises HTTP 401 if unauthorized, or HTTP 403 if partner is INACTIVE.
     """
-    if not x_partner_key:
-        raise _401_partner
+    # 1. Try Bearer JWT authentication (Primary login flow)
+    if credentials is not None:
+        try:
+            user_id = decode_access_token(credentials.credentials)
+            user_res = await session.execute(select(User).where(User.id == user_id))
+            user = user_res.scalar_one_or_none()
+            if user is not None and user.status == UserStatus.ACTIVE and user.partner_id:
+                partner = await session.get(Partner, user.partner_id)
+                if partner is not None:
+                    if partner.status != PartnerStatus.ACTIVE:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Partner store account is inactive",
+                        )
+                    return partner
+        except JWTError:
+            pass  # Fall through to check X-Partner-Key if any
 
-    key_hash = hash_api_key(x_partner_key)
-    result = await session.execute(
-        select(Partner).where(Partner.api_key_hash == key_hash)
-    )
-    partner = result.scalar_one_or_none()
-
-    if partner is None:
-        raise _401_partner
-    if partner.status != PartnerStatus.ACTIVE:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Partner account is inactive",
+    # 2. Try legacy / machine-to-machine X-Partner-Key header
+    if x_partner_key:
+        key_hash = hash_api_key(x_partner_key)
+        result = await session.execute(
+            select(Partner).where(Partner.api_key_hash == key_hash)
         )
+        partner = result.scalar_one_or_none()
+        if partner is not None:
+            if partner.status != PartnerStatus.ACTIVE:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Partner account is inactive",
+                )
+            return partner
 
-    return partner
+    raise _401_partner

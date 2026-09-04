@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import User, UserStatus
+from app.db.models import Partner, User, UserStatus
 from app.db.postgres import get_session
 from app.deps import get_current_user
 from app.schemas.auth import (
@@ -79,7 +79,10 @@ async def register(
     session.add(user)
     await session.commit()
 
-    return TokenOut(access_token=create_access_token(user.id))
+    return TokenOut(
+        access_token=create_access_token(user.id, extra_claims={"role": user.role}),
+        role=user.role,
+    )
 
 
 @router.post(
@@ -114,7 +117,25 @@ async def login(
             detail="Account is suspended or deleted",
         )
 
-    return TokenOut(access_token=create_access_token(user.id))
+    partner_name = None
+    if user.partner_id:
+        partner = await session.get(Partner, user.partner_id)
+        if partner:
+            partner_name = partner.name
+
+    token = create_access_token(
+        user.id,
+        extra_claims={
+            "role": user.role,
+            "partner_id": user.partner_id,
+        },
+    )
+    return TokenOut(
+        access_token=token,
+        role=user.role,
+        partner_id=user.partner_id,
+        partner_name=partner_name,
+    )
 
 
 @router.post(
@@ -175,7 +196,18 @@ async def google_auth(
                 detail="Account is suspended or deleted",
             )
 
-    return TokenOut(access_token=create_access_token(user.id))
+    partner_name = None
+    if user.partner_id:
+        partner = await session.get(Partner, user.partner_id)
+        if partner:
+            partner_name = partner.name
+
+    return TokenOut(
+        access_token=create_access_token(user.id, extra_claims={"role": user.role, "partner_id": user.partner_id}),
+        role=user.role,
+        partner_id=user.partner_id,
+        partner_name=partner_name,
+    )
 
 
 @router.post(
@@ -248,6 +280,26 @@ async def reset_password(
     response_model=UserOut,
     summary="Return the currently authenticated user",
 )
-async def me(current_user: User = Depends(get_current_user)) -> UserOut:
+async def me(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> UserOut:
     """Return the profile of the bearer-token owner."""
-    return UserOut.model_validate(current_user)
+    partner_name = None
+    if current_user.partner_id:
+        partner = await session.get(Partner, current_user.partner_id)
+        if partner:
+            partner_name = partner.name
+
+    status_val = current_user.status.value if hasattr(current_user.status, "value") else str(current_user.status)
+    return UserOut(
+        id=current_user.id,
+        email=current_user.email,
+        status=status_val,
+        role=current_user.role or "USER",
+        partner_id=current_user.partner_id,
+        partner_name=partner_name,
+        country=current_user.country,
+        timezone=current_user.timezone,
+        created_at=current_user.created_at,
+    )

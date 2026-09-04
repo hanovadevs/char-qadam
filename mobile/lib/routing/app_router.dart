@@ -53,6 +53,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (status == AuthStatus.authenticated) {
+        // If the authenticated user is a Merchant, route directly to /merchant-pos!
+        if (authState.user?.isMerchant == true) {
+          if (state.matchedLocation != '/merchant-pos') {
+            return '/merchant-pos';
+          }
+          return null;
+        }
+
+        // Customer users should not view merchant POS screen
+        if (state.matchedLocation == '/merchant-pos') {
+          return '/steps';
+        }
+
         if (isSplash || isAuthRoute) {
           // Check if onboarding needs to be shown
           if (!onboardingComplete) {

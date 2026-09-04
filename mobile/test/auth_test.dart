@@ -25,6 +25,34 @@ void main() {
       expect(user.country, equals('PK'));
       expect(user.timezone, equals('Asia/Karachi'));
       expect(user.createdAt, equals(DateTime.parse('2026-08-15T12:00:00Z')));
+      expect(user.role, equals('USER'));
+      expect(user.isMerchant, isFalse);
+    });
+
+    test('UserModel parses MERCHANT role and partner details correctly', () {
+      final json = {
+        'id': 'merchant-123',
+        'email': 'store@apexcafe.com',
+        'status': 'ACTIVE',
+        'role': 'MERCHANT',
+        'partner_id': 'partner-uuid-456',
+        'partner_name': 'Apex Cafe & Bakery',
+        'created_at': '2026-09-01T10:00:00Z',
+      };
+
+      final user = UserModel.fromJson(json);
+
+      expect(user.id, equals('merchant-123'));
+      expect(user.email, equals('store@apexcafe.com'));
+      expect(user.role, equals('MERCHANT'));
+      expect(user.partnerId, equals('partner-uuid-456'));
+      expect(user.partnerName, equals('Apex Cafe & Bakery'));
+      expect(user.isMerchant, isTrue);
+
+      final outJson = user.toJson();
+      expect(outJson['role'], equals('MERCHANT'));
+      expect(outJson['partner_id'], equals('partner-uuid-456'));
+      expect(outJson['partner_name'], equals('Apex Cafe & Bakery'));
     });
 
     test('UserModel.toJson produces valid map', () {

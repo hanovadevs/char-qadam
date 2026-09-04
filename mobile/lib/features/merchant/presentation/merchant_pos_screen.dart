@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/auth/auth_state_provider.dart';
 import '../../../data/models/merchant_models.dart';
 import '../providers/merchant_provider.dart';
 
@@ -17,25 +18,19 @@ class MerchantPosScreen extends ConsumerStatefulWidget {
 class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
   final _codeController = TextEditingController();
   final _orderRefController = TextEditingController();
-
-  final _apiKeyController = TextEditingController();
   final _storeIdController = TextEditingController(text: 'STORE-01');
 
   @override
   void initState() {
     super.initState();
     final state = ref.read(merchantProvider);
-    if (state.partnerApiKey != null) {
-      _apiKeyController.text = state.partnerApiKey!;
-      _storeIdController.text = state.storeId;
-    }
+    _storeIdController.text = state.storeId;
   }
 
   @override
   void dispose() {
     _codeController.dispose();
     _orderRefController.dispose();
-    _apiKeyController.dispose();
     _storeIdController.dispose();
     super.dispose();
   }
@@ -70,23 +65,10 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
     }
   }
 
-  Future<void> _saveCredentials() async {
-    final key = _apiKeyController.text.trim();
-    final store = _storeIdController.text.trim();
-    if (key.isEmpty) return;
-
-    HapticsService.medium();
-    await ref.read(merchantProvider.notifier).setCredentials(
-          apiKey: key,
-          storeId: store.isNotEmpty ? store : 'STORE-01',
-        );
-  }
-
-
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(merchantProvider);
+    final authState = ref.watch(authStateProvider);
     final partner = state.partnerInfo;
     final validation = state.activeValidation;
 
@@ -94,12 +76,12 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
       backgroundColor: AppTheme.white,
       appBar: AppBar(
         backgroundColor: AppTheme.white,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'MERCHANT POS TERMINAL',
-              style: TextStyle(
+              partner?.name.toUpperCase() ?? 'MERCHANT POS TERMINAL',
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.5,
@@ -107,8 +89,8 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
               ),
             ),
             Text(
-              'VOUCHER VALIDATION & REDEMPTION',
-              style: TextStyle(
+              authState.user?.email ?? 'VOUCHER VALIDATION & REDEMPTION',
+              style: const TextStyle(
                 fontSize: 10,
                 color: AppTheme.grey,
                 fontWeight: FontWeight.w600,
@@ -118,15 +100,14 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
           ],
         ),
         actions: [
-          if (state.partnerApiKey != null)
-            IconButton(
-              icon: const Icon(Icons.logout, size: 18, color: AppTheme.black),
-              tooltip: 'Disconnect Terminal',
-              onPressed: () {
-                HapticsService.light();
-                ref.read(merchantProvider.notifier).disconnectTerminal();
-              },
-            ),
+          IconButton(
+            icon: const Icon(Icons.logout, size: 18, color: AppTheme.black),
+            tooltip: 'Sign Out',
+            onPressed: () {
+              HapticsService.light();
+              ref.read(authStateProvider.notifier).logout();
+            },
+          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -158,92 +139,48 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                   ],
                 ),
               )
-            : partner == null
-                ? _buildConfigView(state)
-                : _buildTerminalView(state, partner, validation),
+            : partner == null && state.errorMessage != null
+                ? _buildErrorView(state)
+                : _buildTerminalView(
+                    state,
+                    partner ??
+                        PartnerInfoModel(
+                          partnerId: authState.user?.partnerId ?? '',
+                          name: authState.user?.partnerName ?? 'Merchant Store',
+                          status: 'ACTIVE',
+                        ),
+                    validation,
+                  ),
       ),
     );
   }
 
-  Widget _buildConfigView(MerchantState state) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'TERMINAL SETUP',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.0,
-              color: AppTheme.black,
+  Widget _buildErrorView(MerchantState state) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 36, color: AppTheme.accentRed),
+            const SizedBox(height: 14),
+            Text(
+              state.errorMessage ?? 'Merchant terminal error',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.black),
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Authenticate your POS terminal with your store partner API key.',
-            style: TextStyle(color: AppTheme.grey, fontSize: 12),
-          ),
-          const SizedBox(height: 20),
-
-          if (state.errorMessage != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.white,
-                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                border: Border.all(color: AppTheme.accentRed),
-              ),
-              child: Text(
-                state.errorMessage!,
-                style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600),
-              ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => ref.read(merchantProvider.notifier).loadPartnerInfo(),
+              child: const Text('RETRY'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () => ref.read(authStateProvider.notifier).logout(),
+              child: const Text('SIGN OUT'),
+            ),
           ],
-
-          const Text(
-            'PARTNER API KEY',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppTheme.grey),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _apiKeyController,
-            decoration: const InputDecoration(
-              hintText: 'e.g. pk_live_... (from Admin Portal)',
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          const Text(
-            'STORE / BRANCH IDENTIFIER',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppTheme.grey),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _storeIdController,
-            decoration: const InputDecoration(
-              hintText: 'STORE-01',
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: state.isLoading ? null : _saveCredentials,
-            child: state.isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
-                    ),
-                  )
-                : const Text('CONNECT TERMINAL'),
-          ),
-
-        ],
+        ),
       ),
     );
   }
@@ -253,6 +190,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
     PartnerInfoModel partner,
     VoucherValidationModel? validation,
   ) {
+    final authState = ref.watch(authStateProvider);
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       children: [
@@ -267,30 +205,35 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    partner.name.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      color: AppTheme.black,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      partner.name.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.0,
+                        color: AppTheme.black,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'STORE ID: ${state.storeId} • STATUS: READY',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontFamily: AppTheme.monoFont,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.grey,
+                    const SizedBox(height: 2),
+                    Text(
+                      'TERMINAL: ${state.storeId} • ${authState.user?.email ?? "ONLINE"}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontFamily: AppTheme.monoFont,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.grey,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -298,7 +241,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 ),
                 child: const Text(
-                  'ONLINE',
+                  'ACTIVE',
                   style: TextStyle(
                     fontSize: 9,
                     fontFamily: AppTheme.monoFont,

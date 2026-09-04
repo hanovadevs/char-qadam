@@ -41,14 +41,20 @@ class GoogleAuthIn(BaseModel):
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    role: str = "USER"
+    partner_id: str | None = None
+    partner_name: str | None = None
 
 
 class UserOut(BaseModel):
     id: str
     email: EmailStr
     status: str
-    country: str | None
-    timezone: str | None
+    role: str = "USER"
+    partner_id: str | None = None
+    partner_name: str | None = None
+    country: str | None = None
+    timezone: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

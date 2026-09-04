@@ -31,7 +31,7 @@ from app.db.models import (
 )
 from app.db.postgres import get_session
 from app.services.partner_auth import hash_api_key
-from app.services.security import create_access_token
+from app.services.security import create_access_token, hash_password
 from app.services.voucher_sweep import sweep_expired_vouchers
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -57,15 +57,26 @@ class AdminAdjustPointsIn(BaseModel):
 
 class AdminPartnerIn(BaseModel):
     name: str
+    email: EmailStr
+    password: str
+    category: str | None = None
+    description: str | None = None
+    location: str | None = None
     status: str | None = "ACTIVE"
-    email: str | None = None
-    password: str | None = None
-    generate_api_key: bool | None = True
+    generate_api_key: bool | None = False
 
 
 class AdminPartnerPatchIn(BaseModel):
     name: str | None = None
+    email: EmailStr | None = None
+    category: str | None = None
+    description: str | None = None
+    location: str | None = None
     status: str | None = None
+
+
+class AdminPartnerResetPasswordIn(BaseModel):
+    password: str
 
 
 class AdminOfferIn(BaseModel):
@@ -268,14 +279,24 @@ async def list_partners(
         for row in redemption_stats_res.all()
     }
 
+    # Fetch merchant users mapping
+    merchant_users_res = await session.execute(
+        select(User.partner_id, User.email).where(User.role == "MERCHANT", User.partner_id.isnot(None))
+    )
+    merchant_emails = dict(merchant_users_res.all())
+
     items = []
     for p in partners:
         off_count = offer_counts.get(p.id, 0)
         red_count, total_discount = redemption_stats.get(p.id, (0, 0.0))
+        email_val = merchant_emails.get(p.id) or p.email
         items.append({
             "id": p.id,
             "name": p.name,
-            "email": None,
+            "email": email_val,
+            "category": getattr(p, "category", None),
+            "description": getattr(p, "description", None),
+            "location": getattr(p, "location", None),
             "status": p.status.value,
             "has_api_key": bool(p.api_key_hash),
             "offer_count": off_count,
@@ -291,19 +312,50 @@ async def create_partner(
     body: AdminPartnerIn,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
+    email_clean = str(body.email).strip().lower()
+
+    # Check for existing user account with this email
+    existing_user = (await session.execute(
+        select(User).where(User.email == email_clean)
+    )).scalar_one_or_none()
+    if existing_user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"An account with email '{email_clean}' already exists.",
+        )
+
     raw_api_key = None
     api_key_hash = None
-    if body.generate_api_key is not False:
+    if body.generate_api_key:
         raw_api_key = f"pk_live_{secrets.token_urlsafe(32)}"
         api_key_hash = hash_api_key(raw_api_key)
 
+    hashed_pwd = hash_password(body.password)
+    partner_id = str(uuid.uuid4())
+
     partner = Partner(
-        id=str(uuid.uuid4()),
+        id=partner_id,
         name=body.name.strip(),
+        email=email_clean,
+        password_hash=hashed_pwd,
+        category=body.category.strip() if body.category else None,
+        description=body.description.strip() if body.description else None,
+        location=body.location.strip() if body.location else None,
         api_key_hash=api_key_hash,
         status=PartnerStatus(body.status) if body.status else PartnerStatus.ACTIVE,
     )
     session.add(partner)
+
+    # Create matching merchant user account for mobile app login
+    merchant_user = User(
+        id=str(uuid.uuid4()),
+        email=email_clean,
+        password_hash=hashed_pwd,
+        role="MERCHANT",
+        partner_id=partner_id,
+        status=UserStatus.ACTIVE,
+    )
+    session.add(merchant_user)
 
     # Add audit log
     audit = AuditLog(
@@ -319,7 +371,10 @@ async def create_partner(
     return {
         "id": partner.id,
         "name": partner.name,
-        "email": body.email,
+        "email": email_clean,
+        "category": partner.category,
+        "description": partner.description,
+        "location": partner.location,
         "status": partner.status.value,
         "raw_api_key": raw_api_key,
         "has_api_key": bool(partner.api_key_hash),
@@ -342,8 +397,24 @@ async def update_partner(
 
     if body.name is not None:
         partner.name = body.name.strip()
+    if body.category is not None:
+        partner.category = body.category.strip() if body.category else None
+    if body.description is not None:
+        partner.description = body.description.strip() if body.description else None
+    if body.location is not None:
+        partner.location = body.location.strip() if body.location else None
     if body.status is not None:
         partner.status = PartnerStatus(body.status)
+
+    if body.email is not None:
+        email_clean = str(body.email).strip().lower()
+        partner.email = email_clean
+        # Also sync merchant user email
+        merchant_user = (await session.execute(
+            select(User).where(User.partner_id == partner_id)
+        )).scalar_one_or_none()
+        if merchant_user:
+            merchant_user.email = email_clean
 
     session.add(AuditLog(
         id=str(uuid.uuid4()),
@@ -353,7 +424,57 @@ async def update_partner(
         object_id=partner.id,
     ))
     await session.commit()
-    return {"id": partner.id, "name": partner.name, "status": partner.status.value}
+    return {
+        "id": partner.id,
+        "name": partner.name,
+        "email": partner.email,
+        "category": partner.category,
+        "description": partner.description,
+        "location": partner.location,
+        "status": partner.status.value,
+    }
+
+
+@router.post("/partners/{partner_id}/reset-password", summary="Reset Partner Merchant Password")
+async def reset_partner_password(
+    partner_id: str,
+    body: AdminPartnerResetPasswordIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    partner = await session.get(Partner, partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    new_hash = hash_password(body.password)
+    partner.password_hash = new_hash
+
+    # Find or link merchant user
+    merchant_user = (await session.execute(
+        select(User).where(User.partner_id == partner_id)
+    )).scalar_one_or_none()
+
+    if merchant_user:
+        merchant_user.password_hash = new_hash
+    elif partner.email:
+        merchant_user = User(
+            id=str(uuid.uuid4()),
+            email=partner.email,
+            password_hash=new_hash,
+            role="MERCHANT",
+            partner_id=partner_id,
+            status=UserStatus.ACTIVE,
+        )
+        session.add(merchant_user)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="RESET_PARTNER_PASSWORD",
+        object_type="PARTNER",
+        object_id=partner.id,
+    ))
+    await session.commit()
+    return {"partner_id": partner.id, "success": True, "message": "Merchant password reset successfully"}
 
 
 @router.post("/partners/{partner_id}/regenerate-key", summary="Regenerate Partner API Key")
@@ -388,6 +509,12 @@ async def get_partner(
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
 
+    # Fetch merchant user email if any
+    merchant_user = (await session.execute(
+        select(User).where(User.partner_id == partner_id)
+    )).scalar_one_or_none()
+    email_val = merchant_user.email if merchant_user else partner.email
+
     # Fetch offers
     offers_res = await session.execute(
         select(Offer).where(Offer.partner_id == partner_id).order_by(desc(Offer.created_at))
@@ -407,7 +534,10 @@ async def get_partner(
     return {
         "id": partner.id,
         "name": partner.name,
-        "email": None,
+        "email": email_val,
+        "category": getattr(partner, "category", None),
+        "description": getattr(partner, "description", None),
+        "location": getattr(partner, "location", None),
         "status": partner.status.value,
         "has_api_key": bool(partner.api_key_hash),
         "raw_api_key": None,

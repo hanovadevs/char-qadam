@@ -115,6 +115,13 @@ class ApiClient {
     });
   }
 
+  async resetPartnerPassword(partnerId, password) {
+    return this.request(`/admin/partners/${partnerId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+  }
+
   // Deals / Offers
   async listOffers({ partner_id, status, search } = {}) {
     const params = new URLSearchParams();

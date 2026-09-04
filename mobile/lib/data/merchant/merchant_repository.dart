@@ -1,48 +1,43 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/config/env_config.dart';
+import '../api/api_client.dart';
 import '../models/merchant_models.dart';
 
 final merchantRepositoryProvider = Provider<MerchantRepository>((ref) {
-  return MerchantRepository();
+  final apiClient = ref.watch(apiClientProvider);
+  return MerchantRepository(apiClient: apiClient);
 });
 
 class MerchantRepository {
-  Dio _createPartnerDio(String partnerApiKey) {
-    return Dio(
-      BaseOptions(
-        baseUrl: EnvConfig.baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Partner-Key': partnerApiKey,
-        },
-      ),
-    );
-  }
+  final ApiClient apiClient;
 
-  Future<PartnerInfoModel> getPartnerInfo(String partnerApiKey) async {
+  MerchantRepository({required this.apiClient});
+
+  Future<PartnerInfoModel> getPartnerInfo({String? partnerApiKey}) async {
     try {
-      final dio = _createPartnerDio(partnerApiKey);
-      final response = await dio.get('/partner/v1/info');
+      final options = partnerApiKey != null && partnerApiKey.isNotEmpty
+          ? Options(headers: {'X-Partner-Key': partnerApiKey})
+          : null;
+      final response = await apiClient.get('/partner/v1/info', options: options);
       return PartnerInfoModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      final msg = e.response?.data?['detail'] ?? 'Invalid Partner API Key';
+      final msg = e.response?.data?['detail'] ?? 'Failed to load merchant store info';
       throw Exception(msg);
     }
   }
 
   Future<VoucherValidationModel> validateVoucher({
-    required String partnerApiKey,
     required String codeOrToken,
+    String? partnerApiKey,
   }) async {
     try {
-      final dio = _createPartnerDio(partnerApiKey);
-      final response = await dio.post(
+      final options = partnerApiKey != null && partnerApiKey.isNotEmpty
+          ? Options(headers: {'X-Partner-Key': partnerApiKey})
+          : null;
+      final response = await apiClient.post(
         '/partner/v1/vouchers/validate',
         data: {'token': codeOrToken.trim()},
+        options: options,
       );
       return VoucherValidationModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -52,14 +47,16 @@ class MerchantRepository {
   }
 
   Future<PartnerRedemptionResultModel> redeemVoucher({
-    required String partnerApiKey,
     required String nonce,
     String? storeId,
     String? orderReference,
+    String? partnerApiKey,
   }) async {
     try {
-      final dio = _createPartnerDio(partnerApiKey);
-      final response = await dio.post(
+      final options = partnerApiKey != null && partnerApiKey.isNotEmpty
+          ? Options(headers: {'X-Partner-Key': partnerApiKey})
+          : null;
+      final response = await apiClient.post(
         '/partner/v1/vouchers/redeem',
         data: {
           'nonce': nonce,
@@ -67,6 +64,7 @@ class MerchantRepository {
           if (orderReference != null && orderReference.isNotEmpty)
             'order_reference': orderReference,
         },
+        options: options,
       );
       return PartnerRedemptionResultModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -75,10 +73,12 @@ class MerchantRepository {
     }
   }
 
-  Future<List<RedemptionHistoryItemModel>> getRedemptions(String partnerApiKey) async {
+  Future<List<RedemptionHistoryItemModel>> getRedemptions({String? partnerApiKey}) async {
     try {
-      final dio = _createPartnerDio(partnerApiKey);
-      final response = await dio.get('/partner/v1/redemptions');
+      final options = partnerApiKey != null && partnerApiKey.isNotEmpty
+          ? Options(headers: {'X-Partner-Key': partnerApiKey})
+          : null;
+      final response = await apiClient.get('/partner/v1/redemptions', options: options);
       return (response.data as List<dynamic>)
           .map((e) => RedemptionHistoryItemModel.fromJson(e as Map<String, dynamic>))
           .toList();
