@@ -58,6 +58,9 @@ class AdminAdjustPointsIn(BaseModel):
 class AdminPartnerIn(BaseModel):
     name: str
     status: str | None = "ACTIVE"
+    email: str | None = None
+    password: str | None = None
+    generate_api_key: bool | None = True
 
 
 class AdminPartnerPatchIn(BaseModel):
@@ -181,8 +184,49 @@ async def get_analytics_charts(session: AsyncSession = Depends(get_session)) -> 
     steps_rows = (await session.execute(steps_query)).all()
     steps_data = [{"date": r.local_date, "steps": int(r.steps)} for r in reversed(steps_rows)]
 
+    # Top partners by redemptions
+    top_partners_q = (
+        select(
+            Partner.id,
+            Partner.name,
+            func.count(Redemption.id).label("count"),
+            func.coalesce(func.sum(Redemption.discount_value), 0.0).label("value"),
+        )
+        .join(Redemption, Redemption.partner_id == Partner.id)
+        .group_by(Partner.id, Partner.name)
+        .order_by(desc("count"))
+        .limit(5)
+    )
+    top_partners_res = (await session.execute(top_partners_q)).all()
+    top_partners = [
+        {"id": r.id, "name": r.name, "count": int(r.count), "value": float(r.value)}
+        for r in top_partners_res
+    ]
+
+    # Top deals by redemptions
+    top_deals_q = (
+        select(
+            Offer.id,
+            Offer.title,
+            func.count(Redemption.id).label("count"),
+            func.coalesce(func.sum(Redemption.discount_value), 0.0).label("value"),
+        )
+        .join(Voucher, Voucher.id == Redemption.voucher_id)
+        .join(Offer, Offer.id == Voucher.offer_id)
+        .group_by(Offer.id, Offer.title)
+        .order_by(desc("count"))
+        .limit(5)
+    )
+    top_deals_res = (await session.execute(top_deals_q)).all()
+    top_deals = [
+        {"id": r.id, "title": r.title, "count": int(r.count), "value": float(r.value)}
+        for r in top_deals_res
+    ]
+
     return {
         "daily_steps": steps_data,
+        "top_partners": top_partners,
+        "top_deals": top_deals,
     }
 
 
@@ -205,13 +249,38 @@ async def list_partners(
     result = await session.execute(query)
     partners = result.scalars().all()
 
+    # Aggregate offer counts per partner
+    offer_counts_res = await session.execute(
+        select(Offer.partner_id, func.count(Offer.id)).group_by(Offer.partner_id)
+    )
+    offer_counts = dict(offer_counts_res.all())
+
+    # Aggregate redemption counts and discount totals per partner
+    redemption_stats_res = await session.execute(
+        select(
+            Redemption.partner_id,
+            func.count(Redemption.id),
+            func.coalesce(func.sum(Redemption.discount_value), 0.0),
+        ).group_by(Redemption.partner_id)
+    )
+    redemption_stats = {
+        row[0]: (int(row[1]), float(row[2]))
+        for row in redemption_stats_res.all()
+    }
+
     items = []
     for p in partners:
+        off_count = offer_counts.get(p.id, 0)
+        red_count, total_discount = redemption_stats.get(p.id, (0, 0.0))
         items.append({
             "id": p.id,
             "name": p.name,
+            "email": None,
             "status": p.status.value,
             "has_api_key": bool(p.api_key_hash),
+            "offer_count": off_count,
+            "redemption_count": red_count,
+            "total_discount_value": total_discount,
             "created_at": p.created_at.isoformat(),
         })
     return items
@@ -222,8 +291,11 @@ async def create_partner(
     body: AdminPartnerIn,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    raw_api_key = f"pk_live_{secrets.token_urlsafe(32)}"
-    api_key_hash = hash_api_key(raw_api_key)
+    raw_api_key = None
+    api_key_hash = None
+    if body.generate_api_key is not False:
+        raw_api_key = f"pk_live_{secrets.token_urlsafe(32)}"
+        api_key_hash = hash_api_key(raw_api_key)
 
     partner = Partner(
         id=str(uuid.uuid4()),
@@ -247,8 +319,13 @@ async def create_partner(
     return {
         "id": partner.id,
         "name": partner.name,
+        "email": body.email,
         "status": partner.status.value,
         "raw_api_key": raw_api_key,
+        "has_api_key": bool(partner.api_key_hash),
+        "offer_count": 0,
+        "redemption_count": 0,
+        "total_discount_value": 0.0,
         "created_at": partner.created_at.isoformat(),
     }
 
@@ -300,6 +377,64 @@ async def regenerate_partner_key(
     ))
     await session.commit()
     return {"partner_id": partner.id, "raw_api_key": raw_api_key}
+
+
+@router.get("/partners/{partner_id}", summary="Get Partner Details")
+async def get_partner(
+    partner_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    partner = await session.get(Partner, partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    # Fetch offers
+    offers_res = await session.execute(
+        select(Offer).where(Offer.partner_id == partner_id).order_by(desc(Offer.created_at))
+    )
+    offers = offers_res.scalars().all()
+
+    # Fetch recent redemptions
+    redemptions_res = await session.execute(
+        select(Redemption)
+        .options(selectinload(Redemption.voucher).selectinload(Voucher.offer))
+        .where(Redemption.partner_id == partner_id)
+        .order_by(desc(Redemption.redeemed_at))
+        .limit(10)
+    )
+    redemptions = redemptions_res.scalars().all()
+
+    return {
+        "id": partner.id,
+        "name": partner.name,
+        "email": None,
+        "status": partner.status.value,
+        "has_api_key": bool(partner.api_key_hash),
+        "raw_api_key": None,
+        "offers": [
+            {
+                "id": o.id,
+                "title": o.title,
+                "description": o.description,
+                "discount_type": o.discount_type.value,
+                "discount_value": float(o.discount_value),
+                "points_cost": o.points_cost,
+                "status": o.status.value,
+            }
+            for o in offers
+        ],
+        "recent_redemptions": [
+            {
+                "id": r.id,
+                "short_code": r.voucher.short_code if r.voucher else "N/A",
+                "offer_title": r.voucher.offer.title if (r.voucher and r.voucher.offer) else "Offer",
+                "discount_value": float(r.discount_value),
+                "redeemed_at": r.redeemed_at.isoformat(),
+            }
+            for r in redemptions
+        ],
+        "created_at": partner.created_at.isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
