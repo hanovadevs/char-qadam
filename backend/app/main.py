@@ -88,12 +88,16 @@ def create_app() -> FastAPI:
         @app.get("/portal/{full_path:path}", include_in_schema=False)
         @app.get("/login", include_in_schema=False)
         @app.get("/dashboard", include_in_schema=False)
-        @app.get("/partners", include_in_schema=False)
-        @app.get("/offers", include_in_schema=False)
-        @app.get("/pos", include_in_schema=False)
+        @app.get("/stores", include_in_schema=False)
+        @app.get("/deals", include_in_schema=False)
+        @app.get("/vouchers", include_in_schema=False)
         @app.get("/users", include_in_schema=False)
         @app.get("/ledger", include_in_schema=False)
         @app.get("/audit", include_in_schema=False)
+        @app.get("/settings", include_in_schema=False)
+        @app.get("/partners", include_in_schema=False)
+        @app.get("/offers", include_in_schema=False)
+        @app.get("/pos", include_in_schema=False)
         async def serve_admin_portal():
             index_html = web_dist / "index.html"
             if index_html.is_file():

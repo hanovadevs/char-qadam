@@ -82,12 +82,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
         );
   }
 
-  void _useTestCredentials() {
-    HapticsService.light();
-    _apiKeyController.text = 'demo-partner-api-key';
-    _storeIdController.text = 'STORE-MAIN';
-    _saveCredentials();
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +211,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
           TextFormField(
             controller: _apiKeyController,
             decoration: const InputDecoration(
-              hintText: 'Enter X-Partner-Key token',
+              hintText: 'e.g. pk_live_... (from Admin Portal)',
             ),
           ),
           const SizedBox(height: 14),
@@ -247,11 +242,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                   )
                 : const Text('CONNECT TERMINAL'),
           ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: _useTestCredentials,
-            child: const Text('AUTO-CONNECT DEMO TERMINAL'),
-          ),
+
         ],
       ),
     );
