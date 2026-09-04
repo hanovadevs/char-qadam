@@ -92,8 +92,16 @@ async def sync_activity(
         row.sync_version += 1
         row.source = source
 
-    delta_steps = new_steps - old_steps          # always >= 0
-    delta_points = delta_steps // settings.steps_per_point
+    # Award on the difference of *cumulative* point totals, never on the raw
+    # step delta.  Computing points_per_sync as ``delta_steps // steps_per_point``
+    # truncates the sub-threshold remainder on every call, so a client that syncs
+    # in small increments (e.g. every few seconds) loses those partial steps and
+    # can earn far fewer — often zero — points despite walking thousands of steps.
+    # Deriving from totals makes the remainder carry across syncs and guarantees
+    # lifetime points == floor(total_steps / steps_per_point).
+    old_points = old_steps // settings.steps_per_point
+    new_points = new_steps // settings.steps_per_point
+    delta_points = new_points - old_points
 
     # ------------------------------------------ mint ledger entry if warranted
     if delta_points > 0:

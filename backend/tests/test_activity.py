@@ -170,6 +170,36 @@ async def test_delta_only_award_on_step_increase(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_small_increment_syncs_do_not_lose_points(client: AsyncClient) -> None:
+    """Frequent small-delta syncs must not drop sub-threshold remainders.
+
+    Regression: points were previously computed as ``delta_steps // 100`` per
+    sync, so a client syncing < 100 steps at a time earned 0 points forever.
+    Points must instead track floor(total_steps / 100)."""
+    email = _email()
+    try:
+        token = await _register_and_token(client, email)
+        today = _today()
+
+        # Sync in 30-step increments up to 300 total. Each individual delta is
+        # < 100 steps, so the old per-delta logic would have awarded 0 points.
+        last = None
+        for steps in range(30, 301, 30):
+            last = await client.post(
+                "/activity/sync",
+                json={"local_date": today, "eligible_steps": steps, "source": "manual", "sync_key": _sync_key()},
+                headers=_auth(token),
+            )
+            assert last.status_code == 200, last.text
+
+        # 300 total steps / 100 = 3 points, regardless of how it was chunked.
+        assert last.json()["eligible_steps"] == 300
+        assert last.json()["balance"] == 3
+    finally:
+        await _cleanup(email)
+
+
+@pytest.mark.asyncio
 async def test_lower_steps_later_no_deduction(client: AsyncClient) -> None:
     """A later sync with fewer steps must NOT reduce points (stale reading)."""
     email = _email()

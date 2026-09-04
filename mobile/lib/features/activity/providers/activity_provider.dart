@@ -86,6 +86,9 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   StreamSubscription<int>? _stepStreamSub;
   Timer? _debounceTimer;
 
+  bool _permissionsRequested = false;
+  DateTime? _lastSyncAt;
+
   ActivityNotifier({
     required this.healthService,
     required this.activityRepository,
@@ -117,11 +120,27 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   }
 
   /// Initialize health permissions, fetch steps, sync with server, and load history.
+  ///
+  /// Safe to call on every app resume: permissions are only requested once per
+  /// session, and repeated calls within a short window are throttled so the
+  /// screen doesn't re-sync/reload constantly.
   Future<void> initAndSync() async {
+    if (state.isSyncing) return;
+    if (_lastSyncAt != null &&
+        DateTime.now().difference(_lastSyncAt!) < const Duration(seconds: 30)) {
+      return;
+    }
+    _lastSyncAt = DateTime.now();
+
     state = state.copyWith(isSyncing: true, errorMessage: null);
 
-    final hasPerm = await healthService.requestPermissions();
-    state = state.copyWith(hasPermission: hasPerm);
+    // Request OS permissions only on the first run — re-requesting on every
+    // resume spams the permission APIs and floods the log.
+    if (!_permissionsRequested) {
+      _permissionsRequested = true;
+      final hasPerm = await healthService.requestPermissions();
+      state = state.copyWith(hasPermission: hasPerm);
+    }
 
     final rawSteps = await healthService.fetchTodaySteps();
     state = state.copyWith(todaySteps: rawSteps);
@@ -154,6 +173,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       );
 
       final nowFormatted = DateFormat('hh:mm a').format(DateTime.now());
+      _lastSyncAt = DateTime.now();
 
       state = state.copyWith(
         todaySteps: syncResponse.eligibleSteps,

@@ -296,17 +296,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      user?.email ?? 'USER',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                        color: AppTheme.black,
+                    _buildAvatar(authState.googlePhotoUrl, authState.googleName, user?.email),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (authState.googleName != null && authState.googleName!.isNotEmpty)
+                            Text(
+                              authState.googleName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                                color: AppTheme.black,
+                              ),
+                            ),
+                          Text(
+                            user?.email ?? 'USER',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: (authState.googleName != null && authState.googleName!.isNotEmpty) ? 12 : 16,
+                              fontWeight: (authState.googleName != null && authState.googleName!.isNotEmpty)
+                                  ? FontWeight.w500
+                                  : FontWeight.w700,
+                              letterSpacing: -0.2,
+                              color: (authState.googleName != null && authState.googleName!.isNotEmpty)
+                                  ? AppTheme.grey
+                                  : AppTheme.black,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -489,6 +517,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAvatar(String? photoUrl, String? name, String? email) {
+    const double size = 44;
+    final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+    // Initial letter fallback when there's no Google photo.
+    final seed = (name != null && name.isNotEmpty)
+        ? name
+        : (email != null && email.isNotEmpty ? email : '?');
+    final initial = seed.substring(0, 1).toUpperCase();
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppTheme.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.borderDark, width: 1),
+        image: hasPhoto
+            ? DecorationImage(image: NetworkImage(photoUrl), fit: BoxFit.cover)
+            : null,
+      ),
+      alignment: Alignment.center,
+      child: hasPhoto
+          ? null
+          : Text(
+              initial,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.black,
+              ),
+            ),
     );
   }
 
