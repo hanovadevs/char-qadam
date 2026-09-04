@@ -1,7 +1,7 @@
 # Production Dockerfile for Qadam FastAPI Backend
 FROM python:3.12-slim
 
-# Set environment variables
+# Set environment variables , yes
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
