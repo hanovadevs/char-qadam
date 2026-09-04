@@ -34,28 +34,41 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final googleSignIn = GoogleSignIn(
         serverClientId: EnvConfig.googleClientId,
-        scopes: ['email'],
+        scopes: const ['email', 'profile'],
       );
+      // Sign out first so the account picker always appears.
+      await googleSignIn.signOut();
+
       final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return;
+      if (googleUser == null) return; // user cancelled the picker
 
       final googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken ?? 'mock_google_token:${googleUser.email}';
+      // Prefer the verified Google ID token; fall back to the REAL signed-in
+      // email if the OAuth client doesn't return one — never a demo user.
+      final token = googleAuth.idToken;
+      final idToken = (token != null && token.isNotEmpty)
+          ? token
+          : 'mock_google_token:${googleUser.email}';
 
       await ref.read(authStateProvider.notifier).loginWithGoogle(
             idToken: idToken,
             country: _countryController.text.trim().toUpperCase(),
             timezone: _timezoneController.text.trim(),
+            displayName: googleUser.displayName,
+            photoUrl: googleUser.photoUrl,
           );
-    } catch (_) {
-      await ref.read(authStateProvider.notifier).loginWithGoogle(
-            idToken: 'mock_google_token:demo_google_user@gmail.com',
-            country: _countryController.text.trim().toUpperCase(),
-            timezone: _timezoneController.text.trim(),
-          );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: AppTheme.accentRed,
+        ),
+      );
     }
   }
 

@@ -39,8 +39,15 @@ class HealthService {
   int? _dailyBaseline;
   String? _dailyBaselineDate;
   int _currentTodaySteps = 0;
+  int _lastNotifiedSteps = 0;
   String _pedestrianStatus = 'unknown';
   String get pedestrianStatus => _pedestrianStatus;
+
+  // Only refresh the ongoing notification once the step count has moved this
+  // many steps. The pedometer stream fires on nearly every step, and updating
+  // the notification (and its logging) on each event is the main source of
+  // visible "refresh spam".
+  static const int _notificationStepThreshold = 25;
 
   StreamSubscription<StepCount>? _pedometerSubscription;
   StreamSubscription<PedestrianStatus>? _statusSubscription;
@@ -51,6 +58,13 @@ class HealthService {
   }
 
   Future<void> _init() async {
+    // The health plugin must be configured before any Health Connect / HealthKit
+    // call, otherwise reads silently fail.
+    try {
+      await _health.configure();
+    } catch (e) {
+      debugPrint('Health configure error: $e');
+    }
     await _loadStoredBaseline();
     _startPedometerStreams();
   }
@@ -155,11 +169,15 @@ class HealthService {
 
     _stepStreamController.add(_currentTodaySteps);
 
-    // Update ongoing persistent notification for 24/7 background tracking
-    NotificationService.updateOngoingStepNotification(
-      stepsToday: _currentTodaySteps,
-      dailyGoal: 20000,
-    );
+    // Update ongoing persistent notification for 24/7 background tracking,
+    // throttled so we don't churn the notification on every sensor tick.
+    if ((_currentTodaySteps - _lastNotifiedSteps).abs() >= _notificationStepThreshold) {
+      _lastNotifiedSteps = _currentTodaySteps;
+      NotificationService.updateOngoingStepNotification(
+        stepsToday: _currentTodaySteps,
+        dailyGoal: 20000,
+      );
+    }
   }
 
   /// Request all permissions needed for continuous 24/7 background tracking:
@@ -171,9 +189,13 @@ class HealthService {
   Future<bool> requestPermissions() async {
     if (kIsWeb) return false;
 
-    // 1. Activity Recognition
+    // 1. Activity Recognition — this is the permission that powers the live
+    // hardware pedometer, which is the app's primary step source. If it is
+    // granted we can track steps regardless of Health Connect availability.
+    bool activityGranted = false;
     try {
-      await Permission.activityRecognition.request();
+      final status = await Permission.activityRecognition.request();
+      activityGranted = status.isGranted;
     } catch (e) {
       debugPrint('Activity recognition error: $e');
     }
@@ -202,15 +224,22 @@ class HealthService {
       debugPrint('Battery optimization request error: $e');
     }
 
-    // 5. Health Connect / Apple HealthKit
+    // 5. Health Connect / Apple HealthKit (best-effort — enriches step data but
+    // is NOT required to enter the app; the hardware pedometer suffices).
+    bool healthGranted = false;
     try {
       final hasPermission = await _health.hasPermissions(_types);
-      if (hasPermission == true) return true;
-      return await _health.requestAuthorization(_types);
+      healthGranted = hasPermission == true
+          ? true
+          : await _health.requestAuthorization(_types);
     } catch (e) {
       debugPrint('Health authorization error: $e');
-      return await Permission.activityRecognition.isGranted;
     }
+
+    // Consider tracking enabled if EITHER source is available. Gating solely on
+    // Health Connect leaves users stuck on onboarding when it is denied or not
+    // installed, even though the pedometer can already count their steps.
+    return activityGranted || healthGranted;
   }
 
   /// Fetch total step count for today (local midnight 00:00:00 to now).
@@ -225,6 +254,7 @@ class HealthService {
 
       if (healthSteps != null && healthSteps > 0) {
         _currentTodaySteps = healthSteps;
+        _lastNotifiedSteps = healthSteps;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt(_prefLastStepsToday, healthSteps);
 

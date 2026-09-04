@@ -9,8 +9,33 @@ import '../../../core/widgets/swiss_skeleton.dart';
 import '../../points/providers/points_provider.dart';
 import '../providers/rewards_provider.dart';
 
-class RewardsScreen extends ConsumerWidget {
+class RewardsScreen extends ConsumerStatefulWidget {
   const RewardsScreen({super.key});
+
+  @override
+  ConsumerState<RewardsScreen> createState() => _RewardsScreenState();
+}
+
+class _RewardsScreenState extends ConsumerState<RewardsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Pull the latest balance + catalog when the screen first mounts so the
+    // redeem button reflects points earned after app launch (the points
+    // provider otherwise only loads once at startup).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(pointsProvider.notifier).refresh();
+      ref.read(rewardsProvider.notifier).fetchOffers();
+    });
+  }
+
+  /// Refresh both the offer catalog and the redeemable balance together.
+  Future<void> _refreshAll() async {
+    await Future.wait([
+      ref.read(rewardsProvider.notifier).fetchOffers(),
+      ref.read(pointsProvider.notifier).refresh(),
+    ]);
+  }
 
   void _showRedeemBottomSheet(BuildContext context, WidgetRef ref, dynamic offer, int userBalance) {
     final cost = offer.pointsCost as int;
@@ -26,7 +51,7 @@ class RewardsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
         side: BorderSide(color: AppTheme.borderDark, width: 1),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
           child: Column(
@@ -93,7 +118,7 @@ class RewardsScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(sheetContext),
                       child: const Text('CANCEL'),
                     ),
                   ),
@@ -102,15 +127,22 @@ class RewardsScreen extends ConsumerWidget {
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () async {
-                        Navigator.pop(context);
+                        // Close the sheet using ITS OWN context, then drive all
+                        // post-redeem UI from the screen's State (this.context /
+                        // this.mounted). Using the popped sheet context here was
+                        // the bug: it's unmounted after pop, so the success modal
+                        // and error snackbar were silently skipped.
+                        Navigator.pop(sheetContext);
+                        final messenger = ScaffoldMessenger.of(this.context);
                         final result = await ref.read(rewardsProvider.notifier).redeem(offer.id);
-                        if (result != null && context.mounted) {
+                        if (!mounted) return;
+                        if (result != null) {
                           HapticsService.heavy();
                           ref.read(pointsProvider.notifier).refresh();
-                          _showSuccessModal(context, result);
-                        } else if (context.mounted) {
+                          _showSuccessModal(this.context, result);
+                        } else {
                           final error = ref.read(rewardsProvider).errorMessage ?? 'Redemption failed';
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(
                               content: Text(error),
                               backgroundColor: AppTheme.accentRed,
@@ -240,7 +272,7 @@ class RewardsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final rewardsState = ref.watch(rewardsProvider);
     final pointsState = ref.watch(pointsProvider);
 
@@ -286,7 +318,7 @@ class RewardsScreen extends ConsumerWidget {
                     ),
                   )
                 : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
-            onPressed: () => ref.read(rewardsProvider.notifier).fetchOffers(),
+            onPressed: _refreshAll,
           ),
           const SizedBox(width: 8),
         ],
@@ -294,7 +326,7 @@ class RewardsScreen extends ConsumerWidget {
       body: RefreshIndicator(
         color: AppTheme.black,
         backgroundColor: AppTheme.white,
-        onRefresh: () => ref.read(rewardsProvider.notifier).fetchOffers(),
+        onRefresh: _refreshAll,
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           children: [
