@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Environment configuration for the Stepsy mobile app.
 ///

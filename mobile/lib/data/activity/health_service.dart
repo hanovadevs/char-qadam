@@ -41,6 +41,7 @@ class HealthService {
   int _currentTodaySteps = 0;
   int _lastNotifiedSteps = 0;
   String _pedestrianStatus = 'unknown';
+  String get pedestrianStatus => _pedestrianStatus;
 
   // Only refresh the ongoing notification once the step count has moved this
   // many steps. The pedometer stream fires on nearly every step, and updating
@@ -300,3 +301,4 @@ class HealthService {
     _stepStreamController.close();
   }
 }
+

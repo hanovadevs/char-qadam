@@ -1,4 +1,5 @@
 import os
+# pyrefly: ignore [missing-import]
 from PIL import Image, ImageDraw, ImageFont
 
 def create_stepsy_icon():

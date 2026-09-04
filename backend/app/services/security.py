@@ -43,16 +43,24 @@ def verify_password(plain: str, hashed: str) -> bool:
 # JWT helpers
 # ---------------------------------------------------------------------------
 
-def create_access_token(user_id: str) -> str:
-    """Mint a signed JWT for *user_id* with the configured expiry."""
+def create_access_token(
+    user_id: str | None = None,
+    *,
+    subject: str | None = None,
+    extra_claims: dict[str, Any] | None = None,
+) -> str:
+    """Mint a signed JWT for *user_id* or *subject* with configured expiry and optional claims."""
     settings = get_settings()
     now = datetime.now(timezone.utc)
-    payload = {
-        "sub": user_id,
-        "type": "access",
-        "iat": now,
-        "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
+    sub = user_id or subject or 'anonymous'
+    payload: dict[str, Any] = {
+        'sub': str(sub),
+        'type': 'access',
+        'iat': now,
+        'exp': now + timedelta(minutes=settings.access_token_expire_minutes),
     }
+    if extra_claims:
+        payload.update(extra_claims)
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
@@ -132,3 +140,4 @@ async def verify_google_id_token(id_token: str, client_id: str | None = None) ->
             "sub": data.get("sub", email),
             "email_verified": str(data.get("email_verified", "true")).lower() == "true",
         }
+
