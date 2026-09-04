@@ -88,12 +88,34 @@ export default function Stores() {
   const openStoreDetails = async (storeId) => {
     setSelectedStore(storeId);
     setLoadingDetails(true);
+
+    const baseStore = stores.find((s) => s.id === storeId) || { id: storeId, name: 'Store' };
+
     try {
       const data = await api.getPartner(storeId);
       setStoreDetails(data);
     } catch (err) {
-      alert(err.message || 'Failed to load store details.');
-      setSelectedStore(null);
+      // Graceful fallback to listOffers + listRedemptions
+      try {
+        const [offersData, redemptionsData] = await Promise.all([
+          api.listOffers({ partner_id: storeId }),
+          api.listRedemptions(),
+        ]);
+        const storeRedemptions = (redemptionsData || []).filter(
+          (r) => r.partner_name === baseStore.name || r.partner_id === storeId
+        );
+        setStoreDetails({
+          ...baseStore,
+          offers: offersData || [],
+          recent_redemptions: storeRedemptions || [],
+        });
+      } catch (fallbackErr) {
+        setStoreDetails({
+          ...baseStore,
+          offers: [],
+          recent_redemptions: [],
+        });
+      }
     } finally {
       setLoadingDetails(false);
     }
