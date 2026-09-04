@@ -1,6 +1,4 @@
 {
-  "cleanUrls": true,
-  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/admin/:path*",

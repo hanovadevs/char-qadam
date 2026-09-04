@@ -1,5 +1,4 @@
 {
-  "cleanUrls": true,
   "outputDirectory": "web/dist",
   "rewrites": [
     {
