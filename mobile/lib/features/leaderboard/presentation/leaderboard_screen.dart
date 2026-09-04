@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/leaderboard_models.dart';
 import '../providers/leaderboard_provider.dart';
@@ -19,243 +21,270 @@ class LeaderboardScreen extends ConsumerWidget {
     final remaining = rankings.skip(3).toList();
 
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       appBar: AppBar(
-        backgroundColor: AppTheme.white,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'COMMUNITY LEADERBOARD',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: AppTheme.black,
-              ),
-            ),
-            Text(
-              'VERIFIED STEP PERFORMANCE',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppTheme.grey,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Leaderboard',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AppTheme.inkPrimary,
+          ),
         ),
         actions: [
           IconButton(
             icon: state.isLoading
                 ? const SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
                     ),
                   )
-                : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
+                : const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: AppTheme.inkPrimary),
             onPressed: () => ref.read(leaderboardProvider.notifier).refresh(),
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.black,
-        backgroundColor: AppTheme.white,
+        color: AppTheme.accentSolid,
+        backgroundColor: AppTheme.surface,
         onRefresh: () => ref.read(leaderboardProvider.notifier).refresh(),
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           children: [
-            // Scope Segmented Button (Swiss Light Mode)
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'today', label: Text('TODAY')),
-                ButtonSegment(value: 'week', label: Text('7D')),
-                ButtonSegment(value: 'month', label: Text('30D')),
-                ButtonSegment(value: 'all_time', label: Text('ALL')),
-              ],
-              selected: {state.selectedScope},
-              onSelectionChanged: (Set<String> selection) {
-                ref.read(leaderboardProvider.notifier).fetchLeaderboard(selection.first);
-              },
+            // Scope Segmented Control (Apple Pill Style)
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                border: Border.all(color: AppTheme.hairline),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  _buildScopeSegment('today', 'Today', state.selectedScope, ref),
+                  _buildScopeSegment('week', '7D', state.selectedScope, ref),
+                  _buildScopeSegment('month', '30D', state.selectedScope, ref),
+                  _buildScopeSegment('all_time', 'All time', state.selectedScope, ref),
+                ],
+              ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
             // Sticky/Pinned Current User Status
             if (userRanking != null) ...[
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.beige,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.borderDark, width: 1.5),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.hairline),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AppTheme.black,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                        color: AppTheme.accentSolid,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                       ),
                       child: Text(
                         '#${userRanking.rank}',
                         style: const TextStyle(
                           fontSize: 16,
-                          fontFamily: AppTheme.monoFont,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.white,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.surface,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'YOUR CURRENT RANKING',
+                            'Your rank',
                             style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.0,
-                              color: AppTheme.grey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: AppTheme.inkSecondary,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${NumberFormat('#,###').format(userRanking.totalSteps)} STEPS  •  +${userRanking.pointsEarned} PTS',
+                            '${NumberFormat('#,###').format(userRanking.totalSteps)} steps  •  +${userRanking.pointsEarned} pts',
                             style: const TextStyle(
-                              fontSize: 13,
-                              fontFamily: AppTheme.monoFont,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.inkPrimary,
+                              letterSpacing: -0.2,
                             ),
                           ),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.white,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                        border: Border.all(color: AppTheme.borderDark),
+                        color: AppTheme.accentBright.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                       ),
                       child: Text(
-                        'TOP ${userRanking.percentile}%',
+                        'Top ${userRanking.percentile}%',
                         style: const TextStyle(
-                          fontSize: 9,
-                          fontFamily: AppTheme.monoFont,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.taupe,
-                          letterSpacing: 0.5,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.accentSolid,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
             ],
 
-            // Top 3 Podium (If available)
+            // Top 3 Podium
             if (topThree.isNotEmpty) ...[
               const Text(
-                'TOP PERFORMERS',
+                'Top walkers',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: AppTheme.black,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                  color: AppTheme.inkPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   // #2 Second Place
                   if (topThree.length > 1)
                     Expanded(
-                      child: _buildPodiumTile(topThree[1], 2, height: 110),
+                      child: _buildPodiumTile(topThree[1], 2, height: 115),
                     )
                   else
                     const Spacer(),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
 
                   // #1 First Place
                   if (topThree.isNotEmpty)
                     Expanded(
-                      child: _buildPodiumTile(topThree[0], 1, height: 130),
+                      child: _buildPodiumTile(topThree[0], 1, height: 135),
                     ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
 
                   // #3 Third Place
                   if (topThree.length > 2)
                     Expanded(
-                      child: _buildPodiumTile(topThree[2], 3, height: 95),
+                      child: _buildPodiumTile(topThree[2], 3, height: 100),
                     )
                   else
                     const Spacer(),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
             ],
 
             // Full Leaderboard List
             if (remaining.isNotEmpty) ...[
               const Text(
-                'ALL PARTICIPANTS',
+                'Rankings',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: AppTheme.black,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                  color: AppTheme.inkPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
-              ...remaining.map((entry) => _buildRankRow(entry)),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.hairline),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: remaining.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1, color: AppTheme.hairline),
+                  itemBuilder: (context, index) => _buildRankRow(remaining[index]),
+                ),
+              ),
             ] else if (rankings.isEmpty && !state.isLoading)
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 36),
+                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppTheme.white,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.border),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.hairline),
                 ),
                 child: const Text(
-                  'NO LEADERBOARD DATA FOR THIS PERIOD',
+                  'No activity recorded for this period',
                   style: TextStyle(
-                    color: AppTheme.grey,
-                    fontSize: 11,
-                    fontFamily: AppTheme.monoFont,
-                    letterSpacing: 1.0,
+                    color: AppTheme.inkSecondary,
+                    fontSize: 14,
                   ),
                 ),
               ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildScopeSegment(String value, String label, String currentScope, WidgetRef ref) {
+    final isSelected = currentScope == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticsService.selection();
+          ref.read(leaderboardProvider.notifier).fetchLeaderboard(value);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.accentSolid : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? AppTheme.surface : AppTheme.inkSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPodiumTile(LeaderboardEntryModel entry, int rank, {required double height}) {
-    final rankLabel = rank == 1 ? '1ST' : rank == 2 ? '2ND' : '3RD';
-    final badgeColor = rank == 1 ? AppTheme.black : AppTheme.grey;
+    final rankLabel = rank == 1 ? '1st' : rank == 2 ? '2nd' : '3rd';
+    final isFirst = rank == 1;
 
     return Container(
       height: height,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: rank == 1 ? AppTheme.beige : AppTheme.offWhite,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(
-          color: rank == 1 ? AppTheme.borderDark : AppTheme.border,
-          width: rank == 1 ? 1.5 : 1.0,
+          color: isFirst ? AppTheme.accentBright : AppTheme.hairline,
+          width: isFirst ? 1.5 : 1.0,
         ),
       ),
       child: Column(
@@ -265,28 +294,29 @@ class LeaderboardScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  color: isFirst
+                      ? AppTheme.accentBright.withValues(alpha: 0.15)
+                      : AppTheme.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                 ),
                 child: Text(
                   rankLabel,
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontFamily: AppTheme.monoFont,
+                  style: TextStyle(
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.white,
+                    color: isFirst ? AppTheme.accentSolid : AppTheme.inkSecondary,
                   ),
                 ),
               ),
               if (entry.isCurrentUser)
                 const Text(
-                  'YOU',
+                  'You',
                   style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.taupe,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.accentSolid,
                   ),
                 ),
             ],
@@ -298,27 +328,28 @@ class LeaderboardScreen extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.inkPrimary,
+                  letterSpacing: -0.2,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 NumberFormat('#,###').format(entry.totalSteps),
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontFamily: AppTheme.monoFont,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.black,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.inkPrimary,
+                  letterSpacing: -0.3,
                 ),
               ),
               Text(
-                '+${entry.pointsEarned} PTS',
+                '+${entry.pointsEarned} pts',
                 style: const TextStyle(
-                  fontSize: 9,
-                  fontFamily: AppTheme.monoFont,
-                  color: AppTheme.grey,
+                  fontSize: 11,
+                  color: AppTheme.accentSolid,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -329,76 +360,62 @@ class LeaderboardScreen extends ConsumerWidget {
   }
 
   Widget _buildRankRow(LeaderboardEntryModel entry) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: entry.isCurrentUser ? AppTheme.beige : AppTheme.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(
-          color: entry.isCurrentUser ? AppTheme.black : AppTheme.border,
-          width: entry.isCurrentUser ? 1.5 : 1.0,
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           SizedBox(
-            width: 28,
+            width: 32,
             child: Text(
-              '#${entry.rank.toString().padLeft(2, '0')}',
+              '#${entry.rank}',
               style: TextStyle(
-                fontFamily: AppTheme.monoFont,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: entry.isCurrentUser ? AppTheme.black : AppTheme.grey,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: entry.isCurrentUser ? AppTheme.accentSolid : AppTheme.inkSecondary,
               ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Text(
-                      entry.displayName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.black,
+                Text(
+                  entry.displayName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: entry.isCurrentUser ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: -0.2,
+                    color: AppTheme.inkPrimary,
+                  ),
+                ),
+                if (entry.isCurrentUser) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentBright.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                    ),
+                    child: const Text(
+                      'You',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.accentSolid,
                       ),
                     ),
-                    if (entry.isCurrentUser) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: AppTheme.black,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                        ),
-                        child: const Text(
-                          'YOU',
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),
           Text(
-            '${NumberFormat('#,###').format(entry.totalSteps)} STEPS',
+            '${NumberFormat('#,###').format(entry.totalSteps)} steps',
             style: const TextStyle(
-              fontSize: 12,
-              fontFamily: AppTheme.monoFont,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.black,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+              color: AppTheme.inkPrimary,
             ),
           ),
         ],

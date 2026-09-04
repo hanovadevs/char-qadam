@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,16 +21,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   @override
   void initState() {
     super.initState();
-    // Pull the latest balance + catalog when the screen first mounts so the
-    // redeem button reflects points earned after app launch (the points
-    // provider otherwise only loads once at startup).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(pointsProvider.notifier).refresh();
       ref.read(rewardsProvider.notifier).fetchOffers();
     });
   }
 
-  /// Refresh both the offer catalog and the redeemable balance together.
   Future<void> _refreshAll() async {
     await Future.wait([
       ref.read(rewardsProvider.notifier).fetchOffers(),
@@ -46,36 +43,34 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
-        side: BorderSide(color: AppTheme.borderDark, width: 1),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
       ),
       builder: (sheetContext) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
-                  width: 32,
-                  height: 3,
+                  width: 36,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.borderDark,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                    color: AppTheme.hairline,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               const Text(
-                'CONFIRM REDEMPTION',
+                'Confirm redemption',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: AppTheme.grey,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.inkSecondary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -84,34 +79,34 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.black,
+                  color: AppTheme.inkPrimary,
                   letterSpacing: -0.3,
                 ),
               ),
               const SizedBox(height: 18),
 
-              // Points Math Breakdown Box (Swiss Grid Light)
+              // Points Math Breakdown
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.beige,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.borderDark),
+                  color: AppTheme.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(color: AppTheme.hairline),
                 ),
                 child: Column(
                   children: [
-                    _buildMathRow('CURRENT BALANCE', '${NumberFormat('#,###').format(userBalance)} PTS', AppTheme.black),
-                    const SizedBox(height: 8),
-                    _buildMathRow('POINTS COST', '-${NumberFormat('#,###').format(cost)} PTS', AppTheme.taupe),
+                    _buildMathRow('Current balance', '${NumberFormat('#,###').format(userBalance)} pts', AppTheme.inkPrimary),
+                    const SizedBox(height: 10),
+                    _buildMathRow('Points cost', '-${NumberFormat('#,###').format(cost)} pts', AppTheme.accentSolid),
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Divider(color: AppTheme.borderDark, height: 1),
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Divider(color: AppTheme.hairline, height: 1),
                     ),
-                    _buildMathRow('REMAINING BALANCE', '${NumberFormat('#,###').format(remainingAfter)} PTS', AppTheme.black, isBold: true),
+                    _buildMathRow('Remaining balance', '${NumberFormat('#,###').format(remainingAfter)} pts', AppTheme.inkPrimary, isBold: true),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               // Action Buttons
               Row(
@@ -119,19 +114,19 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(sheetContext),
-                      child: const Text('CANCEL'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () async {
-                        // Close the sheet using ITS OWN context, then drive all
-                        // post-redeem UI from the screen's State (this.context /
-                        // this.mounted). Using the popped sheet context here was
-                        // the bug: it's unmounted after pop, so the success modal
-                        // and error snackbar were silently skipped.
                         Navigator.pop(sheetContext);
                         final messenger = ScaffoldMessenger.of(this.context);
                         final result = await ref.read(rewardsProvider.notifier).redeem(offer.id);
@@ -145,12 +140,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text(error),
-                              backgroundColor: AppTheme.accentRed,
+                              backgroundColor: AppTheme.destructive,
                             ),
                           );
                         }
                       },
-                      child: const Text('CONFIRM & REDEEM'),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        ),
+                      ),
+                      child: const Text('Confirm & redeem'),
                     ),
                   ),
                 ],
@@ -166,48 +166,47 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
-        side: BorderSide(color: AppTheme.borderDark, width: 1),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 30),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
-                  width: 32,
-                  height: 3,
+                  width: 36,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.borderDark,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                    color: AppTheme.hairline,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               const Text(
-                'VOUCHER MINTED',
+                'Voucher ready',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: AppTheme.grey,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.inkSecondary,
                 ),
               ),
               const SizedBox(height: 6),
               const Text(
-                'Single-use pass added to wallet',
+                'Voucher added to your wallet',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.black,
+                  color: AppTheme.inkPrimary,
+                  letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               // Code Capsule
               InkWell(
@@ -220,13 +219,14 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     ),
                   );
                 },
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppTheme.beige,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                    border: Border.all(color: AppTheme.borderDark),
+                    color: AppTheme.surfaceMuted,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    border: Border.all(color: AppTheme.hairline),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -235,34 +235,40 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         result.shortCode as String,
                         style: const TextStyle(
                           fontSize: 20,
-                          fontFamily: AppTheme.monoFont,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 2.0,
-                          color: AppTheme.black,
+                          color: AppTheme.inkPrimary,
                         ),
                       ),
-                      const Icon(Icons.copy, size: 16, color: AppTheme.grey),
+                      const Icon(CupertinoIcons.doc_on_doc, size: 18, color: AppTheme.inkSecondary),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
-                'SPENT ${result.pointsSpent} PTS  •  REMAINING: ${result.balance} PTS',
+                'Spent ${result.pointsSpent} pts  •  Remaining: ${result.balance} pts',
                 style: const TextStyle(
-                  fontSize: 10,
-                  fontFamily: AppTheme.monoFont,
-                  color: AppTheme.grey,
+                  fontSize: 12,
+                  color: AppTheme.inkSecondary,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.go('/wallet');
-                },
-                child: const Text('OPEN IN WALLET'),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/wallet');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                  ),
+                  child: const Text('Open in wallet'),
+                ),
               ),
             ],
           ),
@@ -280,115 +286,88 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     final offers = rewardsState.offers;
 
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       appBar: AppBar(
-        backgroundColor: AppTheme.white,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'REWARDS MARKET',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: AppTheme.black,
-              ),
-            ),
-            Text(
-              'PARTNER OFFERS & VOUCHERS',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppTheme.grey,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Rewards',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AppTheme.inkPrimary,
+          ),
         ),
         actions: [
           IconButton(
             icon: rewardsState.isLoading
                 ? const SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
                     ),
                   )
-                : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
+                : const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: AppTheme.inkPrimary),
             onPressed: _refreshAll,
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.black,
-        backgroundColor: AppTheme.white,
+        color: AppTheme.accentSolid,
+        backgroundColor: AppTheme.surface,
         onRefresh: _refreshAll,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           children: [
-            // Available Balance Strip (Swiss Beige Bar)
+            // Available Balance Strip (Clean Card)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: AppTheme.beige,
-                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                border: Border.all(color: AppTheme.borderDark),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                border: Border.all(color: AppTheme.hairline),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'REDEEMABLE BALANCE',
+                    'Available balance',
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.grey,
-                      letterSpacing: 1.2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.inkSecondary,
                     ),
                   ),
                   Text(
-                    '${NumberFormat('#,###').format(userBalance)} PTS',
+                    '${NumberFormat('#,###').format(userBalance)} pts',
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontFamily: AppTheme.monoFont,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.black,
+                      color: AppTheme.accentSolid,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Catalog Header
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'ACTIVE CATALOG',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                    color: AppTheme.black,
-                  ),
-                ),
-                Text(
-                  'SINGLE-USE PASSES',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontFamily: AppTheme.monoFont,
-                    color: AppTheme.grey,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
+            const Text(
+              'Offers',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+                color: AppTheme.inkPrimary,
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
             // Offers List
             if (offers.isNotEmpty)
@@ -398,17 +377,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 final isAvailable = canAfford && inStock;
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
+                  margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.white,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                    border: Border.all(color: AppTheme.border),
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    border: Border.all(color: AppTheme.hairline),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(14.0),
+                        padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -416,109 +395,101 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.black,
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                                    color: AppTheme.accentBright.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                                   ),
                                   child: Text(
                                     _discountLabel(offer.discountType, offer.discountValue),
                                     style: const TextStyle(
-                                      fontSize: 9,
-                                      fontFamily: AppTheme.monoFont,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.accentSolid,
                                     ),
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: inStock ? AppTheme.offWhite : AppTheme.white,
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                                    border: Border.all(color: inStock ? AppTheme.border : AppTheme.accentRed),
+                                    color: inStock ? AppTheme.surfaceMuted : AppTheme.destructive.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                                   ),
                                   child: Text(
-                                    inStock ? 'IN STOCK' : 'OUT OF STOCK',
+                                    inStock ? 'In stock' : 'Out of stock',
                                     style: TextStyle(
-                                      fontSize: 9,
-                                      fontFamily: AppTheme.monoFont,
-                                      fontWeight: FontWeight.w700,
-                                      color: inStock ? AppTheme.grey : AppTheme.accentRed,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: inStock ? AppTheme.inkSecondary : AppTheme.destructive,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 12),
                             Text(
                               offer.title,
                               style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.black,
-                                letterSpacing: -0.3,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.inkPrimary,
+                                letterSpacing: -0.2,
                               ),
                             ),
                             if (offer.description != null && offer.description!.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(
                                 offer.description!,
-                                style: const TextStyle(fontSize: 11, color: AppTheme.grey),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.inkSecondary,
+                                  height: 1.3,
+                                ),
                               ),
                             ],
                           ],
                         ),
                       ),
-                      const Divider(height: 1, color: AppTheme.border),
+                      const Divider(height: 1, color: AppTheme.hairline),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'COST',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.grey,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                                Text(
-                                  '${NumberFormat('#,###').format(offer.pointsCost)} PTS',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontFamily: AppTheme.monoFont,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.black,
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              '${NumberFormat('#,###').format(offer.pointsCost)} pts',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.inkPrimary,
+                                letterSpacing: -0.2,
+                              ),
                             ),
                             SizedBox(
-                              height: 32,
+                              height: 36,
                               child: ElevatedButton(
                                 onPressed: isAvailable
                                     ? () => _showRedeemBottomSheet(context, ref, offer, userBalance)
                                     : null,
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  backgroundColor: isAvailable ? AppTheme.accentSolid : AppTheme.surfaceMuted,
+                                  foregroundColor: isAvailable ? AppTheme.surface : AppTheme.inkTertiary,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                                  ),
                                   textStyle: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 child: Text(
                                   !inStock
-                                      ? 'SOLD OUT'
+                                      ? 'Sold out'
                                       : !canAfford
-                                          ? 'NEED ${offer.pointsCost - userBalance} PTS'
-                                          : 'REDEEM VOUCHER',
+                                          ? 'Need ${offer.pointsCost - userBalance} pts'
+                                          : 'Redeem',
                                 ),
                               ),
                             ),
@@ -533,23 +504,22 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               const SwissSkeletonList(itemCount: 3, itemHeight: 110)
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 36),
+                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppTheme.white,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.border),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.hairline),
                 ),
                 child: const Text(
-                  'NO ACTIVE OFFERS IN CATALOG',
+                  'No offers available at the moment',
                   style: TextStyle(
-                    color: AppTheme.grey,
-                    fontSize: 11,
-                    fontFamily: AppTheme.monoFont,
-                    letterSpacing: 1.0,
+                    color: AppTheme.inkSecondary,
+                    fontSize: 14,
                   ),
                 ),
               ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -563,19 +533,18 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
-            color: isBold ? AppTheme.black : AppTheme.grey,
-            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
-            letterSpacing: 0.5,
+            fontSize: 13,
+            color: isBold ? AppTheme.inkPrimary : AppTheme.inkSecondary,
+            fontWeight: isBold ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: 12,
-            fontFamily: AppTheme.monoFont,
+            fontSize: 14,
             fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
             color: color,
+            letterSpacing: -0.2,
           ),
         ),
       ],

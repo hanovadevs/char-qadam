@@ -179,60 +179,50 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 88,
-              height: 88,
+              width: 84,
+              height: 84,
               decoration: BoxDecoration(
-                color: AppTheme.white,
-                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                border: Border.all(color: AppTheme.borderDark, width: 1.5),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                border: Border.all(color: AppTheme.hairline),
               ),
               clipBehavior: Clip.antiAlias,
               child: Image.asset(
                 'assets/icon/app_icon.png',
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
-                  color: AppTheme.beige,
+                  color: AppTheme.surfaceMuted,
                   child: const Icon(
                     Icons.directions_walk,
                     size: 44,
-                    color: AppTheme.black,
+                    color: AppTheme.accentSolid,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             const Text(
-              'STEPSY',
+              'Stepsy',
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 3,
-                color: AppTheme.black,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+                color: AppTheme.inkPrimary,
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'STEP-BASED VALUE NETWORK',
-              style: TextStyle(
-                fontSize: 10,
-                fontFamily: AppTheme.monoFont,
-                color: AppTheme.grey,
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             const SizedBox(
-              width: 18,
-              height: 18,
+              width: 20,
+              height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
               ),
             ),
           ],
@@ -250,98 +240,95 @@ class VoucherDeepLinkScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       appBar: AppBar(
-        backgroundColor: AppTheme.white,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'VOUCHER LOOKUP',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: AppTheme.black,
-              ),
-            ),
-            Text(
-              'SHARED VOUCHER CODE',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppTheme.grey,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Voucher Lookup',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+            color: AppTheme.inkPrimary,
+          ),
         ),
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 80,
-                height: 80,
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.beige,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.borderDark, width: 1.5),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.hairline),
                 ),
-                child: const Icon(
-                  Icons.qr_code_2,
-                  size: 40,
-                  color: AppTheme.black,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentBright.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.qr_code_2,
+                        size: 34,
+                        color: AppTheme.accentSolid,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Voucher code',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.inkSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceMuted,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        border: Border.all(color: AppTheme.hairline),
+                      ),
+                      child: Text(
+                        shortCode.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.0,
+                          color: AppTheme.inkPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Present this code at a partner store for validation and redemption.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.inkSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'VOUCHER CODE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: AppTheme.grey,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppTheme.offWhite,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.borderDark, width: 1.5),
-                ),
-                child: Text(
-                  shortCode.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontFamily: AppTheme.monoFont,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2.0,
-                    color: AppTheme.black,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Present this code at a partner merchant\nfor validation and redemption.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.grey,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () => context.go('/wallet'),
-                  child: const Text('VIEW IN WALLET'),
+                  child: const Text('View in wallet'),
                 ),
               ),
               const SizedBox(height: 10),
@@ -349,7 +336,7 @@ class VoucherDeepLinkScreen extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () => context.go('/steps'),
-                  child: const Text('GO TO DASHBOARD'),
+                  child: const Text('Go to dashboard'),
                 ),
               ),
             ],

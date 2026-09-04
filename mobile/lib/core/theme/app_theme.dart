@@ -1,160 +1,212 @@
 import 'package:flutter/material.dart';
 
-/// Qadam Swiss Style Light Design System.
+/// Stepsy Design System — Apple-style, minimalist light theme.
 ///
-/// Follows the International Typographic Style (Josef Müller-Brockmann, Basel/Zurich):
-/// - Clean Pure White (#FFFFFF) & Warm Swiss Beige (#F5F1E8) surfaces
-/// - Deep Black (#000000 / #111111) high-contrast typography & solid action buttons
-/// - Architectural Grey (#737373 / #808080) for secondary metadata
-/// - 1px hairline structural borders (#E5E5E5 / #D4D4D4)
-/// - Accent Taupe (#B38B6D) for special badges
-/// - Sharp geometric radius (0px to 2px-4px max)
+/// Follows specifications from Stepsy_design.md:
+/// - Light theme only (pure white and near-white/muted surfaces)
+/// - Single brand accent palette (Teal: #2FE0C4, #0B4A47, #0F8A78)
+/// - Dark navy-charcoal typography (#16213A, never pure black)
+/// - 1px hairline structural borders and dividers (#E7EBEA)
+/// - Continuous squircle curves (16-20pt card radius, 10-14pt controls)
+/// - iOS typography scale with sentence case
 class AppTheme {
-  // Swiss Palette Tokens
-  static const Color white = Color(0xFFFFFFFF);
-  static const Color offWhite = Color(0xFFFAFAFA);
-  static const Color beige = Color(0xFFF5F1E8);
-  static const Color beigeDark = Color(0xFFEBE6DC);
-  static const Color black = Color(0xFF000000);
-  static const Color offBlack = Color(0xFF111111);
-  static const Color charcoal = Color(0xFF1F1F1F);
+  // Stepsy Core Brand Palette Tokens
+  static const Color accentBright = Color(0xFF2FE0C4); // Gradient start (hero moments)
+  static const Color accentDeep = Color(0xFF0B4A47);   // Gradient end
+  static const Color accentSolid = Color(0xFF0F8A78);  // Primary buttons, active tabs, text links
 
-  static const Color grey = Color(0xFF737373);
-  static const Color greyMuted = Color(0xFF8C8C8C);
-  static const Color greyLight = Color(0xFFF0F0F0);
-  static const Color border = Color(0xFFE5E5E5);
-  static const Color borderDark = Color(0xFFD4D4D4);
+  static const Color inkPrimary = Color(0xFF16213A);   // Primary text: dark navy-charcoal, NOT pure black
+  static const Color inkSecondary = Color(0xFF5B6472); // Secondary text, inactive icons
+  static const Color inkTertiary = Color(0xFF9AA3AD);  // Placeholders, disabled states, timestamps
 
-  // Accents
-  static const Color taupe = Color(0xFFB38B6D);
-  static const Color accentGreen = Color(0xFF16A34A);
-  static const Color accentRed = Color(0xFFDC2626);
-  static const Color accentAmber = Color(0xFFB45309);
+  static const Color surface = Color(0xFFFFFFFF);      // Cards, modals, primary content
+  static const Color surfaceMuted = Color(0xFFF3F6F5); // Grouped list backgrounds, subtle fills
+  static const Color hairline = Color(0xFFE7EBEA);     // 1px dividers, card outlines (never black)
 
-  // High contrast action colors
-  static const Color primaryColor = Color(0xFF000000);
-  static const Color secondaryColor = Color(0xFFB38B6D);
+  static const Color destructive = Color(0xFFFF3B30);  // Strictly reserved for account deletion
 
-  // Monospace font helper
-  static const String monoFont = 'monospace';
+  // Backward-compatibility aliases (mapped directly to Stepsy brand tokens)
+  static const Color black = inkPrimary;
+  static const Color offBlack = inkPrimary;
+  static const Color charcoal = inkPrimary;
+  static const Color white = surface;
+  static const Color offWhite = surfaceMuted;
+  static const Color beige = surfaceMuted;
+  static const Color beigeDark = hairline;
+  static const Color grey = inkSecondary;
+  static const Color greyMuted = inkTertiary;
+  static const Color greyLight = surfaceMuted;
+  static const Color border = hairline;
+  static const Color borderDark = hairline;
+  static const Color taupe = accentSolid;
+  static const Color accentGreen = accentSolid;
+  static const Color accentRed = destructive;
+  static const Color accentAmber = Color(0xFFD97706);
+  static const Color primaryColor = accentSolid;
+  static const Color secondaryColor = accentSolid;
+  static const String monoFont = 'sans-serif';
 
-  // Base Corner Radius Tokens (Swiss Style: Sharp / Geometric)
+  // Corner Radius Tokens (Apple Continuous Squircle Language)
   static const double radiusNone = 0.0;
-  static const double radiusSm = 2.0;
-  static const double radiusMd = 4.0;
-  static const double radiusLg = 8.0;
+  static const double radiusSm = 10.0;
+  static const double radiusMd = 14.0;
+  static const double radiusLg = 18.0;
+  static const double radiusPill = 999.0;
+
+  // Typography Constants (iOS Native Type Scale)
+  static const TextStyle largeTitleStyle = TextStyle(
+    fontSize: 34,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.8,
+    color: inkPrimary,
+  );
+
+  static const TextStyle titleStyle = TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.4,
+    color: inkPrimary,
+  );
+
+  static const TextStyle headlineStyle = TextStyle(
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+    color: inkPrimary,
+  );
+
+  static const TextStyle bodyStyle = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    letterSpacing: -0.1,
+    color: inkPrimary,
+  );
+
+  static const TextStyle captionStyle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: inkSecondary,
+  );
+
+  static const TextStyle heroNumeralStyle = TextStyle(
+    fontSize: 48,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.5,
+    color: inkPrimary,
+  );
 
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: white,
+      scaffoldBackgroundColor: surfaceMuted,
       fontFamily: 'sans-serif',
       colorScheme: const ColorScheme.light(
-        primary: black,
-        onPrimary: white,
-        secondary: taupe,
-        onSecondary: white,
-        tertiary: beige,
-        surface: white,
-        onSurface: offBlack,
-        surfaceContainerHighest: beige,
-        outline: border,
+        primary: accentSolid,
+        onPrimary: surface,
+        secondary: accentSolid,
+        onSecondary: surface,
+        tertiary: accentBright,
+        surface: surface,
+        onSurface: inkPrimary,
+        surfaceContainerHighest: surfaceMuted,
+        outline: hairline,
+        error: destructive,
+        onError: surface,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: white,
+        backgroundColor: surface,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: black,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
+          color: inkPrimary,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
           letterSpacing: -0.3,
         ),
-        iconTheme: IconThemeData(color: black),
+        iconTheme: IconThemeData(color: inkPrimary),
       ),
       cardTheme: CardThemeData(
-        color: white,
+        color: surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusSm),
-          side: const BorderSide(color: border, width: 1),
+          borderRadius: BorderRadius.circular(radiusLg),
+          side: const BorderSide(color: hairline, width: 1),
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: white,
-        modalBackgroundColor: white,
-        elevation: 0,
+        backgroundColor: surface,
+        modalBackgroundColor: surface,
+        elevation: 8,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusMd)),
-          side: BorderSide(color: borderDark, width: 1),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusLg)),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: white,
+        backgroundColor: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusSm),
-          side: const BorderSide(color: borderDark, width: 1),
+          borderRadius: BorderRadius.circular(radiusLg),
+          side: const BorderSide(color: hairline, width: 1),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: offWhite,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        fillColor: surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSm),
-          borderSide: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: hairline, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSm),
-          borderSide: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: hairline, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSm),
-          borderSide: const BorderSide(color: black, width: 1.5),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: accentSolid, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSm),
-          borderSide: const BorderSide(color: accentRed),
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: const BorderSide(color: destructive, width: 1),
         ),
-        labelStyle: const TextStyle(color: grey, fontSize: 13, fontWeight: FontWeight.w500),
-        hintStyle: const TextStyle(color: greyMuted, fontSize: 13),
-        prefixIconColor: grey,
-        suffixIconColor: grey,
+        labelStyle: const TextStyle(color: inkSecondary, fontSize: 14, fontWeight: FontWeight.w400),
+        hintStyle: const TextStyle(color: inkTertiary, fontSize: 14),
+        prefixIconColor: inkSecondary,
+        suffixIconColor: inkSecondary,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: black,
-          foregroundColor: white,
-          minimumSize: const Size(0, 46),
+          backgroundColor: accentSolid,
+          foregroundColor: surface,
+          minimumSize: const Size(0, 48),
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusSm),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
           textStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: black,
-          minimumSize: const Size(0, 46),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          side: const BorderSide(color: borderDark, width: 1.5),
+          foregroundColor: inkPrimary,
+          minimumSize: const Size(0, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          side: const BorderSide(color: hairline, width: 1),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusSm),
+            borderRadius: BorderRadius.circular(radiusMd),
           ),
           textStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ),
@@ -162,45 +214,45 @@ class AppTheme {
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
             if (states.contains(WidgetState.selected)) {
-              return black;
+              return surface;
             }
-            return white;
+            return surfaceMuted;
           }),
           foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
             if (states.contains(WidgetState.selected)) {
-              return white;
+              return inkPrimary;
             }
-            return grey;
+            return inkSecondary;
           }),
           side: const WidgetStatePropertyAll(
-            BorderSide(color: border, width: 1),
+            BorderSide(color: Colors.transparent, width: 0),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusSm)),
           ),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+            TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: -0.1),
           ),
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: border,
+        color: hairline,
         thickness: 1,
         space: 1,
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: black,
-        contentTextStyle: const TextStyle(color: white, fontSize: 13, fontWeight: FontWeight.w600),
+        backgroundColor: inkPrimary,
+        contentTextStyle: const TextStyle(color: surface, fontSize: 14, fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusSm),
+          borderRadius: BorderRadius.circular(radiusMd),
         ),
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  static ThemeData get darkTheme => lightTheme; // Default to Light Mode as requested
+  static ThemeData get darkTheme => lightTheme; // Light theme only
 }

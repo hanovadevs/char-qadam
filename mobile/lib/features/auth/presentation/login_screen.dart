@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -42,7 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error),
-            backgroundColor: AppTheme.accentRed,
+            backgroundColor: AppTheme.destructive,
           ),
         );
       }
@@ -56,16 +57,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         serverClientId: EnvConfig.googleClientId,
         scopes: const ['email', 'profile'],
       );
-      // Sign out first so the account picker always appears instead of silently
-      // reusing a stale session.
       await googleSignIn.signOut();
 
       final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return; // user cancelled the picker
+      if (googleUser == null) return;
 
       final googleAuth = await googleUser.authentication;
-      // Prefer the verified Google ID token. If the OAuth client isn't set up to
-      // return one, fall back to the REAL signed-in email — never a demo user.
       final token = googleAuth.idToken;
       final idToken = (token != null && token.isNotEmpty)
           ? token
@@ -81,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: AppTheme.accentRed,
+          backgroundColor: AppTheme.destructive,
         ),
       );
     }
@@ -92,67 +89,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Swiss Typographic Brand Header (Beige Surface #F5F1E8)
+                  // Stepsy Brand Header Card
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: AppTheme.beige,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                      border: Border.all(color: AppTheme.borderDark),
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                      border: Border.all(color: AppTheme.hairline),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'STEPSY',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.5,
-                                color: AppTheme.black,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppTheme.white,
-                                border: Border.all(color: AppTheme.borderDark),
-                                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                              ),
-                              child: const Text(
-                                'NETWORK',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontFamily: AppTheme.monoFont,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.black,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'STEP-TO-EARN REWARDS & PROMOS',
+                      children: const [
+                        Text(
+                          'Stepsy',
                           style: TextStyle(
-                            fontSize: 10,
-                            fontFamily: AppTheme.monoFont,
-                            color: AppTheme.grey,
-                            letterSpacing: 1.0,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -1.0,
+                            color: AppTheme.inkPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Turn your daily movement into real rewards.',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: AppTheme.inkSecondary,
+                            letterSpacing: -0.1,
                           ),
                         ),
                       ],
@@ -163,20 +136,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Error banner if any
                   if (authState.errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppTheme.white,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                        border: Border.all(color: AppTheme.accentRed),
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        border: Border.all(color: AppTheme.destructive.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 16),
-                          const SizedBox(width: 8),
+                          const Icon(CupertinoIcons.exclamationmark_circle, color: AppTheme.destructive, size: 18),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               authState.errorMessage!,
-                              style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600),
+                              style: const TextStyle(color: AppTheme.destructive, fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ),
                         ],
@@ -185,150 +158,165 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Email Field with Fixed Top Label
-                  const Text(
-                    'EMAIL ADDRESS',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: AppTheme.grey,
+                  // Form Container
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                      border: Border.all(color: AppTheme.hairline),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      hintText: 'name@domain.com',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                      if (!emailRegex.hasMatch(value.trim())) {
-                        return 'Please enter a valid email address';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Password Field with Fixed Top Label and Forgot Password link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'PASSWORD',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.0,
-                          color: AppTheme.grey,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () => context.push('/forgot-password'),
-                        child: const Text(
-                          'FORGOT PASSWORD?',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Email address',
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            color: AppTheme.black,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.inkSecondary,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
-                    decoration: InputDecoration(
-                      hintText: 'Enter your password',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          size: 18,
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            hintText: 'name@example.com',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter your email';
+                            }
+                            final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                            if (!emailRegex.hasMatch(value.trim())) {
+                              return 'Please enter a valid email address';
+                            }
+                            return null;
+                          },
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 22),
+                        const SizedBox(height: 18),
 
-                  // Submit Button
-                  ElevatedButton(
-                    onPressed: authState.isLoading ? null : _submit,
-                    child: authState.isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Password',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: AppTheme.inkSecondary,
+                              ),
                             ),
-                          )
-                        : const Text('SIGN IN'),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Divider
-                  const Row(
-                    children: [
-                      Expanded(child: Divider(color: AppTheme.border)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'OR',
-                          style: TextStyle(fontSize: 10, fontFamily: AppTheme.monoFont, color: AppTheme.grey),
+                            InkWell(
+                              onTap: () => context.push('/forgot-password'),
+                              child: const Text(
+                                'Forgot password?',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.accentSolid,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      Expanded(child: Divider(color: AppTheme.border)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                          decoration: InputDecoration(
+                            hintText: 'Enter your password',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                                size: 18,
+                                color: AppTheme.inkSecondary,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your password';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 24),
 
-                  // Google Sign-In Button
-                  OutlinedButton.icon(
-                    onPressed: authState.isLoading ? null : _handleGoogleSignIn,
-                    icon: const Icon(Icons.account_circle_outlined, size: 18),
-                    label: const Text('CONTINUE WITH GOOGLE'),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: authState.isLoading ? null : _submit,
+                            child: authState.isLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.surface),
+                                    ),
+                                  )
+                                : const Text('Sign in'),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        Row(
+                          children: const [
+                            Expanded(child: Divider(color: AppTheme.hairline)),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'or',
+                                style: TextStyle(fontSize: 13, color: AppTheme.inkTertiary),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: AppTheme.hairline)),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: authState.isLoading ? null : _handleGoogleSignIn,
+                            child: const Text('Continue with Google'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Navigation to Register
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
-                        'NEW USER?',
-                        style: TextStyle(color: AppTheme.grey, fontSize: 11, letterSpacing: 0.5),
+                        "Don't have an account? ",
+                        style: TextStyle(color: AppTheme.inkSecondary, fontSize: 14),
                       ),
                       TextButton(
                         onPressed: () => context.go('/register'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                         child: const Text(
-                          'CREATE ACCOUNT',
+                          'Create account',
                           style: TextStyle(
-                            color: AppTheme.black,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            letterSpacing: 0.8,
+                            color: AppTheme.accentSolid,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
                         ),
                       ),

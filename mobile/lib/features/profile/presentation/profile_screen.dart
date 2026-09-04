@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,18 +28,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
-        side: BorderSide(color: AppTheme.borderDark, width: 1),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
       ),
       builder: (context) {
         return Padding(
           padding: EdgeInsets.only(
-            left: 18,
-            right: 18,
+            left: 20,
+            right: 20,
             top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 28,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -46,33 +46,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               Center(
                 child: Container(
-                  width: 32,
-                  height: 3,
+                  width: 36,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.borderDark,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                    color: AppTheme.hairline,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               const Text(
-                'EDIT PREFERENCES',
+                'Edit preferences',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: AppTheme.grey,
+                  color: AppTheme.inkPrimary,
+                  letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Timezone & region for daily step conversion',
-                style: TextStyle(fontSize: 13, color: AppTheme.grey),
-              ),
               const SizedBox(height: 18),
               const Text(
-                'COUNTRY CODE (ISO-2)',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppTheme.grey),
+                'Country code (ISO-2)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.inkSecondary),
               ),
               const SizedBox(height: 6),
               TextField(
@@ -81,10 +76,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   hintText: 'e.g. PK, US, GB',
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               const Text(
-                'TIMEZONE',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppTheme.grey),
+                'Timezone',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.inkSecondary),
               ),
               const SizedBox(height: 6),
               TextField(
@@ -93,16 +88,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   hintText: 'e.g. Asia/Karachi, UTC',
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('CANCEL'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -124,14 +124,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text('Error: ${e.toString()}'),
-                              backgroundColor: AppTheme.accentRed,
+                              backgroundColor: AppTheme.destructive,
                             ),
                           );
                         } finally {
                           if (mounted) setState(() => _isUpdating = false);
                         }
                       },
-                      child: const Text('SAVE CHANGES'),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        ),
+                      ),
+                      child: const Text('Save changes'),
                     ),
                   ),
                 ],
@@ -147,66 +152,64 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
-        side: BorderSide(color: AppTheme.borderDark, width: 1),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 30),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Container(
-                width: 32,
-                height: 3,
+                width: 36,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: AppTheme.borderDark,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusNone),
+                  color: AppTheme.hairline,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             const Text(
-              'DELETE ACCOUNT',
+              'Delete account',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: AppTheme.accentRed,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Soft-delete account & revoke access?',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.black,
+                color: AppTheme.destructive,
+                letterSpacing: -0.3,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Your activity logs, points, and vouchers will be immediately revoked and anonymized per privacy compliance.',
-              style: TextStyle(fontSize: 12, color: AppTheme.grey, height: 1.4),
+              'Are you sure you want to delete your account? Your step history, points balance, and active vouchers will be permanently removed.',
+              style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('KEEP ACCOUNT'),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                      ),
+                    ),
+                    child: const Text('Keep account'),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accentRed,
-                      foregroundColor: AppTheme.white,
+                      backgroundColor: AppTheme.destructive,
+                      foregroundColor: AppTheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                      ),
                     ),
                     onPressed: () async {
                       Navigator.pop(context);
@@ -220,14 +223,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         messenger.showSnackBar(
                           SnackBar(
                             content: Text('Error: ${e.toString()}'),
-                            backgroundColor: AppTheme.accentRed,
+                            backgroundColor: AppTheme.destructive,
                           ),
                         );
                       } finally {
                         if (mounted) setState(() => _isUpdating = false);
                       }
                     },
-                    child: const Text('CONFIRM DELETE'),
+                    child: const Text('Delete account'),
                   ),
                 ),
               ],
@@ -242,56 +245,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.user;
+    final isMerchant = user?.role == 'MERCHANT';
 
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       appBar: AppBar(
-        backgroundColor: AppTheme.white,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'PROFILE & SETTINGS',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: AppTheme.black,
-              ),
-            ),
-            Text(
-              'ACCOUNT DETAILS & REGION',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppTheme.grey,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Profile',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AppTheme.inkPrimary,
+          ),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         children: [
           if (_isUpdating)
             const Padding(
-              padding: EdgeInsets.only(bottom: 10.0),
+              padding: EdgeInsets.only(bottom: 12.0),
               child: LinearProgressIndicator(
-                color: AppTheme.black,
-                backgroundColor: AppTheme.border,
+                color: AppTheme.accentSolid,
+                backgroundColor: AppTheme.hairline,
                 minHeight: 2,
               ),
             ),
 
-          // User Card Block (Swiss Beige Surface #F5F1E8)
+          // User Card Block (Apple Squircle Profile Card)
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.beige,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(color: AppTheme.borderDark, width: 1),
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.hairline),
             ),
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(18.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -299,7 +291,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     _buildAvatar(authState.googlePhotoUrl, authState.googleName, user?.email),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,117 +302,68 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
                                 letterSpacing: -0.3,
-                                color: AppTheme.black,
+                                color: AppTheme.inkPrimary,
                               ),
                             ),
                           Text(
-                            user?.email ?? 'USER',
+                            user?.email ?? 'User',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: (authState.googleName != null && authState.googleName!.isNotEmpty) ? 12 : 16,
+                              fontSize: (authState.googleName != null && authState.googleName!.isNotEmpty) ? 13 : 17,
                               fontWeight: (authState.googleName != null && authState.googleName!.isNotEmpty)
-                                  ? FontWeight.w500
-                                  : FontWeight.w700,
-                              letterSpacing: -0.2,
+                                  ? FontWeight.w400
+                                  : FontWeight.w600,
                               color: (authState.googleName != null && authState.googleName!.isNotEmpty)
-                                  ? AppTheme.grey
-                                  : AppTheme.black,
+                                  ? AppTheme.inkSecondary
+                                  : AppTheme.inkPrimary,
+                              letterSpacing: -0.2,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.white,
-                        border: Border.all(color: AppTheme.borderDark),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                      ),
-                      child: Text(
-                        user?.status ?? 'ACTIVE',
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontFamily: AppTheme.monoFont,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.black,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                const Divider(color: AppTheme.hairline, height: 1),
                 const SizedBox(height: 14),
-                const Divider(color: AppTheme.borderDark, height: 1),
-                const SizedBox(height: 12),
-                _buildDetailRow('COUNTRY CODE', user?.country ?? 'PK'),
+                _buildDetailRow('Country', user?.country ?? 'PK'),
                 const SizedBox(height: 8),
-                _buildDetailRow('TIMEZONE', user?.timezone ?? 'Asia/Karachi'),
+                _buildDetailRow('Timezone', user?.timezone ?? 'Asia/Karachi'),
                 const SizedBox(height: 8),
                 _buildDetailRow(
-                  'JOINED',
+                  'Member since',
                   user != null
-                      ? DateFormat('yyyy-MM-dd').format(user.createdAt.toLocal())
+                      ? DateFormat('MMMM yyyy').format(user.createdAt.toLocal())
                       : '—',
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // Actions List
+          // Grouped Inset List: Preferences & Sensors
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.white,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(color: AppTheme.border),
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.hairline),
             ),
             child: Column(
               children: [
-                ListTile(
-                  dense: true,
-                  title: const Text(
-                    'EDIT PREFERENCES',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
-                  ),
-                  subtitle: const Text(
-                    'Country code & step reset timezone',
-                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
-                  ),
-                  trailing: const Icon(Icons.arrow_forward, size: 14, color: AppTheme.grey),
+                _buildSettingRow(
+                  icon: CupertinoIcons.slider_horizontal_3,
+                  title: 'Edit preferences',
                   onTap: () => _showEditProfileBottomSheet(context),
                 ),
-                const Divider(height: 1, color: AppTheme.border),
-                ListTile(
-                  dense: true,
-                  title: const Text(
-                    'MERCHANT POS TERMINAL',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
-                  ),
-                  subtitle: const Text(
-                    'Store cashier scanner & voucher redemption',
-                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
-                  ),
-                  trailing: const Icon(Icons.point_of_sale, size: 16, color: AppTheme.black),
-                  onTap: () => context.push('/merchant-pos'),
-                ),
-                const Divider(height: 1, color: AppTheme.border),
-                ListTile(
-                  dense: true,
-                  title: const Text(
-                    '24/7 STEP SENSORS & PERMISSIONS',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
-                  ),
-                  subtitle: const Text(
-                    'Body sensors, physical activity & battery optimization',
-                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
-                  ),
-                  trailing: const Icon(Icons.tune, size: 16, color: AppTheme.black),
+                const Divider(height: 1, color: AppTheme.hairline),
+                _buildSettingRow(
+                  icon: CupertinoIcons.waveform_path,
+                  title: 'Motion & fitness access',
                   onTap: () async {
                     HapticsService.light();
                     final healthService = ref.read(healthServiceProvider);
@@ -428,31 +371,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     if (context.mounted) {
                       showModalBottomSheet(
                         context: context,
-                        backgroundColor: AppTheme.white,
+                        backgroundColor: AppTheme.surface,
                         shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusMd)),
-                          side: BorderSide(color: AppTheme.borderDark, width: 1),
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
                         ),
                         builder: (ctx) => Padding(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(22),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                '24/7 SENSOR PERMISSIONS',
+                                'Motion & fitness access',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.2,
+                                  letterSpacing: -0.3,
+                                  color: AppTheme.inkPrimary,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               const Text(
-                                'Stepsy runs in the background to count your steps all day without using GPS.\n\nMake sure "Physical Activity", "Body Sensors", and "Notifications" are Allowed in App Permissions.',
-                                style: TextStyle(fontSize: 11, color: AppTheme.grey, height: 1.4),
+                                'Stepsy runs in the background to count your steps throughout the day without using GPS tracking.\n\nMake sure "Physical Activity", "Sensors", and "Notifications" permissions are enabled.',
+                                style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 20),
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
@@ -460,7 +403,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     openAppSettings();
                                     Navigator.pop(ctx);
                                   },
-                                  child: const Text('OPEN SYSTEM APP SETTINGS'),
+                                  style: ElevatedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                                    ),
+                                  ),
+                                  child: const Text('Open device settings'),
                                 ),
                               ),
                             ],
@@ -470,60 +418,86 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     }
                   },
                 ),
-                const Divider(height: 1, color: AppTheme.border),
-                ListTile(
-                  dense: true,
-                  title: const Text(
-                    'SIGN OUT',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.5, color: AppTheme.black),
+                if (isMerchant) ...[
+                  const Divider(height: 1, color: AppTheme.hairline),
+                  _buildSettingRow(
+                    icon: CupertinoIcons.creditcard,
+                    title: 'Merchant POS terminal',
+                    onTap: () => context.push('/merchant-pos'),
                   ),
-                  subtitle: const Text(
-                    'Revoke session on this device',
-                    style: TextStyle(fontSize: 11, color: AppTheme.grey),
-                  ),
-                  trailing: const Icon(Icons.logout, size: 14, color: AppTheme.grey),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Grouped Inset List: Account Actions
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.hairline),
+            ),
+            child: Column(
+              children: [
+                _buildSettingRow(
+                  icon: CupertinoIcons.square_arrow_right,
+                  title: 'Sign out',
                   onTap: () => ref.read(authStateProvider.notifier).logout(),
+                ),
+                const Divider(height: 1, color: AppTheme.hairline),
+                _buildSettingRow(
+                  icon: CupertinoIcons.trash,
+                  title: 'Delete account',
+                  titleColor: AppTheme.destructive,
+                  iconColor: AppTheme.destructive,
+                  onTap: () => _confirmDeleteAccount(context),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-
-          // Dangerous Zone
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.white,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(color: AppTheme.accentRed.withValues(alpha: 0.4)),
-            ),
-            child: ListTile(
-              dense: true,
-              title: const Text(
-                'DELETE ACCOUNT',
-                style: TextStyle(
-                  color: AppTheme.accentRed,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              subtitle: const Text(
-                'Permanently remove user data & ledger access',
-                style: TextStyle(fontSize: 11, color: AppTheme.grey),
-              ),
-              trailing: const Icon(Icons.delete_outline, size: 16, color: AppTheme.accentRed),
-              onTap: () => _confirmDeleteAccount(context),
-            ),
-          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
+  Widget _buildSettingRow({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? titleColor,
+    Color? iconColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor ?? AppTheme.inkSecondary),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.2,
+                  color: titleColor ?? AppTheme.inkPrimary,
+                ),
+              ),
+            ),
+            const Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkTertiary),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAvatar(String? photoUrl, String? name, String? email) {
-    const double size = 44;
+    const double size = 48;
     final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
-    // Initial letter fallback when there's no Google photo.
     final seed = (name != null && name.isNotEmpty)
         ? name
         : (email != null && email.isNotEmpty ? email : '?');
@@ -533,9 +507,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppTheme.white,
+        color: AppTheme.surfaceMuted,
         shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.borderDark, width: 1),
+        border: Border.all(color: AppTheme.hairline, width: 1),
         image: hasPhoto
             ? DecorationImage(image: NetworkImage(photoUrl), fit: BoxFit.cover)
             : null,
@@ -547,8 +521,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               initial,
               style: const TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.black,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.inkPrimary,
               ),
             ),
     );
@@ -561,19 +535,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.grey,
-            letterSpacing: 0.8,
+            fontSize: 13,
+            color: AppTheme.inkSecondary,
           ),
         ),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 12,
-            fontFamily: AppTheme.monoFont,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.black,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.inkPrimary,
+            letterSpacing: -0.1,
           ),
         ),
       ],

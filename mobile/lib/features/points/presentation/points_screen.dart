@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -46,44 +47,32 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
     final entries = pointsState.entries;
 
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       appBar: AppBar(
-        backgroundColor: AppTheme.white,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'POINTS & LEDGER',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: AppTheme.black,
-              ),
-            ),
-            Text(
-              'APPEND-ONLY TRANSACTION BALANCE',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppTheme.grey,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Points',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AppTheme.inkPrimary,
+          ),
         ),
         actions: [
           IconButton(
             icon: pointsState.isLoading
                 ? const SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
                     ),
                   )
-                : const Icon(Icons.refresh, size: 20, color: AppTheme.black),
+                : const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: AppTheme.inkPrimary),
             onPressed: () {
               HapticsService.light();
               ref.read(pointsProvider.notifier).refresh();
@@ -93,34 +82,33 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.black,
-        backgroundColor: AppTheme.white,
+        color: AppTheme.accentSolid,
+        backgroundColor: AppTheme.surface,
         onRefresh: () => ref.read(pointsProvider.notifier).refresh(),
         child: ListView(
           controller: _scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           children: [
-            // Balance Hero Block (Swiss Warm Beige Surface #F5F1E8)
+            // Balance Hero Card (Apple Squircle Card)
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.beige,
-                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                border: Border.all(color: AppTheme.borderDark, width: 1),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                border: Border.all(color: AppTheme.hairline),
               ),
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'CURRENT AVAILABLE BALANCE',
+                    'Available balance',
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.grey,
-                      letterSpacing: 1.5,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.inkSecondary,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
@@ -128,29 +116,28 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                       Text(
                         NumberFormat('#,###').format(balance),
                         style: const TextStyle(
-                          fontFamily: AppTheme.monoFont,
                           fontSize: 44,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.black,
+                          color: AppTheme.inkPrimary,
                           letterSpacing: -1.5,
                           height: 1.0,
                         ),
                       ),
                       const SizedBox(width: 8),
                       const Text(
-                        'PTS',
+                        'pts',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.taupe,
-                          letterSpacing: 1.0,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.accentSolid,
+                          letterSpacing: -0.3,
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 18),
+                  const Divider(color: AppTheme.hairline, height: 1),
                   const SizedBox(height: 16),
-                  const Divider(color: AppTheme.borderDark, height: 1),
-                  const SizedBox(height: 14),
 
                   // Split Lifetime Metrics
                   Row(
@@ -160,50 +147,48 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'LIFETIME EARNED',
+                              'Lifetime earned',
                               style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.grey,
-                                letterSpacing: 1.2,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: AppTheme.inkSecondary,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '+${NumberFormat('#,###').format(totalEarned)} PTS',
+                              '+${NumberFormat('#,###').format(totalEarned)} pts',
                               style: const TextStyle(
-                                fontSize: 13,
-                                fontFamily: AppTheme.monoFont,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.accentSolid,
+                                letterSpacing: -0.2,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Container(width: 1, height: 30, color: AppTheme.borderDark),
-                      const SizedBox(width: 14),
+                      Container(width: 1, height: 28, color: AppTheme.hairline),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'LIFETIME REDEEMED',
+                              'Lifetime redeemed',
                               style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.grey,
-                                letterSpacing: 1.2,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: AppTheme.inkSecondary,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '-${NumberFormat('#,###').format(totalSpent)} PTS',
+                              '-${NumberFormat('#,###').format(totalSpent)} pts',
                               style: const TextStyle(
-                                fontSize: 13,
-                                fontFamily: AppTheme.monoFont,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.grey,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.inkSecondary,
+                                letterSpacing: -0.2,
                               ),
                             ),
                           ],
@@ -214,134 +199,118 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Ledger Section Title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'TRANSACTION HISTORY',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                    color: AppTheme.black,
-                  ),
-                ),
-                Text(
-                  '${entries.length} OF ${pointsState.total}',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontFamily: AppTheme.monoFont,
-                    color: AppTheme.grey,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
+            // Ledger Section Header
+            const Text(
+              'Transaction history',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+                color: AppTheme.inkPrimary,
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // Ledger List
+            // Inset Grouped Ledger List
             if (entries.isNotEmpty)
-              ...entries.map((entry) {
-                final isEarn = entry.delta > 0;
-                final dateStr = DateFormat('MMM d, yyyy  •  HH:mm')
-                    .format(entry.createdAt.toLocal());
-                final deltaStr = isEarn
-                    ? '+${NumberFormat('#,###').format(entry.delta)} PTS'
-                    : '${NumberFormat('#,###').format(entry.delta)} PTS';
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.hairline),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: entries.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1, color: AppTheme.hairline),
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final isEarn = entry.delta > 0;
+                    final dateStr = DateFormat('MMM d, yyyy  •  HH:mm')
+                        .format(entry.createdAt.toLocal());
+                    final deltaStr = isEarn
+                        ? '+${NumberFormat('#,###').format(entry.delta)} pts'
+                        : '${NumberFormat('#,###').format(entry.delta)} pts';
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.white,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: AppTheme.offWhite,
-                          border: Border.all(color: AppTheme.border),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                        ),
-                        child: Icon(
-                          isEarn ? Icons.add : Icons.remove,
-                          color: isEarn ? AppTheme.black : AppTheme.taupe,
-                          size: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _reasonTitle(entry.reason).toUpperCase(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 11,
-                                letterSpacing: 0.5,
-                                color: AppTheme.black,
-                              ),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: isEarn
+                                  ? AppTheme.accentBright.withValues(alpha: 0.15)
+                                  : AppTheme.surfaceMuted,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              dateStr,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontFamily: AppTheme.monoFont,
-                                color: AppTheme.grey,
-                              ),
+                            child: Icon(
+                              isEarn ? CupertinoIcons.plus : CupertinoIcons.minus,
+                              color: isEarn ? AppTheme.accentSolid : AppTheme.inkSecondary,
+                              size: 16,
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.offWhite,
-                          border: Border.all(color: AppTheme.border),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                        ),
-                        child: Text(
-                          deltaStr,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: AppTheme.monoFont,
-                            fontWeight: FontWeight.w700,
-                            color: isEarn ? AppTheme.black : AppTheme.taupe,
                           ),
-                        ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _reasonTitle(entry.reason),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                    letterSpacing: -0.2,
+                                    color: AppTheme.inkPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  dateStr,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.inkSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            deltaStr,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.2,
+                              color: isEarn ? AppTheme.accentSolid : AppTheme.inkPrimary,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              })
+                    );
+                  },
+                ),
+              )
             else if (pointsState.isLoading)
               const SwissSkeletonList(itemCount: 4, itemHeight: 54)
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 28),
+                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppTheme.white,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.border),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.hairline),
                 ),
                 child: const Text(
-                  'NO LEDGER ENTRIES RECORDED YET',
+                  'No transactions recorded yet',
                   style: TextStyle(
-                    color: AppTheme.grey,
-                    fontSize: 11,
-                    fontFamily: AppTheme.monoFont,
-                    letterSpacing: 1.0,
+                    color: AppTheme.inkSecondary,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -356,26 +325,12 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
-                    ),
-                  ),
-                ),
-              )
-            else if (!pointsState.hasMore && entries.isNotEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(
-                  child: Text(
-                    'ALL ENTRIES LOADED',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontFamily: AppTheme.monoFont,
-                      color: AppTheme.grey,
-                      letterSpacing: 1.0,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
                     ),
                   ),
                 ),
               ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -385,11 +340,11 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
   String _reasonTitle(String reason) {
     switch (reason) {
       case 'STEP_EARN':
-        return 'Steps Converted';
+        return 'Steps converted';
       case 'OFFER_SPEND':
-        return 'Offer Redemption';
+        return 'Reward redemption';
       case 'ADJUST':
-        return 'Manual Adjustment';
+        return 'Balance adjustment';
       default:
         return reason;
     }
