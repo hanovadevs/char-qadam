@@ -347,22 +347,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const Text(
                         'Powered by',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: AppTheme.grey,
-                          letterSpacing: 0.2,
+                          letterSpacing: -0.1,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Image.asset(
                         'assets/icon/Software_Agency_bg.png',
-                        height: 22,
+                        height: 36,
                         fit: BoxFit.contain,
                         filterQuality: FilterQuality.high,
                         errorBuilder: (context, error, stackTrace) => const Text(
                           'Hanova Devs',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppTheme.black,
                           ),

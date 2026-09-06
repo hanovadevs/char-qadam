@@ -233,28 +233,30 @@ class SplashScreen extends StatelessWidget {
             ),
             const Spacer(),
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Text(
                     'Powered by',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: AppTheme.inkTertiary,
-                      letterSpacing: 0.1,
+                      color: AppTheme.inkSecondary,
+                      letterSpacing: -0.1,
                     ),
                   ),
-                  const SizedBox(width: 7),
+                  const SizedBox(width: 8),
                   Image.asset(
                     'assets/icon/Software_Agency_bg.png',
-                    height: 18,
+                    height: 28,
                     fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                     errorBuilder: (context, error, stackTrace) => const Text(
                       'Hanova Devs',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.inkSecondary,
                       ),
