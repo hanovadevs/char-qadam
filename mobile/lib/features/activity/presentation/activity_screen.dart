@@ -97,10 +97,19 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(CupertinoIcons.chart_bar_alt_fill, size: 20, color: AppTheme.inkPrimary),
+            tooltip: 'Progress & trends',
+            onPressed: () {
+              HapticsService.light();
+              context.push('/progress');
+            },
+          ),
           RotationTransition(
             turns: _syncAnimController,
             child: IconButton(
               icon: const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: AppTheme.inkPrimary),
+              tooltip: 'Sync steps',
               onPressed: activityState.isSyncing
                   ? null
                   : () => ref.read(activityProvider.notifier).initAndSync(),
@@ -326,7 +335,6 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                       HapticsService.light();
                       context.push('/leaderboard');
                     },
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppTheme.radiusLg)),
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       child: Row(
@@ -342,6 +350,50 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                             ),
                           ),
                           Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1, color: AppTheme.hairline),
+                  InkWell(
+                    onTap: () {
+                      HapticsService.light();
+                      context.push('/progress');
+                    },
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppTheme.radiusLg)),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(CupertinoIcons.chart_bar_alt_fill, size: 16, color: AppTheme.accentSolid),
+                              SizedBox(width: 8),
+                              Text(
+                                'Progress & trends',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.inkPrimary,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                'Weekly & monthly',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.inkSecondary,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkSecondary),
+                            ],
+                          ),
                         ],
                       ),
                     ),

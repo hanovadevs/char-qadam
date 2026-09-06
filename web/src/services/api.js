@@ -122,6 +122,12 @@ class ApiClient {
     });
   }
 
+  async deletePartner(partnerId) {
+    return this.request(`/admin/partners/${partnerId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Deals / Offers
   async listOffers({ partner_id, status, search } = {}) {
     const params = new URLSearchParams();
@@ -179,6 +185,19 @@ class ApiClient {
     return this.request('/admin/redemptions');
   }
 
+  async updateVoucher(voucherId, payload) {
+    return this.request(`/admin/vouchers/${voucherId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteVoucher(voucherId) {
+    return this.request(`/admin/vouchers/${voucherId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Users
   async listUsers({ search, status } = {}) {
     const params = new URLSearchParams();
@@ -186,6 +205,19 @@ class ApiClient {
     if (status && status !== 'ALL') params.append('status', status);
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/users${query}`);
+  }
+
+  async updateUser(userId, payload) {
+    return this.request(`/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteUser(userId) {
+    return this.request(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
   }
 
   async updateUserStatus(userId, status) {
@@ -204,6 +236,10 @@ class ApiClient {
 
   async getUserLedger(userId) {
     return this.request(`/admin/users/${userId}/ledger`);
+  }
+
+  async getUserActivity(userId, range = 'month') {
+    return this.request(`/admin/users/${userId}/activity?range=${range}`);
   }
 
   // Ledger & Audit

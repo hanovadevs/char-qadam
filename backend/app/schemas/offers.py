@@ -24,6 +24,9 @@ class OfferOut(BaseModel):
     starts_at: datetime | None
     ends_at: datetime | None
     status: str
+    partner_name: str | None = None
+    partner_location: str | None = None
+    partner_google_maps_url: str | None = None
 
     model_config = {"from_attributes": True}
 

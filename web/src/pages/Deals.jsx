@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
-import { Search, Plus, Trash2 } from 'lucide-react';
+import { Search, Plus, Trash2, Edit } from 'lucide-react';
 
 export default function Deals() {
   const [deals, setDeals] = useState([]);
@@ -27,6 +27,21 @@ export default function Deals() {
     status: 'ACTIVE',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit Deal Modal
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState(null);
+  const [editDealForm, setEditDealForm] = useState({
+    title: '',
+    description: '',
+    discount_type: 'PERCENT',
+    discount_value: 15,
+    points_cost: 200,
+    min_basket: 0,
+    inventory: '',
+    status: 'ACTIVE',
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -79,8 +94,48 @@ export default function Deals() {
     }
   };
 
-  const handleDeleteDeal = async (dealId) => {
-    if (!window.confirm('Are you sure you want to remove this deal?')) return;
+  const openEditDeal = (deal) => {
+    setEditingDeal(deal);
+    setEditDealForm({
+      title: deal.title || '',
+      description: deal.description || '',
+      discount_type: deal.discount_type || 'PERCENT',
+      discount_value: deal.discount_value ?? 15,
+      points_cost: deal.points_cost ?? 200,
+      min_basket: deal.min_basket ?? 0,
+      inventory: deal.inventory != null ? deal.inventory : '',
+      status: deal.status || 'ACTIVE',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateDeal = async (e) => {
+    e.preventDefault();
+    if (!editingDeal || !editDealForm.title.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      await api.updateOffer(editingDeal.id, {
+        title: editDealForm.title.trim(),
+        description: editDealForm.description.trim() || undefined,
+        discount_type: editDealForm.discount_type,
+        discount_value: Number(editDealForm.discount_value),
+        points_cost: Number(editDealForm.points_cost),
+        min_basket: editDealForm.min_basket ? Number(editDealForm.min_basket) : undefined,
+        inventory: editDealForm.inventory !== '' ? Number(editDealForm.inventory) : undefined,
+        status: editDealForm.status,
+      });
+      setIsEditOpen(false);
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to update deal.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteDeal = async (dealId, dealTitle) => {
+    if (!window.confirm(`Are you sure you want to remove deal "${dealTitle || 'this deal'}"?`)) return;
     try {
       await api.deleteOffer(dealId);
       fetchData();
@@ -268,15 +323,28 @@ export default function Deals() {
                 <span style={{ fontSize: '11px', color: 'var(--text-subtle)' }}>
                   ID: {d.id.slice(0, 8)}
                 </span>
-                <button
-                  onClick={() => handleDeleteDeal(d.id)}
-                  className="btn btn-ghost btn-sm"
-                  style={{ color: '#BE123C', padding: '4px 8px' }}
-                  title="Remove Deal"
-                >
-                  <Trash2 size={14} />
-                  <span>Remove</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => openEditDeal(d)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                    title="Edit Deal"
+                  >
+                    <Edit size={12} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDeal(d.id, d.title)}
+                    className="btn btn-danger btn-sm"
+                    style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                    title="Remove Deal"
+                  >
+                    <Trash2 size={12} />
+                    <span>Delete</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -411,6 +479,155 @@ export default function Deals() {
               className="btn btn-primary"
             >
               {isSubmitting ? 'Publishing...' : 'Publish Deal'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Deal Modal */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingDeal(null);
+        }}
+        title={`Edit Deal: ${editingDeal?.title || ''}`}
+        subtitle="Update discount configuration, point redemption cost, or inventory limits."
+      >
+        <form onSubmit={handleUpdateDeal} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Deal Campaign Title *
+            </label>
+            <input
+              type="text"
+              required
+              className="input-control"
+              value={editDealForm.title}
+              onChange={(e) => setEditDealForm({ ...editDealForm, title: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Description / Terms
+            </label>
+            <textarea
+              className="input-control"
+              rows={2}
+              style={{ resize: 'vertical' }}
+              value={editDealForm.description}
+              onChange={(e) => setEditDealForm({ ...editDealForm, description: e.target.value })}
+            />
+          </div>
+
+          <div className="grid-cols-2" style={{ gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Discount Type
+              </label>
+              <select
+                className="input-control"
+                value={editDealForm.discount_type}
+                onChange={(e) => setEditDealForm({ ...editDealForm, discount_type: e.target.value })}
+              >
+                <option value="PERCENT">Percentage (%)</option>
+                <option value="FIXED">Fixed Amount ($)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Discount Value *
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                className="input-control"
+                value={editDealForm.discount_value}
+                onChange={(e) => setEditDealForm({ ...editDealForm, discount_value: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid-cols-2" style={{ gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Points Cost *
+              </label>
+              <input
+                type="number"
+                required
+                min="10"
+                className="input-control"
+                value={editDealForm.points_cost}
+                onChange={(e) => setEditDealForm({ ...editDealForm, points_cost: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Status
+              </label>
+              <select
+                className="input-control"
+                value={editDealForm.status}
+                onChange={(e) => setEditDealForm({ ...editDealForm, status: e.target.value })}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid-cols-2" style={{ gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Min. Basket Spend ($)
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="input-control"
+                placeholder="0"
+                value={editDealForm.min_basket}
+                onChange={(e) => setEditDealForm({ ...editDealForm, min_basket: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Inventory Limit
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="input-control"
+                placeholder="Leave blank for unlimited"
+                value={editDealForm.inventory}
+                onChange={(e) => setEditDealForm({ ...editDealForm, inventory: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditOpen(false);
+                setEditingDeal(null);
+              }}
+              className="btn btn-ghost"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="btn btn-primary"
+            >
+              {isUpdating ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

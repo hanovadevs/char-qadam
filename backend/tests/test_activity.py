@@ -258,6 +258,27 @@ async def test_get_activity_today(client: AsyncClient) -> None:
         await _cleanup(email)
 
 
+@pytest.mark.asyncio
+async def test_get_activity_extended_ranges(client: AsyncClient) -> None:
+    """Extended activity ranges (month, 3months, 6months, year, all) must return valid responses."""
+    email = _email()
+    try:
+        token = await _register_and_token(client, email)
+        await client.post(
+            "/activity/sync",
+            json={"local_date": _today(), "eligible_steps": 7500, "source": "manual", "sync_key": _sync_key()},
+            headers=_auth(token),
+        )
+        for r_param in ["week", "month", "3months", "6months", "year", "all"]:
+            r = await client.get(f"/activity?range={r_param}", headers=_auth(token))
+            assert r.status_code == 200, f"Failed for range={r_param}: {r.text}"
+            body = r.json()
+            assert body["range"] == r_param
+            assert body["total_steps"] >= 7500
+    finally:
+        await _cleanup(email)
+
+
 # ---------------------------------------------------------------------------
 # GET /points/balance and /points/history
 # ---------------------------------------------------------------------------

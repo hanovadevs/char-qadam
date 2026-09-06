@@ -193,6 +193,7 @@ class Partner(Base):
     category: Mapped[str | None] = mapped_column(String(64), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    google_maps_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     status: Mapped[PartnerStatus] = mapped_column(
         Enum(PartnerStatus, name="partner_status", values_callable=lambda x: [e.value for e in x]),

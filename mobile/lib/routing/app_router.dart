@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/app_theme.dart';
 import '../data/auth/auth_state_provider.dart';
 import '../features/activity/presentation/activity_screen.dart';
+import '../features/activity/presentation/progress_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
@@ -107,6 +108,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/leaderboard',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const LeaderboardScreen(),
+      ),
+      GoRoute(
+        path: '/progress',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ProgressScreen(),
       ),
       GoRoute(
         path: '/merchant-pos',

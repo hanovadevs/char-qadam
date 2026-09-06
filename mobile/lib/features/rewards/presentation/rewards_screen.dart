@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/swiss_skeleton.dart';
@@ -83,6 +84,60 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   letterSpacing: -0.3,
                 ),
               ),
+              if (offer.partnerName != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      offer.partnerName as String,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.accentSolid,
+                      ),
+                    ),
+                    if (offer.partnerLocation != null && (offer.partnerLocation as String).isNotEmpty) ...[
+                      const Text('  •  ', style: TextStyle(color: AppTheme.hairline)),
+                      Expanded(
+                        child: Text(
+                          offer.partnerLocation as String,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.inkSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (offer.partnerGoogleMapsUrl != null && (offer.partnerGoogleMapsUrl as String).isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () async {
+                      final uri = Uri.parse(offer.partnerGoogleMapsUrl as String);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(CupertinoIcons.location_solid, size: 13, color: AppTheme.accentSolid),
+                        SizedBox(width: 4),
+                        Text(
+                          'View store on Google Maps',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.accentSolid,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
               const SizedBox(height: 18),
 
               // Points Math Breakdown
@@ -426,7 +481,77 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            if (offer.partnerName != null) ...[
+                              const SizedBox(height: 10),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          offer.partnerName!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.accentSolid,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (offer.partnerLocation != null && offer.partnerLocation!.isNotEmpty) ...[
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            offer.partnerLocation!,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppTheme.inkTertiary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  if (offer.partnerGoogleMapsUrl != null && offer.partnerGoogleMapsUrl!.isNotEmpty)
+                                    InkWell(
+                                      onTap: () async {
+                                        final uri = Uri.parse(offer.partnerGoogleMapsUrl!);
+                                        if (await canLaunchUrl(uri)) {
+                                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.surfaceMuted,
+                                          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                                          border: Border.all(color: AppTheme.hairline),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(CupertinoIcons.location_solid, size: 11, color: AppTheme.accentSolid),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Locate on map',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.accentSolid,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 10),
                             Text(
                               offer.title,
                               style: const TextStyle(

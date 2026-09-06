@@ -89,11 +89,11 @@ async def sync(
     summary="Get aggregated step history",
 )
 async def get_activity(
-    range: str = Query(default="today", pattern="^(today|week|month)$"),
+    range: str = Query(default="today", pattern="^(today|week|month|3months|6months|year|all)$"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> ActivityRangeOut:
-    """Return step totals for today, the last 7 days, or the last 30 days.
+    """Return step totals for today, previous weeks, or previous months.
 
     Days with no synced data are omitted from ``days`` but counted in the
     date window for ``total_steps``.
@@ -103,21 +103,29 @@ async def get_activity(
         start = today
     elif range == "week":
         start = today - timedelta(days=6)
-    else:  # month
+    elif range == "month":
         start = today - timedelta(days=29)
+    elif range == "3months":
+        start = today - timedelta(days=90)
+    elif range == "6months":
+        start = today - timedelta(days=180)
+    elif range == "year":
+        start = today - timedelta(days=365)
+    else:  # all
+        start = None
 
-    start_str = start.isoformat()
     end_str = today.isoformat()
 
-    rows_result = await session.execute(
-        select(ActivityDaily)
-        .where(
-            ActivityDaily.user_id == current_user.id,
-            ActivityDaily.local_date >= start_str,
-            ActivityDaily.local_date <= end_str,
-        )
-        .order_by(ActivityDaily.local_date)
+    query = select(ActivityDaily).where(
+        ActivityDaily.user_id == current_user.id,
+        ActivityDaily.local_date <= end_str,
     )
+    if start is not None:
+        query = query.where(ActivityDaily.local_date >= start.isoformat())
+
+    query = query.order_by(ActivityDaily.local_date)
+
+    rows_result = await session.execute(query)
     rows = rows_result.scalars().all()
 
     days = [ActivityPeriod(date=r.local_date, eligible_steps=r.eligible_steps, source=r.source) for r in rows]

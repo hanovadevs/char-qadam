@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.db.models import Offer, OfferStatus, User
@@ -44,6 +45,7 @@ async def list_offers(
 
     result = await session.execute(
         select(Offer)
+        .options(selectinload(Offer.partner))
         .where(
             Offer.status == OfferStatus.ACTIVE,
             or_(Offer.starts_at.is_(None), Offer.starts_at <= now),
@@ -53,7 +55,15 @@ async def list_offers(
         .order_by(Offer.points_cost)
     )
     offers = result.scalars().all()
-    return [OfferOut.model_validate(o) for o in offers]
+    items = []
+    for o in offers:
+        out = OfferOut.model_validate(o)
+        if o.partner:
+            out.partner_name = o.partner.name
+            out.partner_location = o.partner.location
+            out.partner_google_maps_url = getattr(o.partner, "google_maps_url", None)
+        items.append(out)
+    return items
 
 
 @router.post(

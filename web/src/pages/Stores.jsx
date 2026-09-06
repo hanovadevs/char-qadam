@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
-import { Search, Plus, Copy, Check } from 'lucide-react';
+import { Search, Plus, Copy, Check, MapPin, Edit, Trash2, ExternalLink } from 'lucide-react';
 
 export default function Stores() {
   const [stores, setStores] = useState([]);
@@ -17,6 +17,20 @@ export default function Stores() {
   const [storeDetails, setStoreDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  // Edit Store State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingStore, setEditingStore] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    category: '',
+    location: '',
+    google_maps_url: '',
+    status: 'ACTIVE',
+  });
+  const [isUpdatingStore, setIsUpdatingStore] = useState(false);
+  const [isDeletingStore, setIsDeletingStore] = useState(false);
+
   // New Store Form
   const [formData, setFormData] = useState({
     name: '',
@@ -24,6 +38,7 @@ export default function Stores() {
     password: '',
     category: '',
     location: '',
+    google_maps_url: '',
     status: 'ACTIVE',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,6 +100,7 @@ export default function Stores() {
         password: formData.password,
         category: formData.category.trim() || undefined,
         location: formData.location.trim() || undefined,
+        google_maps_url: formData.google_maps_url.trim() || undefined,
         status: formData.status,
       });
       setCreatedPassword(formData.password);
@@ -94,6 +110,71 @@ export default function Stores() {
       alert(err.message || 'Failed to create partner store.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const openEditStore = (store, e) => {
+    if (e) e.stopPropagation();
+    setEditingStore(store);
+    setEditFormData({
+      name: store.name || '',
+      email: store.email || '',
+      category: store.category || '',
+      location: store.location || '',
+      google_maps_url: store.google_maps_url || '',
+      status: store.status || 'ACTIVE',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateStore = async (e) => {
+    e.preventDefault();
+    if (!editingStore || !editFormData.name.trim()) {
+      alert('Store name cannot be empty.');
+      return;
+    }
+
+    setIsUpdatingStore(true);
+    try {
+      await api.updatePartner(editingStore.id, {
+        name: editFormData.name.trim(),
+        email: editFormData.email.trim() || undefined,
+        category: editFormData.category.trim() || undefined,
+        location: editFormData.location.trim() || undefined,
+        google_maps_url: editFormData.google_maps_url.trim() || undefined,
+        status: editFormData.status,
+      });
+      setIsEditOpen(false);
+      if (selectedStore === editingStore.id) {
+        openStoreDetails(editingStore.id);
+      }
+      fetchStores();
+    } catch (err) {
+      alert(err.message || 'Failed to update partner store.');
+    } finally {
+      setIsUpdatingStore(false);
+    }
+  };
+
+  const handleDeleteStore = async (storeId, storeName, e) => {
+    if (e) e.stopPropagation();
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${storeName}"?\n\nThis will permanently delete the store, its merchant login account, all active deals, and vouchers.`
+    );
+    if (!confirmed) return;
+
+    setIsDeletingStore(true);
+    try {
+      await api.deletePartner(storeId);
+      if (selectedStore === storeId) {
+        setSelectedStore(null);
+        setStoreDetails(null);
+      }
+      fetchStores();
+    } catch (err) {
+      alert(err.message || 'Failed to delete partner store.');
+    } finally {
+      setIsDeletingStore(false);
     }
   };
 
@@ -338,6 +419,34 @@ export default function Stores() {
                       <p style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.email || 'No login email'}
                       </p>
+                      {(s.location || s.category) && (
+                        <p style={{ fontSize: '11px', color: 'var(--text-subtle)', marginTop: '2px' }}>
+                          {[s.category, s.location].filter(Boolean).join(' • ')}
+                        </p>
+                      )}
+                      {s.google_maps_url && (
+                        <a
+                          href={s.google_maps_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            color: 'var(--brand-teal)',
+                            fontWeight: '600',
+                            textDecoration: 'none',
+                            marginTop: '4px',
+                          }}
+                          title="Open in Google Maps"
+                        >
+                          <MapPin size={11} />
+                          <span>View on Map</span>
+                          <ExternalLink size={9} />
+                        </a>
+                      )}
                     </div>
                   </div>
 
@@ -386,11 +495,30 @@ export default function Stores() {
 
               {/* Card Footer */}
               <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '500' }}>
-                  Merchant POS Ready
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => openEditStore(s, e)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                    title="Edit Store"
+                  >
+                    <Edit size={11} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteStore(s.id, s.name, e)}
+                    className="btn btn-danger btn-sm"
+                    style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                    title="Delete Store"
+                  >
+                    <Trash2 size={11} />
+                    <span>Delete</span>
+                  </button>
+                </div>
                 <span style={{ color: 'var(--brand-teal)', fontWeight: '600' }}>
-                  Manage Store &rarr;
+                  Manage &rarr;
                 </span>
               </div>
             </div>
@@ -545,6 +673,19 @@ export default function Stores() {
               </div>
             </div>
 
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Google Maps Location Link (Optional)
+              </label>
+              <input
+                type="url"
+                className="input-control"
+                placeholder="https://maps.google.com/?q=..."
+                value={formData.google_maps_url}
+                onChange={(e) => setFormData({ ...formData, google_maps_url: e.target.value })}
+              />
+            </div>
+
             <div style={{ padding: '10px 12px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
               A linked merchant user account will be created. The merchant can log in from the exact same mobile login screen and will be automatically presented with the POS Terminal.
             </div>
@@ -588,7 +729,7 @@ export default function Stores() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Header info */}
             <div style={{ padding: '16px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h4 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--brand-dark)' }}>
                     {storeDetails.name}
@@ -596,8 +737,55 @@ export default function Stores() {
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     {storeDetails.email || 'No contact email configured'}
                   </p>
+                  {(storeDetails.category || storeDetails.location) && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      {[storeDetails.category, storeDetails.location].filter(Boolean).join(' • ')}
+                    </p>
+                  )}
+                  {storeDetails.google_maps_url && (
+                    <a
+                      href={storeDetails.google_maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        fontSize: '12px',
+                        color: 'var(--brand-teal)',
+                        fontWeight: '600',
+                        textDecoration: 'none',
+                        marginTop: '6px',
+                      }}
+                    >
+                      <MapPin size={13} />
+                      <span>View Location on Google Maps</span>
+                      <ExternalLink size={11} />
+                    </a>
+                  )}
                 </div>
-                <Badge status={storeDetails.status} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Badge status={storeDetails.status} />
+                  <button
+                    type="button"
+                    onClick={() => openEditStore(storeDetails)}
+                    className="btn btn-secondary btn-sm"
+                    title="Edit Store Information"
+                  >
+                    <Edit size={13} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteStore(storeDetails.id, storeDetails.name)}
+                    className="btn btn-danger btn-sm"
+                    title="Delete Store"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
+                </div>
               </div>
 
               {/* Merchant Mobile POS Login Account Section */}
@@ -861,6 +1049,120 @@ export default function Stores() {
               className="btn btn-primary"
             >
               {isSubmittingDeal ? 'Publishing...' : 'Publish Deal'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Store Modal */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingStore(null);
+        }}
+        title={`Edit Store: ${editingStore?.name || ''}`}
+        subtitle="Update store metadata, merchant login email, location, or Google Maps link."
+      >
+        <form onSubmit={handleUpdateStore} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Store / Brand Name *
+            </label>
+            <input
+              type="text"
+              required
+              className="input-control"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Merchant Login Email
+            </label>
+            <input
+              type="email"
+              className="input-control"
+              placeholder="merchant@brand.com"
+              value={editFormData.email}
+              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+            />
+          </div>
+
+          <div className="grid-cols-2" style={{ gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Category
+              </label>
+              <input
+                type="text"
+                className="input-control"
+                placeholder="e.g. Cafe, Retail"
+                value={editFormData.category}
+                onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Status
+              </label>
+              <select
+                className="input-control"
+                value={editFormData.status}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Location / Branch
+            </label>
+            <input
+              type="text"
+              className="input-control"
+              placeholder="e.g. Downtown Mall, Floor 1"
+              value={editFormData.location}
+              onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Google Maps Location Link
+            </label>
+            <input
+              type="url"
+              className="input-control"
+              placeholder="https://maps.google.com/?q=..."
+              value={editFormData.google_maps_url}
+              onChange={(e) => setEditFormData({ ...editFormData, google_maps_url: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditOpen(false);
+                setEditingStore(null);
+              }}
+              className="btn btn-ghost"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdatingStore}
+              className="btn btn-primary"
+            >
+              {isUpdatingStore ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

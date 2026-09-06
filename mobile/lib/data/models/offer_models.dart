@@ -1,6 +1,9 @@
 class OfferModel {
   final String id;
   final String partnerId;
+  final String? partnerName;
+  final String? partnerLocation;
+  final String? partnerGoogleMapsUrl;
   final String title;
   final String? description;
   final String discountType;
@@ -15,6 +18,9 @@ class OfferModel {
   OfferModel({
     required this.id,
     required this.partnerId,
+    this.partnerName,
+    this.partnerLocation,
+    this.partnerGoogleMapsUrl,
     required this.title,
     this.description,
     required this.discountType,
@@ -31,6 +37,9 @@ class OfferModel {
     return OfferModel(
       id: json['id'] as String,
       partnerId: json['partner_id'] as String,
+      partnerName: json['partner_name'] as String?,
+      partnerLocation: json['partner_location'] as String?,
+      partnerGoogleMapsUrl: json['partner_google_maps_url'] as String?,
       title: json['title'] as String,
       description: json['description'] as String?,
       discountType: json['discount_type'] as String,

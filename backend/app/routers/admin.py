@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.db.models import (
     ActivityDaily,
     AuditLog,
+    Device,
     DiscountType,
     LedgerReason,
     Offer,
@@ -62,6 +63,7 @@ class AdminPartnerIn(BaseModel):
     category: str | None = None
     description: str | None = None
     location: str | None = None
+    google_maps_url: str | None = None
     status: str | None = "ACTIVE"
     generate_api_key: bool | None = False
 
@@ -72,6 +74,7 @@ class AdminPartnerPatchIn(BaseModel):
     category: str | None = None
     description: str | None = None
     location: str | None = None
+    google_maps_url: str | None = None
     status: str | None = None
 
 
@@ -102,6 +105,16 @@ class AdminOfferPatchIn(BaseModel):
     min_basket: float | None = None
     inventory: int | None = None
     status: OfferStatus | None = None
+
+
+class AdminUserPatchIn(BaseModel):
+    email: EmailStr | None = None
+    role: str | None = None
+    status: str | None = None
+
+
+class AdminVoucherPatchIn(BaseModel):
+    status: str | None = None
 
 
 class AdminVoucherLookupIn(BaseModel):
@@ -297,6 +310,7 @@ async def list_partners(
             "category": getattr(p, "category", None),
             "description": getattr(p, "description", None),
             "location": getattr(p, "location", None),
+            "google_maps_url": getattr(p, "google_maps_url", None),
             "status": p.status.value,
             "has_api_key": bool(p.api_key_hash),
             "offer_count": off_count,
@@ -341,6 +355,7 @@ async def create_partner(
         category=body.category.strip() if body.category else None,
         description=body.description.strip() if body.description else None,
         location=body.location.strip() if body.location else None,
+        google_maps_url=body.google_maps_url.strip() if body.google_maps_url else None,
         api_key_hash=api_key_hash,
         status=PartnerStatus(body.status) if body.status else PartnerStatus.ACTIVE,
     )
@@ -375,6 +390,7 @@ async def create_partner(
         "category": partner.category,
         "description": partner.description,
         "location": partner.location,
+        "google_maps_url": partner.google_maps_url,
         "status": partner.status.value,
         "raw_api_key": raw_api_key,
         "has_api_key": bool(partner.api_key_hash),
@@ -403,6 +419,8 @@ async def update_partner(
         partner.description = body.description.strip() if body.description else None
     if body.location is not None:
         partner.location = body.location.strip() if body.location else None
+    if body.google_maps_url is not None:
+        partner.google_maps_url = body.google_maps_url.strip() if body.google_maps_url else None
     if body.status is not None:
         partner.status = PartnerStatus(body.status)
 
@@ -431,8 +449,61 @@ async def update_partner(
         "category": partner.category,
         "description": partner.description,
         "location": partner.location,
+        "google_maps_url": partner.google_maps_url,
         "status": partner.status.value,
     }
+
+
+@router.delete("/partners/{partner_id}", summary="Delete Partner Store")
+async def delete_partner(
+    partner_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    partner = await session.get(Partner, partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+
+    # Find all offers for this partner
+    offer_ids = (await session.execute(
+        select(Offer.id).where(Offer.partner_id == partner_id)
+    )).scalars().all()
+
+    if offer_ids:
+        voucher_ids = (await session.execute(
+            select(Voucher.id).where(Voucher.offer_id.in_(offer_ids))
+        )).scalars().all()
+
+        if voucher_ids:
+            await session.execute(
+                delete(Redemption).where(Redemption.voucher_id.in_(voucher_ids))
+            )
+            await session.execute(
+                delete(Voucher).where(Voucher.id.in_(voucher_ids))
+            )
+
+        await session.execute(
+            delete(Offer).where(Offer.partner_id == partner_id)
+        )
+
+    await session.execute(
+        delete(Redemption).where(Redemption.partner_id == partner_id)
+    )
+
+    await session.execute(
+        delete(User).where(User.partner_id == partner_id, User.role == "MERCHANT")
+    )
+
+    await session.delete(partner)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="DELETE_PARTNER",
+        object_type="PARTNER",
+        object_id=partner_id,
+    ))
+    await session.commit()
+    return {"message": f"Partner '{partner.name}' and associated offers, vouchers, and merchant accounts deleted successfully"}
 
 
 @router.post("/partners/{partner_id}/reset-password", summary="Reset Partner Merchant Password")
@@ -538,6 +609,7 @@ async def get_partner(
         "category": getattr(partner, "category", None),
         "description": getattr(partner, "description", None),
         "location": getattr(partner, "location", None),
+        "google_maps_url": getattr(partner, "google_maps_url", None),
         "status": partner.status.value,
         "has_api_key": bool(partner.api_key_hash),
         "raw_api_key": None,
@@ -693,6 +765,18 @@ async def delete_offer(
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
 
+    # Clean up associated vouchers and redemptions
+    voucher_ids = (await session.execute(
+        select(Voucher.id).where(Voucher.offer_id == offer_id)
+    )).scalars().all()
+    if voucher_ids:
+        await session.execute(
+            delete(Redemption).where(Redemption.voucher_id.in_(voucher_ids))
+        )
+        await session.execute(
+            delete(Voucher).where(Voucher.id.in_(voucher_ids))
+        )
+
     await session.delete(offer)
     session.add(AuditLog(
         id=str(uuid.uuid4()),
@@ -702,7 +786,7 @@ async def delete_offer(
         object_id=offer_id,
     ))
     await session.commit()
-    return {"message": "Offer deleted successfully"}
+    return {"message": "Offer and associated vouchers deleted successfully"}
 
 
 # ---------------------------------------------------------------------------
@@ -828,6 +912,55 @@ async def redeem_voucher(
     return {"message": "Voucher redeemed successfully", "short_code": v.short_code}
 
 
+@router.patch("/vouchers/{voucher_id}", summary="Update Voucher Status")
+async def update_voucher(
+    voucher_id: str,
+    body: AdminVoucherPatchIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    voucher = await session.get(Voucher, voucher_id)
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Voucher not found")
+
+    if body.status is not None:
+        voucher.status = VoucherStatus(body.status.strip().upper())
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="UPDATE_VOUCHER",
+        object_type="VOUCHER",
+        object_id=voucher_id,
+    ))
+    await session.commit()
+    return {"id": voucher.id, "short_code": voucher.short_code, "status": voucher.status.value}
+
+
+@router.delete("/vouchers/{voucher_id}", summary="Delete Voucher")
+async def delete_voucher(
+    voucher_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    voucher = await session.get(Voucher, voucher_id)
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Voucher not found")
+
+    # Delete linked redemption if exists
+    await session.execute(
+        delete(Redemption).where(Redemption.voucher_id == voucher_id)
+    )
+    await session.delete(voucher)
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="DELETE_VOUCHER",
+        object_type="VOUCHER",
+        object_id=voucher_id,
+    ))
+    await session.commit()
+    return {"message": "Voucher deleted successfully"}
+
+
 @router.get("/redemptions", summary="List Redemption History")
 async def list_redemptions(
     partner_id: str | None = None,
@@ -900,6 +1033,7 @@ async def list_users(
         items.append({
             "id": u.id,
             "email": u.email,
+            "role": u.role,
             "status": u.status.value,
             "total_steps": int(total_steps),
             "points_balance": int(pts),
@@ -929,6 +1063,97 @@ async def update_user_status_patch(
     ))
     await session.commit()
     return {"user_id": user.id, "status": user.status.value}
+
+
+@router.patch("/users/{user_id}", summary="Update User Details")
+async def update_user(
+    user_id: str,
+    body: AdminUserPatchIn,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.email is not None:
+        email_clean = str(body.email).strip().lower()
+        existing = (await session.execute(
+            select(User).where(User.email == email_clean, User.id != user_id)
+        )).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"Email '{email_clean}' is already registered to another user.")
+        user.email = email_clean
+
+    if body.role is not None:
+        user.role = body.role.strip().upper()
+
+    if body.status is not None:
+        user.status = UserStatus(body.status.strip().upper())
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="UPDATE_USER",
+        object_type="USER",
+        object_id=user.id,
+    ))
+    await session.commit()
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "status": user.status.value,
+    }
+
+
+@router.delete("/users/{user_id}", summary="Delete User Account")
+async def delete_user(
+    user_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Delete user's vouchers and associated redemptions
+    v_ids = (await session.execute(
+        select(Voucher.id).where(Voucher.user_id == user_id)
+    )).scalars().all()
+    if v_ids:
+        await session.execute(
+            delete(Redemption).where(Redemption.voucher_id.in_(v_ids))
+        )
+        await session.execute(
+            delete(Voucher).where(Voucher.id.in_(v_ids))
+        )
+
+    # Delete ledger entries
+    await session.execute(
+        delete(PointsLedger).where(PointsLedger.user_id == user_id)
+    )
+
+    # Delete daily activity
+    await session.execute(
+        delete(ActivityDaily).where(ActivityDaily.user_id == user_id)
+    )
+
+    # Delete user devices
+    await session.execute(
+        delete(Device).where(Device.user_id == user_id)
+    )
+
+    # Delete user
+    await session.delete(user)
+
+    session.add(AuditLog(
+        id=str(uuid.uuid4()),
+        actor="admin",
+        action="DELETE_USER",
+        object_type="USER",
+        object_id=user_id,
+    ))
+    await session.commit()
+    return {"message": "User account and all associated activity deleted successfully"}
 
 
 @router.post("/users/{user_id}/adjust-points", summary="Manual Points Adjustment")
@@ -986,6 +1211,44 @@ async def get_user_ledger(
         }
         for e in entries
     ]
+
+
+@router.get("/users/{user_id}/activity", summary="User Historical Step Activity")
+async def get_user_activity(
+    user_id: str,
+    range: str = Query(default="3months", pattern="^(today|week|month|3months|6months|year|all)$"),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    today = date.today()
+    if range == "today":
+        start = today
+    elif range == "week":
+        start = today - timedelta(days=6)
+    elif range == "month":
+        start = today - timedelta(days=29)
+    elif range == "3months":
+        start = today - timedelta(days=90)
+    elif range == "6months":
+        start = today - timedelta(days=180)
+    elif range == "year":
+        start = today - timedelta(days=365)
+    else:  # all
+        start = None
+
+    query = select(ActivityDaily).where(
+        ActivityDaily.user_id == user_id,
+        ActivityDaily.local_date <= today.isoformat(),
+    )
+    if start is not None:
+        query = query.where(ActivityDaily.local_date >= start.isoformat())
+
+    query = query.order_by(ActivityDaily.local_date)
+    result = await session.execute(query)
+    rows = result.scalars().all()
+
+    days = [{"date": r.local_date, "eligible_steps": r.eligible_steps, "source": r.source} for r in rows]
+    total_steps = sum(d["eligible_steps"] for d in days)
+    return {"range": range, "total_steps": total_steps, "days": days}
 
 
 # ---------------------------------------------------------------------------

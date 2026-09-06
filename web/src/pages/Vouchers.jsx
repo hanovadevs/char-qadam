@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Badge from '../components/Badge';
-import { Search, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle, Trash2, XCircle } from 'lucide-react';
 
 export default function Vouchers() {
   // POS Simulator State
@@ -36,6 +36,26 @@ export default function Vouchers() {
   useEffect(() => {
     fetchVouchers();
   }, [search, statusFilter]);
+
+  const handleCancelVoucher = async (voucher) => {
+    if (!window.confirm(`Are you sure you want to cancel voucher "${voucher.short_code}"?`)) return;
+    try {
+      await api.updateVoucher(voucher.id, { status: 'CANCELLED' });
+      fetchVouchers();
+    } catch (err) {
+      alert(err.message || 'Failed to cancel voucher.');
+    }
+  };
+
+  const handleDeleteVoucher = async (voucher) => {
+    if (!window.confirm(`Are you sure you want to permanently delete voucher "${voucher.short_code}"?`)) return;
+    try {
+      await api.deleteVoucher(voucher.id);
+      fetchVouchers();
+    } catch (err) {
+      alert(err.message || 'Failed to delete voucher.');
+    }
+  };
 
   const handleLookup = async (e) => {
     e.preventDefault();
@@ -287,12 +307,13 @@ export default function Vouchers() {
               <th>Discount</th>
               <th>Issued At</th>
               <th>Status</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                   Loading vouchers...
                 </td>
               </tr>
@@ -320,11 +341,37 @@ export default function Vouchers() {
                   <td>
                     <Badge status={v.status} />
                   </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                      {v.status === 'ISSUED' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelVoucher(v)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                          title="Cancel Voucher"
+                        >
+                          <XCircle size={12} />
+                          <span>Cancel</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteVoucher(v)}
+                        className="btn btn-danger btn-sm"
+                        style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                        title="Delete Voucher"
+                      >
+                        <Trash2 size={12} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                   No vouchers match the criteria.
                 </td>
               </tr>
