@@ -192,10 +192,10 @@ class SplashScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                 border: Border.all(color: AppTheme.hairline),
               ),
-              clipBehavior: Clip.antiAlias,
+              padding: const EdgeInsets.all(12),
               child: Image.asset(
-                'assets/icon/app_icon.png',
-                fit: BoxFit.cover,
+                'assets/icon/Stepsy_Icon1.png',
+                fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: AppTheme.surfaceMuted,
                   child: const Icon(

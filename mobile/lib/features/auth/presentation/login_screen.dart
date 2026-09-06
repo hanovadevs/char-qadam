@@ -109,8 +109,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceMuted,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            border: Border.all(color: AppTheme.hairline),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          child: Image.asset(
+                            'assets/icon/Stepsy_Icon1.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => const Icon(
+                              Icons.directions_walk,
+                              size: 28,
+                              color: AppTheme.accentSolid,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
                           'Stepsy',
                           style: TextStyle(
                             fontSize: 32,
@@ -119,8 +139,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             color: AppTheme.inkPrimary,
                           ),
                         ),
-                        SizedBox(height: 6),
-                        Text(
+                        const SizedBox(height: 6),
+                        const Text(
                           'Turn your daily movement into real rewards.',
                           style: TextStyle(
                             fontSize: 15,
