@@ -337,6 +337,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 32),
+
+                  // Agency Branding Footer
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Powered by',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.grey,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Image.asset(
+                        'assets/icon/Software_Agency_bg.png',
+                        height: 22,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (context, error, stackTrace) => const Text(
+                          'Hanova Devs',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.black,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

@@ -477,6 +477,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     letterSpacing: -0.1,
                   ),
                 ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Powered by Hanova Devs',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.inkTertiary,
+                    letterSpacing: 0.1,
+                  ),
+                ),
               ],
             ),
           ),

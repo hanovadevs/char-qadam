@@ -186,10 +186,10 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.surfaceMuted,
-      body: Center(
+      body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Spacer(),
             Container(
               width: 84,
               height: 84,
@@ -229,6 +229,38 @@ class SplashScreen extends StatelessWidget {
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
+              ),
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Powered by',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.inkTertiary,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Image.asset(
+                    'assets/icon/Software_Agency_bg.png',
+                    height: 18,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Text(
+                      'Hanova Devs',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.inkSecondary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
