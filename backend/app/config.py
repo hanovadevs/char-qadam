@@ -56,6 +56,8 @@ class Settings(BaseSettings):
 
     # Vouchers
     voucher_validity_days: int = 30     # days from issuance until a voucher expires
+    # Comma-separated Fernet keys, newest first. Preserve older keys for retries.
+    redemption_receipt_keys: str = ''
 
     # Partner API (B4)
     # Secret used to HMAC-sign validate→redeem nonces.  Defaults to jwt_secret.

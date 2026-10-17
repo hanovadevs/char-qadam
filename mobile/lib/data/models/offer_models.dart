@@ -47,8 +47,12 @@ class OfferModel {
       pointsCost: json['points_cost'] as int,
       minBasket: (json['min_basket'] as num?)?.toDouble(),
       inventory: json['inventory'] as int?,
-      startsAt: json['starts_at'] != null ? DateTime.parse(json['starts_at'] as String) : null,
-      endsAt: json['ends_at'] != null ? DateTime.parse(json['ends_at'] as String) : null,
+      startsAt: json['starts_at'] != null
+          ? DateTime.parse(json['starts_at'] as String)
+          : null,
+      endsAt: json['ends_at'] != null
+          ? DateTime.parse(json['ends_at'] as String)
+          : null,
       status: json['status'] as String,
     );
   }
@@ -61,6 +65,8 @@ class RedeemResultModel {
   final DateTime expiresAt;
   final int pointsSpent;
   final int balance;
+  final bool isReplay;
+  final String? requestKey;
 
   RedeemResultModel({
     required this.voucherId,
@@ -69,9 +75,14 @@ class RedeemResultModel {
     required this.expiresAt,
     required this.pointsSpent,
     required this.balance,
+    this.isReplay = false,
+    this.requestKey,
   });
 
-  factory RedeemResultModel.fromJson(Map<String, dynamic> json) {
+  factory RedeemResultModel.fromJson(
+    Map<String, dynamic> json, {
+    String? requestKey,
+  }) {
     return RedeemResultModel(
       voucherId: json['voucher_id'] as String,
       shortCode: json['short_code'] as String,
@@ -79,6 +90,8 @@ class RedeemResultModel {
       expiresAt: DateTime.parse(json['expires_at'] as String),
       pointsSpent: json['points_spent'] as int,
       balance: json['balance'] as int,
+      isReplay: json['is_replay'] as bool? ?? false,
+      requestKey: requestKey,
     );
   }
 }

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,7 +18,7 @@ from app.config import get_settings
 from app.db.models import Offer, OfferStatus, Partner, PartnerStatus, User
 from app.db.postgres import get_session
 from app.deps import get_current_user
-from app.schemas.offers import OfferOut, RedeemOut
+from app.schemas.offers import OfferOut, RedeemIn, RedeemOut
 from app.services.offers import redeem_offer
 
 router = APIRouter(prefix="/offers", tags=["offers"])
@@ -76,6 +76,8 @@ async def list_offers(
 )
 async def redeem(
     offer_id: str,
+    body: RedeemIn | None = None,
+    idempotency_key: str | None = Header(default=None, min_length=16, max_length=128, pattern=r'^[A-Za-z0-9_-]+$'),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> RedeemOut:
@@ -95,6 +97,8 @@ async def redeem(
         user=current_user,
         session=session,
         settings=settings,
+        request_key=idempotency_key,
+        expected_points_cost=body.expected_points_cost if body else None,
     )
     return RedeemOut(
         voucher_id=result.voucher_id,
@@ -103,4 +107,5 @@ async def redeem(
         expires_at=result.expires_at,
         points_spent=result.points_spent,
         balance=result.balance,
+        is_replay=result.is_replay,
     )

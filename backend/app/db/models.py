@@ -270,6 +270,19 @@ class Voucher(Base):
     redemption: Mapped[Redemption | None] = relationship(back_populates="voucher", uselist=False)
 
 
+class RedemptionRequest(Base):
+    """Encrypted successful issuance receipt, scoped to one user's request key."""
+    __tablename__ = 'redemption_requests'
+    __table_args__ = (UniqueConstraint('user_id', 'request_key', name='uq_redemption_user_key'),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    request_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    offer_id: Mapped[str] = mapped_column(ForeignKey('offers.id', ondelete='RESTRICT'), nullable=False)
+    response_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class Redemption(Base):
     """Record of a voucher being redeemed at a merchant POS/API."""
     __tablename__ = "redemptions"

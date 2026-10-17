@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/swiss_skeleton.dart';
+import '../../../data/models/offer_models.dart';
 import '../../points/providers/points_provider.dart';
 import '../providers/rewards_provider.dart';
 
@@ -35,7 +36,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     ]);
   }
 
-  void _showRedeemBottomSheet(BuildContext context, WidgetRef ref, dynamic offer, int userBalance) {
+  void _showRedeemBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic offer,
+    int userBalance,
+  ) {
     final cost = offer.pointsCost as int;
     final title = offer.title as String;
     final remainingAfter = userBalance - cost;
@@ -46,7 +52,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (sheetContext) {
         return Padding(
@@ -96,8 +104,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         color: AppTheme.accentSolid,
                       ),
                     ),
-                    if (offer.partnerLocation != null && (offer.partnerLocation as String).isNotEmpty) ...[
-                      const Text('  •  ', style: TextStyle(color: AppTheme.hairline)),
+                    if (offer.partnerLocation != null &&
+                        (offer.partnerLocation as String).isNotEmpty) ...[
+                      const Text(
+                        '  •  ',
+                        style: TextStyle(color: AppTheme.hairline),
+                      ),
                       Expanded(
                         child: Text(
                           offer.partnerLocation as String,
@@ -111,19 +123,29 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     ],
                   ],
                 ),
-                if (offer.partnerGoogleMapsUrl != null && (offer.partnerGoogleMapsUrl as String).isNotEmpty) ...[
+                if (offer.partnerGoogleMapsUrl != null &&
+                    (offer.partnerGoogleMapsUrl as String).isNotEmpty) ...[
                   const SizedBox(height: 8),
                   InkWell(
                     onTap: () async {
-                      final uri = Uri.parse(offer.partnerGoogleMapsUrl as String);
+                      final uri = Uri.parse(
+                        offer.partnerGoogleMapsUrl as String,
+                      );
                       if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
                       }
                     },
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(CupertinoIcons.location_solid, size: 13, color: AppTheme.accentSolid),
+                        Icon(
+                          CupertinoIcons.location_solid,
+                          size: 13,
+                          color: AppTheme.accentSolid,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'View store on Google Maps',
@@ -150,14 +172,27 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildMathRow('Current balance', '${NumberFormat('#,###').format(userBalance)} pts', AppTheme.inkPrimary),
+                    _buildMathRow(
+                      'Current balance',
+                      '${NumberFormat('#,###').format(userBalance)} pts',
+                      AppTheme.inkPrimary,
+                    ),
                     const SizedBox(height: 10),
-                    _buildMathRow('Points cost', '-${NumberFormat('#,###').format(cost)} pts', AppTheme.accentSolid),
+                    _buildMathRow(
+                      'Points cost',
+                      '-${NumberFormat('#,###').format(cost)} pts',
+                      AppTheme.accentSolid,
+                    ),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
                       child: Divider(color: AppTheme.hairline, height: 1),
                     ),
-                    _buildMathRow('Remaining balance', '${NumberFormat('#,###').format(remainingAfter)} pts', AppTheme.inkPrimary, isBold: true),
+                    _buildMathRow(
+                      'Remaining balance',
+                      '${NumberFormat('#,###').format(remainingAfter)} pts',
+                      AppTheme.inkPrimary,
+                      isBold: true,
+                    ),
                   ],
                 ),
               ),
@@ -171,7 +206,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       onPressed: () => Navigator.pop(sheetContext),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMd,
+                          ),
                         ),
                       ),
                       child: const Text('Cancel'),
@@ -184,14 +221,22 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       onPressed: () async {
                         Navigator.pop(sheetContext);
                         final messenger = ScaffoldMessenger.of(this.context);
-                        final result = await ref.read(rewardsProvider.notifier).redeem(offer.id);
+                        final result = await ref
+                            .read(rewardsProvider.notifier)
+                            .redeem(offer.id);
                         if (!mounted) return;
                         if (result != null) {
                           HapticsService.heavy();
                           ref.read(pointsProvider.notifier).refresh();
-                          _showSuccessModal(this.context, result);
+                          await _showSuccessModal(
+                            this.context,
+                            result,
+                            offer.id as String,
+                          );
                         } else {
-                          final error = ref.read(rewardsProvider).errorMessage ?? 'Redemption failed';
+                          final error =
+                              ref.read(rewardsProvider).errorMessage ??
+                              'Redemption failed';
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text(error),
@@ -202,7 +247,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMd,
+                          ),
                         ),
                       ),
                       child: const Text('Confirm & redeem'),
@@ -217,13 +264,37 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  void _showSuccessModal(BuildContext context, dynamic result) {
-    showModalBottomSheet(
+  Future<void> _recoverPurchase(String offerId) async {
+    final result = await ref.read(rewardsProvider.notifier).redeem(offerId);
+    if (!mounted) return;
+    if (result != null) {
+      await _showSuccessModal(context, result, offerId);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ref.read(rewardsProvider).errorMessage ??
+                'Could not recover the purchase. Please try again.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showSuccessModal(
+    BuildContext context,
+    RedeemResultModel result,
+    String offerId,
+  ) async {
+    final notifier = ref.read(rewardsProvider.notifier);
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (context) {
         return Padding(
@@ -252,21 +323,29 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Voucher added to your wallet',
-                style: TextStyle(
+              Text(
+                result.isReplay
+                    ? 'Purchase recovered'
+                    : 'Voucher added to your wallet',
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.inkPrimary,
                   letterSpacing: -0.3,
                 ),
               ),
+              if (result.isReplay) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'No additional points were spent. Open Wallet to check the voucher’s current status.',
+                ),
+              ],
               const SizedBox(height: 18),
 
               // Code Capsule
               InkWell(
                 onTap: () {
-                  Clipboard.setData(ClipboardData(text: result.shortCode as String));
+                  Clipboard.setData(ClipboardData(text: result.shortCode));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Voucher code copied to clipboard'),
@@ -277,7 +356,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceMuted,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -287,7 +369,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        result.shortCode as String,
+                        result.shortCode,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -295,14 +377,20 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                           color: AppTheme.inkPrimary,
                         ),
                       ),
-                      const Icon(CupertinoIcons.doc_on_doc, size: 18, color: AppTheme.inkSecondary),
+                      const Icon(
+                        CupertinoIcons.doc_on_doc,
+                        size: 18,
+                        color: AppTheme.inkSecondary,
+                      ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 10),
               Text(
-                'Spent ${result.pointsSpent} pts  •  Remaining: ${result.balance} pts',
+                result.isReplay
+                    ? 'Original purchase: ${result.pointsSpent} pts'
+                    : 'Spent ${result.pointsSpent} pts  •  Remaining: ${result.balance} pts',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppTheme.inkSecondary,
@@ -330,6 +418,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         );
       },
     );
+    await notifier.acknowledgePurchase(offerId, result.requestKey);
   }
 
   @override
@@ -363,10 +452,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.accentSolid,
+                      ),
                     ),
                   )
-                : const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: AppTheme.inkPrimary),
+                : const Icon(
+                    CupertinoIcons.arrow_2_circlepath,
+                    size: 20,
+                    color: AppTheme.inkPrimary,
+                  ),
             onPressed: _refreshAll,
           ),
           const SizedBox(width: 8),
@@ -379,6 +474,25 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           children: [
+            for (final entry in rewardsState.pendingPurchases.entries)
+              Card(
+                color: AppTheme.surface,
+                child: ListTile(
+                  title: Text(
+                    offers.where((o) => o.id == entry.key).firstOrNull?.title ??
+                        'Reward purchase',
+                  ),
+                  subtitle: const Text(
+                    'This purchase was not confirmed. Resume it safely or check Wallet.',
+                  ),
+                  trailing: TextButton(
+                    onPressed: rewardsState.isRedeeming
+                        ? null
+                        : () => _recoverPurchase(entry.key),
+                    child: const Text('Recover purchase'),
+                  ),
+                ),
+              ),
             // Available Balance Strip (Clean Card)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -450,13 +564,23 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.accentBright.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                                    color: AppTheme.accentBright.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusPill,
+                                    ),
                                   ),
                                   child: Text(
-                                    _discountLabel(offer.discountType, offer.discountValue),
+                                    _discountLabel(
+                                      offer.discountType,
+                                      offer.discountValue,
+                                    ),
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
@@ -465,17 +589,28 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: inStock ? AppTheme.surfaceMuted : AppTheme.destructive.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                                    color: inStock
+                                        ? AppTheme.surfaceMuted
+                                        : AppTheme.destructive.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusPill,
+                                    ),
                                   ),
                                   child: Text(
                                     inStock ? 'In stock' : 'Out of stock',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
-                                      color: inStock ? AppTheme.inkSecondary : AppTheme.destructive,
+                                      color: inStock
+                                          ? AppTheme.inkSecondary
+                                          : AppTheme.destructive,
                                     ),
                                   ),
                                 ),
@@ -488,7 +623,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           offer.partnerName!,
@@ -500,7 +636,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        if (offer.partnerLocation != null && offer.partnerLocation!.isNotEmpty) ...[
+                                        if (offer.partnerLocation != null &&
+                                            offer
+                                                .partnerLocation!
+                                                .isNotEmpty) ...[
                                           const SizedBox(height: 1),
                                           Text(
                                             offer.partnerLocation!,
@@ -515,26 +654,46 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                       ],
                                     ),
                                   ),
-                                  if (offer.partnerGoogleMapsUrl != null && offer.partnerGoogleMapsUrl!.isNotEmpty)
+                                  if (offer.partnerGoogleMapsUrl != null &&
+                                      offer.partnerGoogleMapsUrl!.isNotEmpty)
                                     InkWell(
                                       onTap: () async {
-                                        final uri = Uri.parse(offer.partnerGoogleMapsUrl!);
+                                        final uri = Uri.parse(
+                                          offer.partnerGoogleMapsUrl!,
+                                        );
                                         if (await canLaunchUrl(uri)) {
-                                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                          await launchUrl(
+                                            uri,
+                                            mode:
+                                                LaunchMode.externalApplication,
+                                          );
                                         }
                                       },
-                                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusPill,
+                                      ),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: AppTheme.surfaceMuted,
-                                          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                                          border: Border.all(color: AppTheme.hairline),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusPill,
+                                          ),
+                                          border: Border.all(
+                                            color: AppTheme.hairline,
+                                          ),
                                         ),
                                         child: const Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(CupertinoIcons.location_solid, size: 11, color: AppTheme.accentSolid),
+                                            Icon(
+                                              CupertinoIcons.location_solid,
+                                              size: 11,
+                                              color: AppTheme.accentSolid,
+                                            ),
                                             SizedBox(width: 4),
                                             Text(
                                               'Locate on map',
@@ -561,7 +720,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                 letterSpacing: -0.2,
                               ),
                             ),
-                            if (offer.description != null && offer.description!.isNotEmpty) ...[
+                            if (offer.description != null &&
+                                offer.description!.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(
                                 offer.description!,
@@ -577,7 +737,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       ),
                       const Divider(height: 1, color: AppTheme.hairline),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -594,15 +757,28 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                               height: 36,
                               child: ElevatedButton(
                                 onPressed: isAvailable
-                                    ? () => _showRedeemBottomSheet(context, ref, offer, userBalance)
+                                    ? () => _showRedeemBottomSheet(
+                                        context,
+                                        ref,
+                                        offer,
+                                        userBalance,
+                                      )
                                     : null,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: isAvailable ? AppTheme.accentSolid : AppTheme.surfaceMuted,
-                                  foregroundColor: isAvailable ? AppTheme.surface : AppTheme.inkTertiary,
+                                  backgroundColor: isAvailable
+                                      ? AppTheme.accentSolid
+                                      : AppTheme.surfaceMuted,
+                                  foregroundColor: isAvailable
+                                      ? AppTheme.surface
+                                      : AppTheme.inkTertiary,
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMd,
+                                    ),
                                   ),
                                   textStyle: const TextStyle(
                                     fontSize: 13,
@@ -613,8 +789,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                   !inStock
                                       ? 'Sold out'
                                       : !canAfford
-                                          ? 'Need ${offer.pointsCost - userBalance} pts'
-                                          : 'Redeem',
+                                      ? 'Need ${offer.pointsCost - userBalance} pts'
+                                      : 'Redeem',
                                 ),
                               ),
                             ),
@@ -629,7 +805,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               const SwissSkeletonList(itemCount: 3, itemHeight: 110)
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 40,
+                  horizontal: 20,
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
@@ -638,10 +817,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 ),
                 child: const Text(
                   'No offers available at the moment',
-                  style: TextStyle(
-                    color: AppTheme.inkSecondary,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: AppTheme.inkSecondary, fontSize: 14),
                 ),
               ),
             const SizedBox(height: 20),
@@ -651,7 +827,12 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     );
   }
 
-  static Widget _buildMathRow(String label, String value, Color color, {bool isBold = false}) {
+  static Widget _buildMathRow(
+    String label,
+    String value,
+    Color color, {
+    bool isBold = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [

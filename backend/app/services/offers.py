@@ -12,15 +12,17 @@ Correctness invariants (MVP_PLAN.md §1):
 from __future__ import annotations
 
 import hashlib
-import random
+import json
 import secrets
 import string
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -34,6 +36,7 @@ from app.db.models import (
     User,
     Voucher,
     VoucherStatus,
+    RedemptionRequest,
 )
 from app.services.points import get_balance
 
@@ -46,7 +49,7 @@ _CODE_CHARS = "".join(
 
 def _generate_short_code() -> str:
     """Return a short code like SR-7K4Q-92MX."""
-    part = lambda n: "".join(random.choices(_CODE_CHARS, k=n))  # noqa: E731
+    part = lambda n: "".join(secrets.choice(_CODE_CHARS) for _ in range(n))  # noqa: E731
     return f"SR-{part(4)}-{part(4)}"
 
 
@@ -69,6 +72,14 @@ class RedeemResult:
     expires_at: datetime
     points_spent: int
     balance: int        # post-spend balance
+    is_replay: bool = False
+
+
+def _receipt_cipher(settings: Settings) -> MultiFernet:
+    try:
+        return MultiFernet([Fernet(key.strip().encode()) for key in settings.redemption_receipt_keys.split(',') if key.strip()])
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=503, detail='Reward purchase recovery is not configured') from None
 
 
 async def redeem_offer(
@@ -77,6 +88,8 @@ async def redeem_offer(
     user: User,
     session: AsyncSession,
     settings: Settings,
+    request_key: str | None = None,
+    expected_points_cost: int | None = None,
 ) -> RedeemResult:
     """Atomically spend points and issue a voucher.
 
@@ -90,12 +103,31 @@ async def redeem_offer(
       7. Commit.
     """
     now = datetime.now(timezone.utc)
+    cipher = _receipt_cipher(settings) if request_key else None
 
     # 1. Lock user row — serialises concurrent redeems for the same user
     locked_user = await session.execute(
         select(User).where(User.id == user.id).with_for_update()
     )
     locked_user.scalar_one()  # raises if somehow missing
+
+    if request_key:
+        receipt = (await session.execute(select(RedemptionRequest).where(
+            RedemptionRequest.user_id == user.id,
+            RedemptionRequest.request_key == request_key,
+        ))).scalar_one_or_none()
+        if receipt:
+            if receipt.offer_id != offer_id:
+                raise HTTPException(status_code=409, detail='Purchase ID was already used for another offer')
+            try:
+                data = json.loads(cipher.decrypt(receipt.response_ciphertext.encode()))
+                data['expires_at'] = datetime.fromisoformat(data['expires_at'])
+                data['is_replay'] = True
+                if expected_points_cost is not None and data['points_spent'] != expected_points_cost:
+                    raise HTTPException(status_code=409, detail='Purchase ID was already used with another points cost')
+                return RedeemResult(**data)
+            except (InvalidToken, ValueError, TypeError, KeyError):
+                raise HTTPException(status_code=503, detail='Purchase already completed. Open Wallet while recovery is unavailable.') from None
 
     # 2. Fetch & validate offer
     offer_result = await session.execute(
@@ -122,6 +154,8 @@ async def redeem_offer(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offer is out of stock")
 
     # 3. Check balance
+    if expected_points_cost is not None and offer.points_cost != expected_points_cost:
+        raise HTTPException(status_code=409, detail='Offer price changed. Refresh offers and review the points cost before redeeming again.')
     balance = await get_balance(user.id, session)
     if balance < offer.points_cost:
         raise HTTPException(
@@ -160,26 +194,31 @@ async def redeem_offer(
             issued_at=now,
             expires_at=expires_at,
         )
-        session.add(voucher)
         try:
-            await session.flush()   # write to DB within transaction; catch unique violations
+            # A failed insert must roll back only the savepoint, not poison the
+            # transaction containing the user's lock, inventory and points.
+            async with session.begin_nested():
+                session.add(voucher)
+                await session.flush()
             break
-        except Exception as exc:
+        except IntegrityError as exc:
             if "uq_vouchers_short_code" in str(exc).lower() and attempt < 4:
-                session.expunge(voucher)
                 continue
             raise
 
     # 7. Commit everything atomically
-    await session.commit()
-
-    post_balance = await get_balance(user.id, session)
-
-    return RedeemResult(
+    result = RedeemResult(
         voucher_id=voucher.id,
         short_code=short_code,
         token=raw_token,
         expires_at=expires_at,
         points_spent=offer.points_cost,
-        balance=post_balance,
+        balance=balance - offer.points_cost,
     )
+    if request_key:
+        session.add(RedemptionRequest(
+            user_id=user.id, request_key=request_key, offer_id=offer_id,
+            response_ciphertext=cipher.encrypt(json.dumps(asdict(result), default=lambda d: d.isoformat()).encode()).decode(),
+        ))
+    await session.commit()
+    return result
