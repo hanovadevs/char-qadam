@@ -45,6 +45,9 @@ Updated 2026-10-17. This replaces the old GPS/MongoDB scaffold requirements.
 | ADMIN-3 | Display the live server conversion, cap, validity, and environment. | Protected /admin/config contract; no invented production status or cap. |
 | OPS-1 | HTTPS API, rotated secrets, production auth configuration, migrations, backups, monitoring, and deploy smoke checks. | Live deployment verification; repository checks alone do not satisfy this. |
 | OPS-2 | Reproducible checks and builds before pushing each batch to main. | Locked dependencies, test suites, APK build, admin build, migration verification. |
+| UX-1 | Preserve the mint/teal theme while making progress and rewards more engaging; a 2D walking buddy follows real milestone progress without animating the displayed step number. | Responsive native renders, larger-text flows, lifecycle/off-screen/reduced-motion tests; UI_REDESIGN.md. |
+| UX-2 | Reward cards expose the brand's admin-managed Google Maps location; clearing a saved link works and unsupported destinations cannot launch. | Admin-to-customer API integration, safe-link tests, hosted form verification and direct card action tests. |
+| UX-3 | Successful points redemption automatically opens My rewards with the saved voucher highlighted; failed or uncertain requests retain safe recovery. | Actual-router confirmation/QR tests, failed-purchase and used-voucher recovery tests. |
 
 The existing defaults are 100 steps per point, 20,000 eligible steps per day,
 and 30-day vouchers. These are configurable operating defaults, not a finalized

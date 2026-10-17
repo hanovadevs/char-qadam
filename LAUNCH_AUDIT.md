@@ -199,11 +199,16 @@ The Vercel production deployment `dpl_32CaxhW5DPHEPe5rnQ3YVpNHvbzb` for
 `4a183d4` is READY. `https://admin.stepsyapp.com/login` and its JavaScript asset
 returned 200; the hosted asset contains the new Maps setup and clearing help.
 Initial GitHub run [39051255837](https://github.com/hanovadevs/char-qadam/actions/runs/39051255837)
-passed backend/admin checks; Android analysis/tests passed and its APK build was
-still running when the character follow-up was prepared. Local follow-up checks
+passed all backend, admin and Android checks. Local follow-up checks
 passed **64 Flutter tests**, clean analysis and an APK rebuild (22.3 seconds).
 The walking buddy's lifecycle/off-screen/reduced-motion pause behavior has
 regression coverage. The narrow history chart now starts at the newest bar.
+Follow-up commit `63ab5c4` was pushed and installed with adb install -r; the saved
+native count remained 233. The app process is alive and there were no captured
+AndroidRuntime errors. The phone was dozing/locked during the final visual check;
+the owner was asked to unlock/open Steps to review the new walk cycle. Its
+[GitHub run](https://github.com/hanovadevs/char-qadam/actions/runs/39052065286)
+was still running at this checkpoint. No live rewards were spent in testing.
 
 ### Device account and repeated-step protection
 
