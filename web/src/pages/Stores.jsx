@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { googleMapsLink } from '../services/store-location';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
 import { Search, Plus, Copy, Check, MapPin, Edit, Trash2, ExternalLink } from 'lucide-react';
@@ -140,8 +141,8 @@ export default function Stores() {
         name: editFormData.name.trim(),
         email: editFormData.email.trim() || undefined,
         category: editFormData.category.trim() || undefined,
-        location: editFormData.location.trim() || undefined,
-        google_maps_url: editFormData.google_maps_url.trim() || undefined,
+        location: editFormData.location.trim(),
+        google_maps_url: editFormData.google_maps_url.trim(),
         status: editFormData.status,
       });
       setIsEditOpen(false);
@@ -424,9 +425,9 @@ export default function Stores() {
                           {[s.category, s.location].filter(Boolean).join(' • ')}
                         </p>
                       )}
-                      {s.google_maps_url && (
+                      {googleMapsLink(s.google_maps_url) && (
                         <a
-                          href={s.google_maps_url}
+                          href={googleMapsLink(s.google_maps_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -675,15 +676,18 @@ export default function Stores() {
 
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Google Maps Location Link (Optional)
+                Google Maps place link (optional)
               </label>
               <input
                 type="url"
                 className="input-control"
-                placeholder="https://maps.google.com/?q=..."
+                placeholder="https://maps.app.goo.gl/…"
                 value={formData.google_maps_url}
                 onChange={(e) => setFormData({ ...formData, google_maps_url: e.target.value })}
+                aria-describedby="create-maps-help"
+                maxLength={2048}
               />
+              <p id="create-maps-help" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Open the brand’s branch in Google Maps, choose Share, then Copy link. This appears on its reward cards in the app.</p>
             </div>
 
             <div style={{ padding: '10px 12px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -742,9 +746,9 @@ export default function Stores() {
                       {[storeDetails.category, storeDetails.location].filter(Boolean).join(' • ')}
                     </p>
                   )}
-                  {storeDetails.google_maps_url && (
+                  {googleMapsLink(storeDetails.google_maps_url) && (
                     <a
-                      href={storeDetails.google_maps_url}
+                      href={googleMapsLink(storeDetails.google_maps_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
@@ -1135,15 +1139,18 @@ export default function Stores() {
 
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-              Google Maps Location Link
+              Google Maps place link
             </label>
             <input
               type="url"
               className="input-control"
-              placeholder="https://maps.google.com/?q=..."
+              placeholder="https://maps.app.goo.gl/…"
               value={editFormData.google_maps_url}
               onChange={(e) => setEditFormData({ ...editFormData, google_maps_url: e.target.value })}
+              aria-describedby="edit-maps-help"
+              maxLength={2048}
             />
+            <p id="edit-maps-help" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Paste the branch’s Google Maps Share link. Changes appear on its reward cards after refresh. Clear this field to remove the saved pin; the address is used for a Maps search when available.</p>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>

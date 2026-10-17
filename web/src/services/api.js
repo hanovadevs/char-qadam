@@ -1,4 +1,5 @@
 // Stepsy Admin API Client
+import { apiErrorMessage } from './store-location';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -42,7 +43,7 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || `Request failed with status ${response.status}`);
+        throw new Error(apiErrorMessage(errorData, response.status));
       }
 
       return await response.json();

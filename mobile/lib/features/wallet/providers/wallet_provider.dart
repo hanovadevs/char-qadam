@@ -50,6 +50,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
     final request = ++_request;
     state = state.copyWith(
       selectedStatus: status,
+      vouchers: status == state.selectedStatus ? state.vouchers : const [],
       isLoading: true,
       errorMessage: null,
     );

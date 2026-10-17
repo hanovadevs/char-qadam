@@ -1,352 +1,254 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/swiss_skeleton.dart';
+import '../../../core/widgets/stepsy_ui.dart';
 import '../providers/points_provider.dart';
 
 class PointsScreen extends ConsumerStatefulWidget {
   const PointsScreen({super.key});
-
   @override
   ConsumerState<PointsScreen> createState() => _PointsScreenState();
 }
 
 class _PointsScreenState extends ConsumerState<PointsScreen> {
-  final _scrollController = ScrollController();
-
+  final _scroll = ScrollController();
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _scroll.addListener(_loadMore);
   }
 
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
+  void _loadMore() {
+    if (_scroll.hasClients && _scroll.position.extentAfter < 200) {
       ref.read(pointsProvider.notifier).loadMore();
     }
   }
 
   @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final pointsState = ref.watch(pointsProvider);
-
-    final balance = pointsState.balanceData?.balance ?? 0;
-    final totalEarned = pointsState.balanceData?.totalEarned ?? 0;
-    final totalSpent = pointsState.balanceData?.totalSpent ?? 0;
-    final entries = pointsState.entries;
-
+    final state = ref.watch(pointsProvider);
+    final balance = state.balanceData;
+    final number = NumberFormat('#,###');
     return Scaffold(
-      backgroundColor: AppTheme.surfaceMuted,
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text(
-          'Points',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-            color: AppTheme.inkPrimary,
-          ),
-        ),
+        title: const Text('Points'),
         actions: [
           IconButton(
-            icon: pointsState.isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
-                    ),
-                  )
-                : const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: AppTheme.inkPrimary),
-            onPressed: () {
-              HapticsService.light();
-              ref.read(pointsProvider.notifier).refresh();
-            },
+            tooltip: 'Refresh points',
+            onPressed: state.isLoading
+                ? null
+                : () => ref.read(pointsProvider.notifier).refresh(),
+            icon: const Icon(CupertinoIcons.arrow_2_circlepath),
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.accentSolid,
-        backgroundColor: AppTheme.surface,
         onRefresh: () => ref.read(pointsProvider.notifier).refresh(),
         child: ListView(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            // Balance Hero Card (Apple Squircle Card)
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: AppTheme.hairline),
-              ),
-              padding: const EdgeInsets.all(20.0),
+            const Text(
+              'Every walk\nhas its perks.',
+              style: AppTheme.largeTitleStyle,
+            ),
+            const SizedBox(height: 24),
+            SurfaceCard(
+              color: AppTheme.mintWash,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Available balance',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.inkSecondary,
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Your point pocket',
+                          style: AppTheme.headlineStyle,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.surface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.sparkles,
+                          color: AppTheme.accentDeep,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    balance == null ? '—' : number.format(balance.balance),
+                    style: AppTheme.heroNumeralStyle.copyWith(
+                      color: AppTheme.accentDeep,
+                      fontSize: 56,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        NumberFormat('#,###').format(balance),
-                        style: const TextStyle(
-                          fontSize: 44,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.inkPrimary,
-                          letterSpacing: -1.5,
-                          height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'pts',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.accentSolid,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 4),
+                  const Text(
+                    'points available to spend',
+                    style: AppTheme.captionStyle,
                   ),
-                  const SizedBox(height: 18),
-                  const Divider(color: AppTheme.hairline, height: 1),
-                  const SizedBox(height: 16),
-
-                  // Split Lifetime Metrics
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Lifetime earned',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: AppTheme.inkSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '+${NumberFormat('#,###').format(totalEarned)} pts',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.accentSolid,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(width: 1, height: 28, color: AppTheme.hairline),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Lifetime redeemed',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: AppTheme.inkSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '-${NumberFormat('#,###').format(totalSpent)} pts',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.inkSecondary,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.go('/rewards'),
+                      icon: const Icon(CupertinoIcons.arrow_up_right, size: 18),
+                      label: const Text('Find your next reward'),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Ledger Section Header
-            const Text(
-              'Transaction history',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
-                color: AppTheme.inkPrimary,
+            const SizedBox(height: 16),
+            SurfaceCard(
+              child: Wrap(
+                spacing: 32,
+                runSpacing: 16,
+                children: [
+                  _total(
+                    'Lifetime earned',
+                    balance == null ? '—' : number.format(balance.totalEarned),
+                  ),
+                  _total(
+                    'Spent on rewards',
+                    balance == null ? '—' : number.format(balance.totalSpent),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-
-            // Inset Grouped Ledger List
-            if (entries.isNotEmpty)
-              Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: AppTheme.hairline),
-                ),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: entries.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1, color: AppTheme.hairline),
-                  itemBuilder: (context, index) {
-                    final entry = entries[index];
-                    final isEarn = entry.delta > 0;
-                    final dateStr = DateFormat('MMM d, yyyy  •  HH:mm')
-                        .format(entry.createdAt.toLocal());
-                    final deltaStr = isEarn
-                        ? '+${NumberFormat('#,###').format(entry.delta)} pts'
-                        : '${NumberFormat('#,###').format(entry.delta)} pts';
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: isEarn
-                                  ? AppTheme.accentBright.withValues(alpha: 0.15)
-                                  : AppTheme.surfaceMuted,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isEarn ? CupertinoIcons.plus : CupertinoIcons.minus,
-                              color: isEarn ? AppTheme.accentSolid : AppTheme.inkSecondary,
-                              size: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _reasonTitle(entry.reason),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                    letterSpacing: -0.2,
-                                    color: AppTheme.inkPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  dateStr,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.inkSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            deltaStr,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: -0.2,
-                              color: isEarn ? AppTheme.accentSolid : AppTheme.inkPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              )
-            else if (pointsState.isLoading)
-              const SwissSkeletonList(itemCount: 4, itemHeight: 54)
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: AppTheme.hairline),
-                ),
-                child: const Text(
-                  'No transactions recorded yet',
-                  style: TextStyle(
-                    color: AppTheme.inkSecondary,
-                    fontSize: 14,
-                  ),
-                ),
+            const SectionHeading('The little things add up.'),
+            if (state.errorMessage != null)
+              StatusNotice(
+                state.errorMessage!,
+                onRetry: () => ref.read(pointsProvider.notifier).refresh(),
               ),
-
-            // Load More Indicator
-            if (pointsState.isLoadingMore)
+            if (state.isLoading && state.entries.isEmpty)
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
-                    ),
-                  ),
+                padding: EdgeInsets.all(30),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (state.entries.isEmpty && state.errorMessage == null)
+              const EmptyState(
+                title: 'Your first points are a walk away.',
+                message:
+                    'Once your steps sync, you’ll see your earned points here.',
+                icon: CupertinoIcons.circle_grid_hex,
+              )
+            else
+              SurfaceCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 4,
+                ),
+                child: Column(
+                  children: [
+                    for (final entry in state.entries)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: entry.delta >= 0
+                                    ? AppTheme.mintWash
+                                    : AppTheme.surfaceMuted,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                entry.delta >= 0
+                                    ? CupertinoIcons.arrow_down_left
+                                    : CupertinoIcons.arrow_up_right,
+                                size: 18,
+                                color: AppTheme.accentDeep,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _reason(entry.reason),
+                                    style: AppTheme.bodyStyle.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    DateFormat(
+                                      'd MMM yyyy · h:mm a',
+                                    ).format(entry.createdAt.toLocal()),
+                                    style: AppTheme.captionStyle,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${entry.delta > 0 ? '+' : ''}${number.format(entry.delta)}',
+                              style: AppTheme.headlineStyle.copyWith(
+                                color: entry.delta > 0
+                                        ? AppTheme.accentDeep
+                                    : AppTheme.inkPrimary,
+                                fontFeatures: AppTheme.tabular,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            const SizedBox(height: 20),
+            if (state.isLoadingMore)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (state.hasMore && state.entries.isNotEmpty)
+              TextButton(
+                onPressed: () => ref.read(pointsProvider.notifier).loadMore(),
+                child: const Text('Load more activity'),
+              ),
           ],
         ),
       ),
     );
   }
 
-  String _reasonTitle(String reason) {
-    switch (reason) {
-      case 'STEP_EARN':
-        return 'Steps converted';
-      case 'OFFER_SPEND':
-        return 'Reward redemption';
-      case 'ADJUST':
-        return 'Balance adjustment';
-      default:
-        return reason;
-    }
-  }
+  Widget _total(String label, String value) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        value,
+        style: AppTheme.titleStyle.copyWith(fontFeatures: AppTheme.tabular),
+      ),
+      const SizedBox(height: 4),
+      Text(label, style: AppTheme.captionStyle),
+    ],
+  );
+  String _reason(String reason) => switch (reason) {
+    'STEP_EARN' => 'Steps converted',
+    'OFFER_SPEND' => 'Reward unlocked',
+    'ADJUST' => 'Balance adjustment',
+    'REFUND' => 'Points returned',
+    _ => 'Points activity',
+  };
 }

@@ -156,6 +156,34 @@ deployment checks are recorded separately from local test results.
 
 ## Release gates and unfinished capabilities
 
+### Native UI and reward journey refresh
+
+The mint/teal theme now uses bundled Manrope/Space Grotesk type, a native
+milestone ring, ticket reward/pass cards and clearer navigation across Today,
+Points, Rewards, My rewards, Profile and progress history. Login/onboarding and
+loading states share the type/motion rules. Reduced motion is respected, step
+numerals never replay a count-up, and missing history differs from real zeroes.
+
+Rewards expose the admin-managed Google Maps branch action directly on each
+card, independently of affordability. An address can supply a Maps search when
+no pin is configured. Store editing now clears saved links correctly; API/admin/
+mobile checks reject unsupported destinations and display useful failure states.
+Successful point redemption goes directly to the highlighted voucher in My
+rewards. Recovery locates used/expired vouchers too; failures retain the safe
+purchase journal rather than showing success. Real reward balances were not
+spent for UI testing.
+
+Local validation: **143 backend tests** on a fresh 0001–0008 database, **63
+Flutter tests**, clean analysis, **3 admin tests** and the admin production build
+passed. Native screen tests use the actual router at 320/375/414/768 dp and
+1.6× text at 320 dp, including confirmation/QR flows. Rendered previews use
+clearly fictional fixtures. The debug APK installed successfully on the Redmi
+with 233 saved steps preserved; owner visual acceptance and the final hosted
+rollout are recorded in the deployment follow-up. See
+[UI_REDESIGN.md](UI_REDESIGN.md) for the six supplied skills, implementation and
+Maps setup. The hosted Sleek API was unavailable without a configured key;
+no hosted Sleek output or full Hallmark certification is claimed.
+
 ### Device account and repeated-step protection
 
 The owner reproduced the same phone steps in two accounts with separate wallets.

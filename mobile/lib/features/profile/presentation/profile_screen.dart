@@ -22,15 +22,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _showEditProfileBottomSheet(BuildContext context) {
     final user = ref.read(authStateProvider).user;
-    final countryController = TextEditingController(text: user?.country ?? 'PK');
-    final timezoneController = TextEditingController(text: user?.timezone ?? 'Asia/Karachi');
+    final countryController = TextEditingController(
+      text: user?.country ?? 'PK',
+    );
+    final timezoneController = TextEditingController(
+      text: user?.timezone ?? 'Asia/Karachi',
+    );
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (context) {
         return Padding(
@@ -67,19 +73,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 18),
               const Text(
                 'Country code (ISO-2)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.inkSecondary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.inkSecondary,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: countryController,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. PK, US, GB',
-                ),
+                decoration: const InputDecoration(hintText: 'e.g. PK, US, GB'),
               ),
               const SizedBox(height: 16),
               const Text(
                 'Timezone',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.inkSecondary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.inkSecondary,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
@@ -96,7 +108,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMd,
+                          ),
                         ),
                       ),
                       child: const Text('Cancel'),
@@ -113,12 +127,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         try {
                           final repo = ref.read(profileRepositoryProvider);
                           await repo.updateProfile(
-                            country: countryController.text.trim().toUpperCase(),
+                            country: countryController.text
+                                .trim()
+                                .toUpperCase(),
                             timezone: timezoneController.text.trim(),
                           );
-                          await ref.read(authStateProvider.notifier).refreshProfile();
+                          await ref
+                              .read(authStateProvider.notifier)
+                              .refreshProfile();
                           messenger.showSnackBar(
-                            const SnackBar(content: Text('Preferences updated successfully')),
+                            const SnackBar(
+                              content: Text('Preferences updated successfully'),
+                            ),
                           );
                         } catch (e) {
                           messenger.showSnackBar(
@@ -133,7 +153,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMd,
+                          ),
                         ),
                       ),
                       child: const Text('Save changes'),
@@ -154,7 +176,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -185,7 +209,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 8),
             const Text(
               'Your account will be deactivated and you will be signed out. This phone can then use a different account. Activity and reward records stay with this account; steps already rewarded on this phone cannot earn points again.',
-              style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.inkSecondary,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -250,7 +278,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppTheme.surfaceMuted,
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceMuted,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
@@ -264,8 +292,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
+          const Text(
+            'Your corner\nof Stepsy.',
+            style: AppTheme.largeTitleStyle,
+          ),
+          const SizedBox(height: 12),
+          const Text('Make yourself at home.', style: AppTheme.captionStyle),
+          const SizedBox(height: 24),
           if (_isUpdating)
             const Padding(
               padding: EdgeInsets.only(bottom: 12.0),
@@ -279,7 +314,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           // User Card Block (Apple Squircle Profile Card)
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.mintWash,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
               border: Border.all(color: AppTheme.hairline),
             ),
@@ -290,13 +325,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildAvatar(authState.googlePhotoUrl, authState.googleName, user?.email),
+                    _buildAvatar(
+                      authState.googlePhotoUrl,
+                      authState.googleName,
+                      user?.email,
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (authState.googleName != null && authState.googleName!.isNotEmpty)
+                          if (authState.googleName != null &&
+                              authState.googleName!.isNotEmpty)
                             Text(
                               authState.googleName!,
                               maxLines: 1,
@@ -313,11 +353,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: (authState.googleName != null && authState.googleName!.isNotEmpty) ? 13 : 17,
-                              fontWeight: (authState.googleName != null && authState.googleName!.isNotEmpty)
+                              fontSize:
+                                  (authState.googleName != null &&
+                                      authState.googleName!.isNotEmpty)
+                                  ? 13
+                                  : 17,
+                              fontWeight:
+                                  (authState.googleName != null &&
+                                      authState.googleName!.isNotEmpty)
                                   ? FontWeight.w400
                                   : FontWeight.w600,
-                              color: (authState.googleName != null && authState.googleName!.isNotEmpty)
+                              color:
+                                  (authState.googleName != null &&
+                                      authState.googleName!.isNotEmpty)
                                   ? AppTheme.inkSecondary
                                   : AppTheme.inkPrimary,
                               letterSpacing: -0.2,
@@ -373,7 +421,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         context: context,
                         backgroundColor: AppTheme.surface,
                         shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(AppTheme.radiusLg),
+                          ),
                         ),
                         builder: (ctx) => Padding(
                           padding: const EdgeInsets.all(22),
@@ -393,7 +443,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               const SizedBox(height: 10),
                               const Text(
                                 'Stepsy runs in the background to count your steps throughout the day without using GPS tracking.\n\nMake sure "Physical Activity", "Sensors", and "Notifications" permissions are enabled.',
-                                style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppTheme.inkSecondary,
+                                  height: 1.4,
+                                ),
                               ),
                               const SizedBox(height: 20),
                               SizedBox(
@@ -405,7 +459,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   },
                                   style: ElevatedButton.styleFrom(
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMd,
+                                      ),
                                     ),
                                   ),
                                   child: const Text('Open device settings'),
@@ -465,7 +521,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   width: 32,
                   height: 32,
                   fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -522,7 +579,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
-            const Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkTertiary),
+            const Icon(
+              CupertinoIcons.chevron_forward,
+              size: 14,
+              color: AppTheme.inkTertiary,
+            ),
           ],
         ),
       ),
@@ -563,15 +624,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildDetailRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      spacing: 16,
+      runSpacing: 6,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppTheme.inkSecondary,
-          ),
+          style: const TextStyle(fontSize: 13, color: AppTheme.inkSecondary),
         ),
         Text(
           value,

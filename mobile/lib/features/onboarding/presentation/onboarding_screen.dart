@@ -175,7 +175,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       child: ElevatedButton(
                         onPressed: () {
                           _pageController.nextPage(
-                            duration: const Duration(milliseconds: 300),
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : AppTheme.motion,
                             curve: Curves.easeInOut,
                           );
                         },

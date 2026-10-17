@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import AwareDatetime, BaseModel, EmailStr, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -38,6 +38,7 @@ from app.services.email_verification import change_email
 from app.services.device_binding import release_devices
 from app.services.voucher_sweep import sweep_expired_vouchers
 from app.services.local_date import local_today
+from app.services.store_location import normalize_maps_url
 
 public_router = APIRouter(prefix="/admin", tags=["admin"])
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
@@ -105,6 +106,8 @@ class AdminPartnerIn(BaseModel):
     status: PartnerStatus | None = PartnerStatus.ACTIVE
     generate_api_key: bool | None = False
 
+    _maps_url = field_validator('google_maps_url')(normalize_maps_url)
+
 
 class AdminPartnerPatchIn(BaseModel):
     name: str | None = None
@@ -114,6 +117,8 @@ class AdminPartnerPatchIn(BaseModel):
     location: str | None = None
     google_maps_url: str | None = None
     status: str | None = None
+
+    _maps_url = field_validator('google_maps_url')(normalize_maps_url)
 
 
 class AdminPartnerResetPasswordIn(BaseModel):
@@ -465,7 +470,7 @@ async def update_partner(
         partner.description = body.description.strip() if body.description else None
     if body.location is not None:
         partner.location = body.location.strip() if body.location else None
-    if body.google_maps_url is not None:
+    if 'google_maps_url' in body.model_fields_set:
         partner.google_maps_url = body.google_maps_url.strip() if body.google_maps_url else None
     if body.status is not None:
         partner.status = PartnerStatus(body.status)

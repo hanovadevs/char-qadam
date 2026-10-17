@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,794 +6,440 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../providers/activity_provider.dart';
+import '../../../core/widgets/stepsy_ui.dart';
 import '../../../data/activity/health_service.dart';
+import '../providers/activity_provider.dart';
+import 'movement_ring.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
-
   @override
   ConsumerState<ActivityScreen> createState() => _ActivityScreenState();
 }
 
 class _ActivityScreenState extends ConsumerState<ActivityScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late final AnimationController _syncAnimController;
-
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _syncAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      ref.read(activityProvider.notifier).initAndSync(force: true);
-    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _syncAnimController.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final activityState = ref.watch(activityProvider);
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _sync();
+  }
 
-    if (activityState.isSyncing) {
-      if (!_syncAnimController.isAnimating) {
-        _syncAnimController.repeat();
-      }
-    } else {
-      if (_syncAnimController.isAnimating) {
-        _syncAnimController.stop();
-        _syncAnimController.reset();
-      }
-    }
-
-    final displaySteps = activityState.todaySteps > 0
-        ? activityState.todaySteps
-        : activityState.serverSteps;
-    final cap = activityState.dailyCap > 0 ? activityState.dailyCap : 20000;
-    final progress = (displaySteps / cap).clamp(0.0, 1.0);
-    final remainingSteps = (cap - displaySteps).clamp(0, cap);
-
-    // Metric estimates
-    final km = (displaySteps * 0.00076).toStringAsFixed(2);
-    final kcal = (displaySteps * 0.04).toStringAsFixed(0);
-
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceMuted,
-      appBar: AppBar(
-        backgroundColor: AppTheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Steps',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
-                color: AppTheme.inkPrimary,
+  Future<void> _sync() =>
+      ref.read(activityProvider.notifier).initAndSync(force: true);
+  Future<void> _diagnostics() async {
+    final data = await ref.read(healthServiceProvider).diagnostics();
+    if (!mounted) return;
+    data['Server eligible steps'] = '${ref.read(activityProvider).serverSteps}';
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Tracking diagnostics', style: AppTheme.titleStyle),
+              const SizedBox(height: 16),
+              for (final entry in data.entries)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: SelectableText('${entry.key}: ${entry.value}'),
+                ),
+              const SizedBox(height: 16),
+              const Text(
+                'Compare a manually counted walk with the phone sensor and synced steps.',
+                style: AppTheme.captionStyle,
               ),
-            ),
-            Text(
-              DateFormat('EEEE, MMMM d').format(DateTime.now()),
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.inkSecondary,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(activityProvider);
+    final steps = math.max(state.todaySteps, state.serverSteps);
+    final cap = state.dailyCap > 0 ? state.dailyCap : 20000;
+    final milestones = <int>{
+      1000,
+      5000,
+      10000,
+      cap,
+    }.where((v) => v <= cap).toList()..sort();
+    final milestone = milestones.where((v) => v > steps).firstOrNull ?? cap;
+    final perPoint = math.max(1, state.stepsPerPoint);
+    final nextPoint = perPoint - (steps % perPoint);
+    final number = NumberFormat('#,###');
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Today'),
         actions: [
           IconButton(
-            icon: const Icon(CupertinoIcons.info_circle, size: 20),
             tooltip: 'Tracking diagnostics',
-            onPressed: () async {
-              final data = await ref.read(healthServiceProvider).diagnostics();
-              if (!context.mounted) return;
-              final activity = ref.read(activityProvider);
-              data['Server eligible steps'] = '${activity.serverSteps}';
-              await showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                builder: (context) => SafeArea(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Tracking diagnostics',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          for (final entry in data.entries)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              child: SelectableText(
-                                '${entry.key}: ${entry.value}',
-                              ),
-                            ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Use these readings to compare a counted walk with the phone sensor and synced steps.',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
+            onPressed: _diagnostics,
+            icon: const Icon(CupertinoIcons.info_circle, size: 21),
           ),
           IconButton(
-            icon: const Icon(
-              CupertinoIcons.chart_bar_alt_fill,
-              size: 20,
-              color: AppTheme.inkPrimary,
-            ),
-            tooltip: 'Progress & trends',
-            onPressed: () {
-              HapticsService.light();
-              context.push('/progress');
-            },
-          ),
-          RotationTransition(
-            turns: _syncAnimController,
-            child: IconButton(
-              icon: const Icon(
-                CupertinoIcons.arrow_2_circlepath,
-                size: 20,
-                color: AppTheme.inkPrimary,
-              ),
-              tooltip: 'Sync steps',
-              onPressed: activityState.isSyncing
-                  ? null
-                  : () => ref
-                        .read(activityProvider.notifier)
-                        .initAndSync(force: true),
-            ),
+            tooltip: 'Sync steps',
+            onPressed: state.isSyncing ? null : _sync,
+            icon: state.isSyncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(CupertinoIcons.arrow_2_circlepath, size: 21),
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
-        color: AppTheme.accentSolid,
-        backgroundColor: AppTheme.surface,
-        onRefresh: () =>
-            ref.read(activityProvider.notifier).initAndSync(force: true),
+        onRefresh: _sync,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            // Quick Points Earned Link (Clean pill strip)
-            InkWell(
-              onTap: () => context.go('/points'),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(color: AppTheme.hairline),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.accentSolid,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Earned today: +${activityState.pointsEarnedToday} pts',
-                          style: const TextStyle(
-                            fontSize: 14,
+            Text(
+              DateFormat('EEEE, d MMMM').format(DateTime.now()),
+              style: AppTheme.captionStyle,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Small steps.\nLovely possibilities.',
+              style: AppTheme.largeTitleStyle,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.accentDeep,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Your daily movement',
+                          style: AppTheme.bodyStyle.copyWith(
+                            color: AppTheme.surface,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.inkPrimary,
-                            letterSpacing: -0.2,
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        state.isSyncing
+                            ? 'Syncing'
+                            : state.hasPermission
+                            ? 'Motion allowed'
+                            : 'Motion off',
+                        style: AppTheme.captionStyle.copyWith(
+                          color: AppTheme.onDeep,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: MovementRing(steps: steps, goal: milestone),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    steps >= cap
+                        ? 'Daily earning limit reached. Keep moving for you.'
+                        : '${number.format(milestone - steps)} to your ${number.format(milestone)}-step milestone',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.captionStyle.copyWith(
+                      color: AppTheme.onDeep,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    height: 1,
+                    color: AppTheme.onDeep.withValues(alpha: 0.2),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => context.go('/points'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.surface,
+                    ),
+                    child: Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        Text(
+                          '+${number.format(state.pointsEarnedToday)} pts earned today',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: AppTheme.tabular,
+                          ),
+                        ),
+                        const Icon(CupertinoIcons.arrow_up_right, size: 16),
                       ],
                     ),
-                    const Icon(
-                      CupertinoIcons.chevron_forward,
-                      size: 14,
-                      color: AppTheme.inkSecondary,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-
-            // Hero Movement Card with Gradient Progress
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: AppTheme.hairline),
+            const SizedBox(height: 16),
+            if (state.errorMessage != null)
+              StatusNotice(state.errorMessage!, onRetry: _sync),
+            if (!state.hasPermission && !state.isSyncing)
+              StatusNotice(
+                'Allow motion access to count your walks.',
+                onRetry: _sync,
               ),
-              padding: const EdgeInsets.all(20.0),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _metric(
+                  context,
+                  'Est. distance',
+                  '${(steps * 0.0007).toStringAsFixed(2)} km',
+                  CupertinoIcons.location,
+                ),
+                _metric(
+                  context,
+                  'Est. energy',
+                  '${(steps * 0.04).round()} kcal',
+                  CupertinoIcons.flame,
+                ),
+              ],
+            ),
+            const SectionHeading('Make a little more of today'),
+            SurfaceCard(
+              color: AppTheme.mintWash,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.currentStreakDays > 0
+                        ? '${state.currentStreakDays}-day walking streak'
+                        : 'Start a feel-good streak.',
+                    style: AppTheme.titleStyle,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Walk 1,000 steps a day to build your streak. Every day is a fresh chance.',
+                    style: AppTheme.captionStyle.copyWith(height: 1.5),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    steps >= cap
+                        ? 'Today’s reward-eligible steps are complete.'
+                        : '$nextPoint steps to the next point boundary.',
+                    style: AppTheme.bodyStyle.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.accentDeep,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${number.format(perPoint)} steps = 1 pt · Daily earning cap ${number.format(cap)} steps',
+                    style: AppTheme.captionStyle,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SurfaceCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Daily movement',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.inkSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Large Step Count Display
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        NumberFormat('#,###').format(displaySteps),
-                        style: const TextStyle(
-                          fontSize: 44,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.inkPrimary,
-                          letterSpacing: -1.5,
-                          height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'steps',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.inkSecondary,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Gradient Progress Bar (accentBright to accentDeep)
-                  Stack(
-                    children: [
-                      Container(
-                        height: 10,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceMuted,
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusPill,
-                          ),
-                        ),
-                      ),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          return Container(
-                            height: 10,
-                            width: constraints.maxWidth * progress,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  AppTheme.accentBright,
-                                  AppTheme.accentDeep,
-                                ],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusPill,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                    'Where will your steps take you?',
+                    style: AppTheme.titleStyle,
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '0',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.inkTertiary,
-                        ),
-                      ),
-                      Text(
-                        'Goal: ${NumberFormat('#,###').format(cap)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.inkSecondary,
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'Find a little something worth walking for.',
+                    style: AppTheme.captionStyle,
                   ),
-                  const SizedBox(height: 18),
-                  const Divider(color: AppTheme.hairline, height: 1),
                   const SizedBox(height: 16),
-
-                  // 3-Column Metrics Grid
-                  Row(
-                    children: [
-                      Expanded(child: _buildMetricTile('Distance', '$km km')),
-                      Container(width: 1, height: 28, color: AppTheme.hairline),
-                      Expanded(
-                        child: _buildMetricTile('Calories', '$kcal kcal'),
-                      ),
-                      Container(width: 1, height: 28, color: AppTheme.hairline),
-                      Expanded(
-                        child: _buildMetricTile(
-                          'Remaining',
-                          NumberFormat('#,###').format(remainingSteps),
-                        ),
-                      ),
-                    ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.go('/rewards'),
+                      icon: const Icon(CupertinoIcons.ticket, size: 18),
+                      label: const Text('Explore rewards'),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
-
-            // Streak & Leaderboard Row (Inset 2-item list)
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: AppTheme.hairline),
-              ),
+            const SectionHeading('Your walking story'),
+            SurfaceCard(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Streak: ${activityState.currentStreakDays} ${activityState.currentStreakDays == 1 ? 'day' : 'days'}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.inkPrimary,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        Text(
-                          activityState.currentStreakDays > 0
-                              ? 'Active streak'
-                              : '1,000+ steps/day goal',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.inkSecondary,
-                          ),
-                        ),
-                      ],
+                    title: const Text(
+                      'Progress & trends',
+                      style: AppTheme.headlineStyle,
                     ),
+                    subtitle: const Text(
+                      'See your weeks and months',
+                      style: AppTheme.captionStyle,
+                    ),
+                    trailing: const Icon(
+                      CupertinoIcons.arrow_up_right,
+                      size: 18,
+                    ),
+                    onTap: () => context.push('/progress'),
                   ),
-                  const Divider(height: 1, color: AppTheme.hairline),
-                  InkWell(
-                    onTap: () {
-                      HapticsService.light();
-                      context.push('/leaderboard');
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Leaderboard',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.inkPrimary,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          Icon(
-                            CupertinoIcons.chevron_forward,
-                            size: 14,
-                            color: AppTheme.inkSecondary,
-                          ),
-                        ],
-                      ),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
                     ),
-                  ),
-                  const Divider(height: 1, color: AppTheme.hairline),
-                  InkWell(
-                    onTap: () {
-                      HapticsService.light();
-                      context.push('/progress');
-                    },
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(AppTheme.radiusLg),
+                    title: const Text(
+                      'Community leaderboard',
+                      style: AppTheme.headlineStyle,
                     ),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                CupertinoIcons.chart_bar_alt_fill,
-                                size: 16,
-                                color: AppTheme.accentSolid,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Progress & trends',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.inkPrimary,
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Text(
-                                'Weekly & monthly',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.inkSecondary,
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Icon(
-                                CupertinoIcons.chevron_forward,
-                                size: 14,
-                                color: AppTheme.inkSecondary,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    subtitle: const Text(
+                      'A little friendly motivation',
+                      style: AppTheme.captionStyle,
                     ),
+                    trailing: const Icon(
+                      CupertinoIcons.arrow_up_right,
+                      size: 18,
+                    ),
+                    onTap: () => context.push('/leaderboard'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
-
-            // Step Conversion Information
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: AppTheme.hairline),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    CupertinoIcons.info_circle,
-                    size: 18,
-                    color: AppTheme.accentSolid,
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${activityState.stepsPerPoint} steps = 1 pt. Steps convert automatically when your activity syncs.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.inkSecondary,
-                        height: 1.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Activity Log Header & Filter
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Activity log',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
-                    color: AppTheme.inkPrimary,
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    border: Border.all(color: AppTheme.hairline),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                  ),
-                  padding: const EdgeInsets.all(3),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildRangeTab(
-                        'today',
-                        'Today',
-                        activityState.selectedRange,
-                        ref,
-                      ),
-                      _buildRangeTab(
-                        'week',
-                        '7D',
-                        activityState.selectedRange,
-                        ref,
-                      ),
-                      _buildRangeTab(
-                        'month',
-                        '30D',
-                        activityState.selectedRange,
-                        ref,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const SectionHeading('Synced activity'),
+            FilterPills(
+              options: const {
+                'today': 'Today',
+                'week': '7 days',
+                'month': '30 days',
+              },
+              selected: state.selectedRange,
+              onSelected: (value) {
+                HapticsService.selection();
+                ref.read(activityProvider.notifier).loadHistory(value);
+              },
             ),
             const SizedBox(height: 12),
-
-            // History List
-            if (activityState.history != null &&
-                activityState.history!.days.isNotEmpty)
-              Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: AppTheme.hairline),
-                ),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: activityState.history!.days.length,
-                  separatorBuilder: (_, _) =>
-                      const Divider(height: 1, color: AppTheme.hairline),
-                  itemBuilder: (context, index) {
-                    final day = activityState.history!.days[index];
-                    final dateFormatted = _formatDate(day.date);
-                    final stepsFmt = NumberFormat(
-                      '#,###',
-                    ).format(day.eligibleSteps);
-                    final pts = day.eligibleSteps ~/ 100;
-                    final dayProgress = (day.eligibleSteps / cap).clamp(
-                      0.0,
-                      1.0,
-                    );
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  dateFormatted,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                    letterSpacing: -0.2,
-                                    color: AppTheme.inkPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusPill,
-                                  ),
-                                  child: LinearProgressIndicator(
-                                    value: dayProgress,
-                                    minHeight: 4,
-                                    backgroundColor: AppTheme.surfaceMuted,
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          AppTheme.accentSolid,
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  '$stepsFmt steps',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppTheme.inkSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentBright.withValues(
-                                alpha: 0.15,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusPill,
+            if (state.history?.days.isNotEmpty == true)
+              SurfaceCard(
+                child: Column(
+                  children: [
+                    for (final day in state.history!.days)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                DateFormat(
+                                  'EEE, d MMM',
+                                ).format(DateTime.parse(day.date)),
+                                style: AppTheme.captionStyle,
                               ),
                             ),
-                            child: Text(
-                              '+$pts pts',
-                              style: const TextStyle(
-                                color: AppTheme.accentSolid,
+                            const SizedBox(width: 12),
+                            Text(
+                              '${number.format(day.eligibleSteps)} steps',
+                              style: AppTheme.bodyStyle.copyWith(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                letterSpacing: -0.2,
+                                fontFeatures: AppTheme.tabular,
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    );
-                  },
+                  ],
+                ),
+              )
+            else if (state.isSyncing)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 40,
-                  horizontal: 20,
-                ),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: AppTheme.hairline),
-                ),
-                child: const Text(
-                  'No step records for this period',
-                  style: TextStyle(color: AppTheme.inkSecondary, fontSize: 14),
-                ),
+              const EmptyState(
+                title: 'Your story starts with a step.',
+                message:
+                    'Synced activity will appear here after your next walk.',
+                icon: CupertinoIcons.chart_bar,
               ),
-
-            const SizedBox(height: 16),
-
-            // Privacy Guarantee
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Icon(
-                    CupertinoIcons.lock_shield,
-                    color: AppTheme.inkTertiary,
-                    size: 16,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Steps are counted locally on device sensors. Location data is never collected or tracked.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.inkTertiary,
-                        height: 1.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 20),
+            Text(
+              state.lastSyncTime == null
+                  ? 'Pull down to sync your steps.'
+                  : 'Last synced ${state.lastSyncTime}',
+              textAlign: TextAlign.center,
+              style: AppTheme.captionStyle,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Distance and energy are estimates. Stepsy counts movement without tracking your GPS location.',
+              textAlign: TextAlign.center,
+              style: AppTheme.captionStyle,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMetricTile(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
-            color: AppTheme.inkSecondary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.inkPrimary,
-            letterSpacing: -0.2,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRangeTab(
-    String value,
+  Widget _metric(
+    BuildContext context,
     String label,
-    String currentRange,
-    WidgetRef ref,
-  ) {
-    final isSelected = currentRange == value;
-    return GestureDetector(
-      onTap: () {
-        HapticsService.selection();
-        ref.read(activityProvider.notifier).loadHistory(value);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accentSolid : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? AppTheme.surface : AppTheme.inkSecondary,
+    String value,
+    IconData icon,
+  ) => SizedBox(
+    width: (MediaQuery.sizeOf(context).width - 52) / 2,
+    child: SurfaceCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppTheme.accentSolid, size: 22),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: AppTheme.headlineStyle.copyWith(
+              fontFeatures: AppTheme.tabular,
+            ),
           ),
-        ),
+          const SizedBox(height: 4),
+          Text(label, style: AppTheme.captionStyle),
+        ],
       ),
-    );
-  }
-
-  String _formatDate(String isoDate) {
-    try {
-      final parsed = DateTime.parse(isoDate);
-      return DateFormat('EEE, MMM d').format(parsed);
-    } catch (_) {
-      return isoDate;
-    }
-  }
+    ),
+  );
 }

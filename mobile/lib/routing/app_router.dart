@@ -173,7 +173,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/wallet',
-                builder: (context, state) => const WalletScreen(),
+                builder: (context, state) => WalletScreen(
+                  highlightId: state.uri.queryParameters['highlight'],
+                  recovered: state.uri.queryParameters['recovered'] == 'true',
+                ),
               ),
             ],
           ),

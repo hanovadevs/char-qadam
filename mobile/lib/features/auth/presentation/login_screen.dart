@@ -73,7 +73,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: AppTheme.surface,
+                      color: AppTheme.mintWash,
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                       border: Border.all(color: AppTheme.hairline),
                     ),
@@ -106,7 +106,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const Text(
                           'Stepsy',
                           style: TextStyle(
-                            fontSize: 32,
+                            fontFamily: AppTheme.displayFont,
+                            fontSize: 40,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -1.0,
                             color: AppTheme.inkPrimary,
@@ -114,7 +115,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Turn your daily movement into real rewards.',
+                          'A little walk. A little win.',
                           style: TextStyle(
                             fontSize: 15,
                             color: AppTheme.inkSecondary,

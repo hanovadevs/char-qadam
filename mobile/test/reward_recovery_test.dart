@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:qadam/features/wallet/providers/wallet_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qadam/core/services/cache_service.dart';
 import 'package:qadam/data/api/api_client.dart';
@@ -108,6 +110,15 @@ class RecoveryPoints extends StateNotifier<PointsState>
   RecoveryPoints() : super(const PointsState());
   @override
   Future<void> refresh() async {}
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class RecoveryWallet extends StateNotifier<WalletState>
+    implements WalletNotifier {
+  RecoveryWallet() : super(const WalletState());
+  @override
+  Future<void> fetchVouchers(String status) async {}
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -246,28 +257,47 @@ void main() {
   }
 
   testWidgets(
-    'missing catalog offer can be recovered and acknowledged after result dismissal',
+    'missing catalog offer recovers directly into wallet before acknowledgement',
     (tester) async {
       final rewards = RecoveryRewards();
+      final router = GoRouter(
+        initialLocation: '/rewards',
+        routes: [
+          GoRoute(path: '/rewards', builder: (_, _) => const RewardsScreen()),
+          GoRoute(
+            path: '/wallet',
+            builder: (_, _) => const Scaffold(body: Text('My rewards')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             rewardsProvider.overrideWith((ref) => rewards),
             pointsProvider.overrideWith((ref) => RecoveryPoints()),
+            walletProvider.overrideWith((ref) => RecoveryWallet()),
           ],
-          child: const MaterialApp(home: RewardsScreen()),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();
       expect(find.text('Recover purchase'), findsOneWidget);
+      await tester.ensureVisible(find.text('Recover purchase'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Recover purchase'));
       await tester.pumpAndSettle();
-      expect(find.text('Purchase recovered'), findsOneWidget);
+      expect(find.text('My rewards'), findsOneWidget);
       expect(rewards.recovered, 1);
-      expect(rewards.acknowledged, 0);
-      Navigator.of(tester.element(find.text('Purchase recovered'))).pop();
-      await tester.pumpAndSettle();
       expect(rewards.acknowledged, 1);
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['highlight'],
+        'existing-voucher',
+      );
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['recovered'],
+        'true',
+      );
     },
   );
 }
