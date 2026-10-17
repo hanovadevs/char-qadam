@@ -1,0 +1,149 @@
+# Stepsy launch audit - 2026-10-17
+
+## Product and launch assessment
+
+Stepsy is a walking-rewards marketplace with three working code surfaces: a
+Flutter consumer/merchant app, a FastAPI/PostgreSQL API, and a React admin portal.
+It is significantly beyond a scaffold, but the old completion checklist overstated
+release readiness. Android-first Pakistan launch and Redmi Note 11 acceptance
+were confirmed by the product owner in this session.
+
+The business proposition depends on reliable tracking and real partner value.
+Points are an internal reward currency, not cash. The earning rule, voucher cost,
+redemption limits, partner discount funding, and support/refund handling must be
+commercially sustainable; confirmed partner inventory was not supplied.
+
+## Fixed in this audit
+
+- Removed fabricated Google-token login and frontend fallback; require real token
+  verification, the configured audience, trusted issuer, and verified email.
+- Protected all admin endpoints except login; separated access and password-reset
+  token types. The auth limiter's public bypass header now works only in tests.
+- Replaced public password-reset credentials with SMTP delivery, one-use tokens,
+  and credential-version checks that revoke older user/merchant sessions.
+- Removed an embedded database credential and unsafe guessed-account backfill
+  from the deprecated migration script. Added versioned merchant/session migrations.
+- Serialized first daily sync on the existing user row to avoid the missing-row
+  race between foreground and background requests. Returned daily earned points
+  and reward rules instead of treating the last sync's award as today's total.
+- Used user-local dates with an Asia/Karachi default rather than the API host date.
+- Replaced the notification-only Android tracking approach with a native health
+  foreground service owning the hardware sensor, persistent counter snapshots,
+  reboot detection, boot resumption when enabled, and logout shutdown.
+- Kept overlapping Health Connect/sensor counts monotonic and aligned health
+  queries to a captured sensor timestamp to avoid async overlap inflation.
+- Removed body-sensor permission requests unrelated to a step counter. Requested
+  step-read access, notification permission, and supported background health reads.
+- Fixed live-count replacement by late/capped sync responses, debounce starvation
+  during continuous walking, old-day responses, and missing-day streaks.
+- Kept the router stable during profile refreshes; waited for onboarding storage;
+  invalidated onboarding completion after saving it.
+- Scoped offline caches to account IDs, guarded disposed async notifiers and
+  out-of-order tab responses, and prevented an old 401 from logging out a new session.
+- Refreshed wallet/points after offer issuance and guarded repeated redeem taps.
+- Restricted merchant voucher validation/redemption to the issuing partner,
+  blocked new rewards from inactive stores, and locked admin voucher redemption.
+- Validated nonnegative costs/stock, percentage terms and timezone-aware offer
+  dates. Made zero stock and explicit unlimited stock behave distinctly.
+- Loaded admin reward rules/environment from `/admin/config`; removed invented
+  production/cap values. Corrected deactivation copy to match retained records.
+- Updated vulnerable admin router/build dependencies, committed the Flutter lock
+  file, and stopped tracking generated HTML/JS/build reports.
+
+These changes do not certify physical sensor accuracy or a production deployment.
+
+## Checks and evidence
+
+- Backend: **88 tests passed** on isolated PostgreSQL with migrations 0001-0004;
+  includes reset replay/session revocation, concurrent first syncs, cross-store
+  rejection, inactive-store issuance, and inventory validation.
+- Flutter: **34 tests passed** and **analysis reported no issues** after final
+  tracking, session, onboarding, and deactivation-copy changes.
+- Android: debug APK build passed; **7 native counter tests passed** (zero
+  failures/errors), covering reboot, midnight, overlap, and stale/duplicate events.
+  The final incremental APK rebuild also passed.
+- Admin: Vite 8.3.4 production build passed; npm audit reported zero vulnerabilities.
+- Fresh migration 0001-0004 provisioning is exercised by the full backend suite;
+  migrations rather than ORM create_all now define the test schema.
+- Live read-only `/health`: service reports `ok`, environment `production`.
+  The checked changes have not been deployed to that host in this session.
+- Browser UI automation could not run: no browsers were exposed by the session.
+- CI now runs API migrations/tests, Flutter analysis/tests, Android build/native
+  tests, and admin build/audit on main pushes and pull requests. The workflow is
+  newly added; a green GitHub run is a separate verification from local success.
+- Redmi Note 11 (2201117TG, Android 13 / API 33) connected over USB. First install
+  returned INSTALL_FAILED_USER_RESTRICTED; after the owner approved the phone
+  prompt, the device disconnected before retry. The new APK is not installed or
+  startup-verified yet. Physical accuracy/reboot/battery and real OAuth/email
+  acceptance remain unverified.
+
+## Release gates and unfinished capabilities
+
+| Priority | Gate | Concrete remaining work |
+|---|---|---|
+| P0 | Rotate exposed database credential | Remove it from use and deployment environments; Git history still contains it. Never paste the replacement into source. |
+| P0 | HTTPS and deployment | Default mobile API and Vercel proxy still target HTTP. Confirm a controlled API domain, enable valid TLS, configure release URLs, migrate and deploy the API, then test actual production flows. |
+| P0 | Physical Redmi accuracy | Test the new APK. If raw sensor readings rise while truly stationary, obtain those readings and tune/replace the source based on evidence; no arbitrary step multiplier was introduced. |
+| P0 | Real auth/recovery configuration | Configure the correct Google web-client audience and Android package/signing fingerprints. Configure SMTP and verify delivery and reset with a real test inbox. |
+| P0 | Real partner rewards | Confirm contracts, coverage, stock, discount terms, funding, return/refund/cancellation handling and merchant training before claiming nationwide redemption availability. |
+| P0 | Abuse resistance | The API still accepts client-reported step totals. Caps, monotonic updates and permission checks are not device attestation; assess Play Integrity, provenance checks, replay/audit controls and rollout limits. |
+| P0 | Erasure and privacy | Deactivation revokes access but retains rows. Implement a reviewed erasure/anonymization and retention process, publish the policy and account-deletion route, and complete Play disclosures before release. |
+| P1 | Checkout terms and savings | POS does not yet capture/enforce basket minimums. Percentage/free-item values are not actual PKR savings; add basket-aware rules before using savings totals as financial facts. |
+| P1 | Issuance retry idempotency | API locking prevents balance overspend, but an ambiguous failed issuance response can lead to another valid purchase on retry. Add persisted request idempotency and a recovery UI. |
+| P1 | Offline history | Current-day snapshots recover counts; automatic seven-day backfill and explicit stale/offline labels remain incomplete. Long gaps spanning midnight cannot be reconstructed from a cumulative counter alone. |
+| P1 | Voucher links | Confirm the owned public domain, deploy Android assetlinks for the signing certificate, preserve post-login destinations, and replace the code-only deep-link screen with a wallet lookup. |
+| P1 | Notifications | Notification payload navigation, scheduled reminders, and a complete expiry-delivery lifecycle are unfinished despite older module labels. |
+| P1 | Operations/scale | Test backup restore, multiworker rate limiting, load/latency, queue/job observability, support/audit workflows, and deployment rollback with a representative launch load. |
+| P2 | Profile/localization | Persist name/avatar beyond the locally cached Google profile; decide Urdu/localization and accessibility acceptance. iOS remains outside the initial launch. |
+
+## Redmi Note 11 test protocol
+
+1. Connect USB, enable USB debugging, and accept the computer's authorization prompt.
+   Confirm the device appears in `adb devices` / `flutter devices`. Do not uninstall
+   an existing differently signed app automatically; preserve its local data.
+2. Install/run the debug build, sign in with a test account, grant motion tracking,
+   and check that Steps -> Tracking diagnostics shows the service/sensor available.
+3. Record displayed, saved, raw-sensor, server, and health-store readings. Leave
+   the phone still on a table for five minutes, then check the readings again.
+   Distinguish delayed health backfill from fresh raw-sensor increments.
+4. Walk 100 steps, then 500 steps at normal pace, counting manually. Repeat 500
+   steps three times, including a pocket/locked-screen trial. Record error for
+   each trial; provisional target <=5%, subject to product acceptance.
+5. Refresh repeatedly while walking. Counts must not move backward; the eligible
+   server count can stop at the daily cap while actual steps keep increasing.
+6. Walk with the screen locked for 5-10 minutes, reopen, dismiss/reopen the app,
+   reboot and reopen, and verify continuity. OS force-stop and OEM battery rules
+   can stop services; do not advertise guaranteed execution after force-stop.
+7. Test airplane-mode walking then reconnect. Test local midnight separately;
+   do not change the clock on an account with real rewards to fabricate history.
+8. Earn a test reward, view it in the already-open wallet, validate at its own
+   store, redeem once, reject replay and another store, then refresh the wallet.
+9. Log out and sign into another account. The previous wallet/balance/history
+   must not appear and tracking must stop at logout until enabled again.
+
+For local USB development: run API on port 8000, run
+`adb reverse tcp:8000 tcp:8000`, then from `mobile/` run
+`flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000`.
+Use the isolated test database and development accounts for full redemption tests.
+
+## Implementation references
+
+- [Android sensor/service guidance](https://developer.android.com/health-and-fitness/fitness/basic-app/read-step-count-data)
+- [Android health foreground-service prerequisites](https://developer.android.com/develop/background-work/services/fgs/service-types#health)
+- [Pinned health package behavior](https://pub.dev/packages/health/versions/13.3.1)
+- [Vite migration guidance](https://vite.dev/guide/migration)
+
+
+## Pushed batches
+
+- `93df98e`: initial API authentication/admin boundaries and step-sync integrity.
+- `828adff`: partner voucher isolation, reward validation, session revocation,
+  and real-migration regression coverage.
+- `35b5ac9`: Android foreground tracking, source reconciliation, stable counters,
+  diagnostics, cache/session/onboarding fixes and Flutter/native regressions.
+- `bda0e89`: admin configuration/stock fixes, dependency security updates and
+  generated-output cleanup.
+
+The debug testing artifact is `mobile/build/app/outputs/flutter-apk/app-debug.apk`.
+It uses the existing API default unless rebuilt with API_BASE_URL. Do not publish
+this debug/HTTP-default artifact as the Play release.

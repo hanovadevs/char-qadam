@@ -1,5 +1,9 @@
 # MODULES.md
 
+> Historical implementation checklist. Done labels below do not mean launch-verified.
+> Current acceptance and known gaps: [REQUIREMENTS.md](REQUIREMENTS.md) and
+> [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md), updated 2026-10-17.
+
 Tracked checklist of every module/feature and its status.
 
 > **Rule:** When a module is completed, update its row here with status, date,

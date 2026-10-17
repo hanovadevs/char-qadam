@@ -1,96 +1,29 @@
-# TECH_STACK.md
+# Stepsy technical context
 
-Every technology, library, and package used in the Qadam "step-to-earn" project,
-with versions and a one-line reason for each choice.
+Current implementation, audited 2026-10-17. This replaces the original scaffold notes.
 
-> **Rule:** Update this file whenever a dependency is added, removed, or upgraded.
+| Layer | Implementation |
+|---|---|
+| Android app | Flutter 3.47.1 / Dart 3.13.1 in the verified local toolchain; Riverpod 2, go_router 17, Dio 5. |
+| Step acquisition | Kotlin SensorManager TYPE_STEP_COUNTER owned by StepTrackingService; persistent daily snapshots and boot counter; Health Connect read-only aggregate reconciliation. |
+| Background upload | Android WorkManager, best-effort periodic network sync; permission-gated background health reads and stored-snapshot fallback. |
+| Auth storage | flutter_secure_storage; account-scoped SharedPreferences response caches. |
+| API | FastAPI 0.118, Pydantic 2, Python 3.12 deployment requirements. Local verification used the existing Python 3.14 environment. |
+| Persistence | SQLAlchemy 2 async + asyncpg; PostgreSQL; Alembic revisions 0001-0004. No MongoDB dependency in the active data path. |
+| Auth/security | Signed access JWTs, password-version revocation, bcrypt_sha256 for new hashes with legacy bcrypt verification, Google tokeninfo verification, SMTP reset delivery. |
+| Admin | React 18, React Router 7.18.4, Vite 8.3.4, plugin-react 6.1.2; Node 24. |
+| Integrity | Append-only point ledger, user/offer row locks, conditional merchant redemption, date bounds and daily caps. These are not device attestation. |
+| Tests | pytest/httpx against isolated PostgreSQL and real migrations; Flutter widget/model/state regressions; JUnit native counter tests. |
+| CI | GitHub Actions API, Android/Flutter, and admin jobs on main pushes / pull requests. |
 
-_Last updated: 2026-08-15 (Phase M4 — Complete MVP)_
+The earning defaults live in backend Settings: 100 steps/point, 20,000 eligible
+steps/day, and 30-day vouchers. /admin/config and sync responses expose active
+values to clients. Actual movement can exceed the eligibility cap.
 
----
+The physical acceptance target is Redmi Note 11 / Android 13. iOS source remains
+in the repo but is outside the initial release scope and was not built here.
 
-## Toolchain (verified locally)
-
-| Tool    | Version  | Reason |
-|---------|----------|--------|
-| Flutter | 3.44.1 (stable) | Cross-platform mobile UI framework (Android + iOS). |
-| Dart    | 3.12.1   | Language powering Flutter. |
-| Python  | 3.12.9   | Backend language for FastAPI. |
-| pip     | 25.3     | Python package manager. |
-| Git     | 2.53.0   | Version control. |
-
----
-
-## Mobile app — Flutter (`/mobile`)
-
-Package name: `qadam` · Org: `com.qadam` · Platforms: Android, iOS
-
-### Runtime dependencies
-
-| Package | Version | Reason |
-|---------|---------|--------|
-| flutter_riverpod | ^2.6.1 | State management (specified stack choice). |
-| go_router | ^17.5.0 | Declarative navigation / routing. |
-| dio | ^5.11.0 | HTTP client for talking to the FastAPI backend. |
-| flutter_secure_storage | ^11.0.0 | Secure on-device storage for JWT tokens. |
-| health | ^13.0.0 | HealthKit / Health Connect step reading. |
-| qr_flutter | ^4.1.0 | QR code rendering for voucher display. |
-| intl | ^0.20.2 | Date and currency formatting. |
-| uuid | ^4.5.1 | Client-side UUID v4 generation for idempotency keys. |
-| geolocator | ^14.0.3 | GPS (kept; attestation/fraud work deferred). |
-| pedometer | ^4.2.0 | Step counting fallback. |
-| cupertino_icons | ^1.0.8 | iOS-style icon set. |
-
-### Dev dependencies
-
-| Package | Version | Reason |
-|---------|---------|--------|
-| flutter_test | (SDK) | Widget/unit testing (Flutter default). |
-| flutter_lints | ^6.0.0 | Recommended lint rules (Flutter default). |
-
----
-
-## Backend — FastAPI (`/backend`)
-
-Python 3.12 · pinned in `backend/requirements.txt`
-
-| Package | Version | Reason |
-|---------|---------|--------|
-| fastapi | 0.118.0 | Async web framework for the REST API. |
-| uvicorn[standard] | 0.37.0 | ASGI server to run FastAPI. |
-| pydantic | 2.11.10 | Data validation / serialization (v2). |
-| pydantic-settings | 2.7.1 | Env-driven application settings. |
-| sqlalchemy[asyncio] | 2.0.41 | Async ORM for PostgreSQL; mapped_column API. |
-| asyncpg | 0.30.0 | Async PostgreSQL driver (used by SQLAlchemy). |
-| alembic | 1.16.2 | Schema migrations for SQLAlchemy models. |
-| greenlet | 3.2.3 | Required for SQLAlchemy async support. |
-| python-jose[cryptography] | 3.5.0 | JWT encode/decode for auth. |
-| passlib[bcrypt] | 1.7.4 | Password hashing. |
-| python-multipart | 0.0.20 | Form/multipart parsing. |
-| email-validator | 2.2.0 | Email validation for Pydantic models. |
-| httpx | 0.28.1 | Async HTTP client (tests). |
-| pytest | 8.4.2 | Test runner. |
-| pytest-asyncio | 0.24.0 | Async test support for pytest. |
-
-### Removed
-
-| Package | Reason removed |
-|---------|----------------|
-| motor 3.7.1 | MongoDB async driver — replaced by asyncpg + SQLAlchemy (Phase B0). |
-
----
-
-## Database
-
-| Tech | Version | Reason |
-|------|---------|--------|
-| PostgreSQL | 15+ (external) | Transactional-correct relational store for balances, vouchers, and the append-only ledger. Chosen in MVP_PLAN.md §0 for correctness over MongoDB. |
-
----
-
-## Planned / future phase (not yet added)
-
-| Tech | Reason |
-|------|--------|
-| Redis | Async job queue / rate-limit backing store (post-MVP). |
-| App Attest / Play Integrity | Device attestation for fraud hardening (post-MVP). |
+Dependencies are captured in mobile/pubspec.lock, backend/requirements.txt, and
+web/package-lock.json. Production deployment, TLS, real OAuth/SMTP, signed Play
+artifacts, privacy/erasure, and partner economics remain separate launch gates.
+See LAUNCH_AUDIT.md for evidence and unresolved limitations.

@@ -1,97 +1,41 @@
-# PROJECT_STRUCTURE.md
+# Stepsy project structure
 
-Folder/file layout for the Qadam project. Two top-level apps: `/mobile`
-(Flutter) and `/backend` (FastAPI).
+Updated 2026-10-17. Package name `qadam` and GitHub repository `char-qadam` are
+legacy identifiers; the product is Stepsy by Hanova Devs.
 
-> **Rule:** Keep this current as folders/files are added.
-
-_Last updated: 2026-08-14 (Phase B0 — Postgres swap)_
-
----
-
-## Repository root
-
-```
-Qadam/
-├── mobile/               # Flutter mobile app
-├── backend/              # FastAPI backend
-├── MVP_PLAN.md           # Authoritative build plan (phases B0–B5, M0–M4)
-├── MVP_req.md            # Product requirements document (PRD)
-├── TECH_STACK.md         # All tech + versions + rationale
-├── PROJECT_STRUCTURE.md  # This file
-├── REQUIREMENTS.md       # Legacy requirements (superseded by MVP_req.md)
-├── MODULES.md            # Module/feature status checklist
-└── .gitignore            # Flutter + Python ignore rules
-```
-
----
-
-## `/backend` — FastAPI
-
-```
-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py           # App factory, lifespan (Postgres engine warm-up/dispose), CORS, /health, /
-│   ├── config.py         # Settings via pydantic-settings (DATABASE_URL, JWT, points engine rules)
-│   ├── db/
-│   │   ├── __init__.py
-│   │   ├── base.py        # SQLAlchemy DeclarativeBase (shared by all models)
-│   │   ├── models.py      # All 9 ORM tables: users, devices, activity_daily, points_ledger,
-│   │   │                  #   partners, offers, vouchers, redemptions, audit_log
-│   │   └── postgres.py    # Async engine + session factory + get_session() FastAPI dependency
-│   ├── routers/
-│   │   ├── __init__.py
-│   │   └── health.py      # GET /health (functional endpoint)
-│   ├── models/            # Pydantic v2 request/response schemas (populated per phase)
-│   └── services/          # Business logic (populated per phase)
-├── alembic/
-│   ├── env.py             # Async Alembic environment (reads DATABASE_URL from app.config)
-│   ├── script.py.mako     # Migration file template
-│   └── versions/
-│       └── 0001_initial_schema.py  # Creates all 9 tables + indexes
-├── seeds/
-│   └── seed.py            # Demo partner + 3 offers (idempotent, run with python -m seeds.seed)
-├── alembic.ini            # Alembic config (script_location = alembic)
-├── requirements.txt       # Pinned Python dependencies
-├── .env.example           # Sample env config (copy to .env)
-├── .venv/                 # Local virtualenv (git-ignored)
-└── README.md              # Backend setup/run instructions
-```
-
-**Setup:**
-```bash
-cd backend
-cp .env.example .env          # fill in DATABASE_URL
-pip install -r requirements.txt
-alembic upgrade head           # create all tables
-python -m seeds.seed           # (optional) seed demo data
-uvicorn app.main:app --reload  # → http://127.0.0.1:8000
-```
-
----
-
-## `/mobile` — Flutter
-
-```
+```text
 mobile/
-├── lib/
-│   ├── main.dart         # App entry (default Flutter counter screen for now)
-│   ├── core/             # Theme, constants, shared utils (scaffold — Phase M0)
-│   ├── routing/          # go_router config (scaffold — Phase M0)
-│   ├── data/             # API clients (Dio), repositories, secure storage (scaffold — Phase M0)
-│   └── features/         # Feature modules (scaffold — Phases M1–M4)
-│       ├── auth/
-│       ├── activity/
-│       ├── points/
-│       ├── rewards/
-│       ├── wallet/
-│       └── profile/
-├── android/              # Android platform project
-├── ios/                  # iOS platform project
-├── test/                 # Widget/unit tests
-├── pubspec.yaml          # Flutter dependencies
-└── pubspec.lock          # Locked dependency versions (git-ignored)
+  lib/
+    core/                 environment, theme, cache, notifications, background upload
+    data/                 API/auth and feature repositories, health reconciliation, DTOs
+    features/             onboarding, auth, activity/progress, points, rewards,
+                          wallet, leaderboard, profile, merchant POS
+    routing/              stable GoRouter and onboarding/auth redirects
+  android/app/src/main/kotlin/com/stepsy/run/
+    MainActivity.kt       Flutter platform/event channels
+    DailyStepCounter.kt   counter/reboot/rollover arithmetic
+    StepTrackingService.kt persistent foreground sensor lifecycle
+    StepBootReceiver.kt   authorized boot resumption
+  android/app/src/test/   native counter regressions
+  test/                   Flutter state, model, cache, session and widget regressions
+backend/
+  app/
+    routers/              auth, users, activity, points, offers, vouchers,
+                          leaderboard, partner POS, protected admin and health
+    services/             reward/activity/security/email business logic
+    db/                   SQLAlchemy models and async sessions
+    schemas/              API request and response contracts
+    middleware/           request logging and auth rate limits
+  alembic/versions/        versioned schema through credential revocation (0004)
+  tests/                  isolated PostgreSQL integration and security tests
+web/
+  src/pages/              admin login, overview, stores, deals, vouchers, users,
+                          ledger, audit and server-backed settings
+  src/services/api.js     same-origin or VITE_API_URL API client
+.github/workflows/        repeatable checks for main and pull requests
+REQUIREMENTS.md           current Android-first acceptance requirements
+LAUNCH_AUDIT.md           verified fixes, known release gates, Redmi testing protocol
 ```
 
-**Run:** `cd mobile && flutter run`.
+Generated mobile/build, mobile/android/build, web/dist, virtual environments,
+local databases, environment files and signing material are not source artifacts.
