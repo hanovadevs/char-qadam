@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
-from app.db.models import Offer, OfferStatus, User
+from app.db.models import Offer, OfferStatus, Partner, PartnerStatus, User
 from app.db.postgres import get_session
 from app.deps import get_current_user
 from app.schemas.offers import OfferOut, RedeemOut
@@ -45,9 +45,11 @@ async def list_offers(
 
     result = await session.execute(
         select(Offer)
+        .join(Partner, Offer.partner_id == Partner.id)
         .options(selectinload(Offer.partner))
         .where(
             Offer.status == OfferStatus.ACTIVE,
+            Partner.status == PartnerStatus.ACTIVE,
             or_(Offer.starts_at.is_(None), Offer.starts_at <= now),
             or_(Offer.ends_at.is_(None), Offer.ends_at >= now),
             or_(Offer.inventory.is_(None), Offer.inventory > 0),

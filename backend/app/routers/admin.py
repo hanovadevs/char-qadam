@@ -4,10 +4,10 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, EmailStr
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field, model_validator
 from sqlalchemy import delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,9 +35,23 @@ from app.deps import get_current_admin
 from app.services.partner_auth import hash_api_key
 from app.services.security import create_access_token, hash_password
 from app.services.voucher_sweep import sweep_expired_vouchers
+from app.services.local_date import local_today
 
 public_router = APIRouter(prefix="/admin", tags=["admin"])
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
+
+
+@router.get('/config', summary='Read active reward configuration')
+async def reward_config() -> dict:
+    settings = get_settings()
+    return {
+        'steps_per_point': settings.steps_per_point,
+        'daily_step_cap': settings.daily_step_cap,
+        'voucher_validity_days': settings.voucher_validity_days,
+        'password_recovery_available': bool(settings.smtp_host and settings.smtp_from),
+        'google_signin_configured': bool(settings.google_client_id),
+        'environment': settings.environment,
+    }
 
 
 @router.post('/vouchers/sweep-expired', summary='Expire unused vouchers past their expiry')
@@ -70,7 +84,7 @@ class AdminLoginIn(BaseModel):
 
 
 class AdminUserStatusIn(BaseModel):
-    status: str
+    status: Literal['ACTIVE', 'SUSPENDED', 'DELETED']
 
 
 class AdminAdjustPointsIn(BaseModel):
@@ -79,14 +93,14 @@ class AdminAdjustPointsIn(BaseModel):
 
 
 class AdminPartnerIn(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=128)
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=128)
     category: str | None = None
     description: str | None = None
     location: str | None = None
     google_maps_url: str | None = None
-    status: str | None = "ACTIVE"
+    status: PartnerStatus | None = PartnerStatus.ACTIVE
     generate_api_key: bool | None = False
 
 
@@ -106,26 +120,34 @@ class AdminPartnerResetPasswordIn(BaseModel):
 
 class AdminOfferIn(BaseModel):
     partner_id: str
-    title: str
+    title: str = Field(min_length=1, max_length=256)
     description: str | None = None
     discount_type: DiscountType
-    discount_value: float
-    points_cost: int
-    min_basket: float | None = None
-    inventory: int | None = None
-    starts_at: datetime | None = None
-    ends_at: datetime | None = None
+    discount_value: float = Field(ge=0, allow_inf_nan=False)
+    points_cost: int = Field(ge=0)
+    min_basket: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    inventory: int | None = Field(default=None, ge=0)
+    starts_at: AwareDatetime | None = None
+    ends_at: AwareDatetime | None = None
     status: OfferStatus | None = OfferStatus.ACTIVE
+
+    @model_validator(mode='after')
+    def valid_terms(self):
+        if self.discount_type == DiscountType.PERCENT and self.discount_value > 100:
+            raise ValueError('Percentage discount cannot exceed 100')
+        if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
+            raise ValueError('Offer end must follow its start')
+        return self
 
 
 class AdminOfferPatchIn(BaseModel):
     title: str | None = None
     description: str | None = None
     discount_type: DiscountType | None = None
-    discount_value: float | None = None
-    points_cost: int | None = None
-    min_basket: float | None = None
-    inventory: int | None = None
+    discount_value: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    points_cost: int | None = Field(default=None, ge=0)
+    min_basket: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    inventory: int | None = Field(default=None, ge=0)
     status: OfferStatus | None = None
 
 
@@ -548,6 +570,7 @@ async def reset_partner_password(
 
     if merchant_user:
         merchant_user.password_hash = new_hash
+        merchant_user.auth_version += 1
     elif partner.email:
         merchant_user = User(
             id=str(uuid.uuid4()),
@@ -750,6 +773,10 @@ async def update_offer(
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
 
+    discount_type = body.discount_type or offer.discount_type
+    discount_value = body.discount_value if body.discount_value is not None else float(offer.discount_value)
+    if discount_type == DiscountType.PERCENT and discount_value > 100:
+        raise HTTPException(status_code=422, detail='Percentage discount cannot exceed 100')
     if body.title is not None:
         offer.title = body.title.strip()
     if body.description is not None:
@@ -760,9 +787,9 @@ async def update_offer(
         offer.discount_value = body.discount_value
     if body.points_cost is not None:
         offer.points_cost = body.points_cost
-    if body.min_basket is not None:
+    if 'min_basket' in body.model_fields_set:
         offer.min_basket = body.min_basket
-    if body.inventory is not None:
+    if 'inventory' in body.model_fields_set:
         offer.inventory = body.inventory
     if body.status is not None:
         offer.status = body.status
@@ -895,6 +922,7 @@ async def redeem_voucher(
         select(Voucher)
         .options(selectinload(Voucher.offer))
         .where(Voucher.short_code == code)
+        .with_for_update()
     )
     v = result.scalar_one_or_none()
     if not v:
@@ -1241,7 +1269,7 @@ async def get_user_activity(
     range: str = Query(default="3months", pattern="^(today|week|month|3months|6months|year|all)$"),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    today = date.today()
+    today = local_today()
     if range == "today":
         start = today
     elif range == "week":

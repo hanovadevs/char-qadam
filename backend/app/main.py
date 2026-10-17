@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
 
 
     # Mount Static Web Admin Portal
-    web_dist = Path(__file__).resolve().parents[2] / "web" / "dist"
+    web_dist = Path(__file__).resolve().parents[3] / "web" / "dist"
     if web_dist.is_dir():
         assets_dir = web_dist / "assets"
         if assets_dir.is_dir():

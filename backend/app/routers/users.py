@@ -53,6 +53,7 @@ async def patch_me(
 
     if body.password is not None:
         current_user.password_hash = hash_password(body.password)
+        current_user.auth_version += 1
         updated = True
 
     if updated:

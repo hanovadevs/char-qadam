@@ -19,6 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
+from app.services.local_date import local_today
 from app.db.models import ActivityDaily, User, UserStatus
 from app.schemas.leaderboard import (
     LeaderboardEntryOut,
@@ -50,7 +51,7 @@ async def get_leaderboard(
     settings: Settings,
 ) -> LeaderboardResponseOut:
     """Aggregate verified steps and rank users by total volume."""
-    now = datetime.now(timezone.utc)
+    now = local_today()
     today_str = now.strftime("%Y-%m-%d")
 
     date_filter = None

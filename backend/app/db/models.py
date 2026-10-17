@@ -97,6 +97,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    auth_version: Mapped[int] = mapped_column(Integer, default=0, server_default='0', nullable=False)
     role: Mapped[str] = mapped_column(String(32), default="USER", nullable=False)
     partner_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("partners.id", ondelete="SET NULL"), nullable=True, index=True

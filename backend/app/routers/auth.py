@@ -82,7 +82,7 @@ async def register(
     await session.commit()
 
     return TokenOut(
-        access_token=create_access_token(user.id, extra_claims={"role": user.role}),
+        access_token=create_access_token(user.id, extra_claims={"role": user.role, "ver": user.auth_version}),
         role=user.role,
     )
 
@@ -130,6 +130,7 @@ async def login(
         extra_claims={
             "role": user.role,
             "partner_id": user.partner_id,
+            "ver": user.auth_version,
         },
     )
     return TokenOut(
@@ -205,7 +206,7 @@ async def google_auth(
             partner_name = partner.name
 
     return TokenOut(
-        access_token=create_access_token(user.id, extra_claims={"role": user.role, "partner_id": user.partner_id}),
+        access_token=create_access_token(user.id, extra_claims={"role": user.role, "partner_id": user.partner_id, "ver": user.auth_version}),
         role=user.role,
         partner_id=user.partner_id,
         partner_name=partner_name,
@@ -280,6 +281,7 @@ async def reset_password(
     except Exception:
         raise HTTPException(status_code=400, detail='Invalid or expired password reset token')
     user.password_hash = hash_password(body.new_password)
+    user.auth_version += 1
     await session.commit()
 
     return ResetPasswordOut(

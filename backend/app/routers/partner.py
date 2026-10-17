@@ -116,6 +116,7 @@ async def validate_voucher(
         select(Voucher, Offer)
         .join(Offer, Voucher.offer_id == Offer.id)
         .where(
+            Offer.partner_id == partner.id,
             (Voucher.token_hash == token_hash)
             | (Voucher.short_code == input_str.upper())
         )
@@ -192,6 +193,7 @@ async def redeem_voucher(
             Voucher.id == voucher_id,
             Voucher.status == VoucherStatus.ISSUED,
             Voucher.expires_at > now,
+            Voucher.offer_id.in_(select(Offer.id).where(Offer.partner_id == partner.id)),
         )
         .values(status=VoucherStatus.REDEEMED, redeemed_at=now)
         .returning(Voucher.id, Voucher.short_code, Voucher.offer_id)

@@ -48,12 +48,10 @@ def _patch_engine_for_tests():
     _pg_module._session_factory = test_factory
 
     import asyncio
-    from app.db.base import Base
-    import app.db.models
-    async def prepare():
-        async with test_engine.begin() as connection:
-            await connection.run_sync(Base.metadata.create_all)
-    asyncio.run(prepare())
+    from alembic import command
+    from alembic.config import Config
+    from pathlib import Path
+    command.upgrade(Config(str(Path(__file__).resolve().parents[1] / 'alembic.ini')), 'head')
     yield
     asyncio.run(test_engine.dispose())
 

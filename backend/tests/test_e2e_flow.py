@@ -15,6 +15,7 @@ Executes the complete user & merchant lifecycle in a single deterministic sequen
 12. Soft-delete user account (DELETE /users/me) -> JWT revoked
 """
 from __future__ import annotations
+from zoneinfo import ZoneInfo
 
 import uuid
 from datetime import datetime, timezone
@@ -85,7 +86,7 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
         partner_headers = {"X-Partner-Key": raw_partner_key}
 
         # --- STEP 2: Sync Steps (15,000 steps -> 150 points) ---
-        today_str = datetime.now(timezone.utc).date().isoformat()
+        today_str = datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat()
         sync_resp = await client.post(
             "/activity/sync",
             json={

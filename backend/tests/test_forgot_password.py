@@ -48,6 +48,7 @@ async def test_forgot_password_and_reset_flow(client: AsyncClient, monkeypatch) 
         # 1. Register user
         reg_resp = await client.post("/auth/register", json={"email": email, "password": password_old})
         assert reg_resp.status_code == 201
+        old_access_token = reg_resp.json()['access_token']
 
         # 2. Request forgot password
         forgot_resp = await client.post("/auth/forgot-password", json={"email": email})
@@ -65,6 +66,8 @@ async def test_forgot_password_and_reset_flow(client: AsyncClient, monkeypatch) 
         )
         assert reset_resp.status_code == 200
         assert "successfully updated" in reset_resp.json()["message"]
+        old_session = await client.get('/auth/me', headers={'Authorization': f'Bearer {old_access_token}'})
+        assert old_session.status_code == 401
 
         replay = await client.post('/auth/reset-password', json={'reset_token': reset_token, 'new_password': 'another-password'})
         assert replay.status_code == 400

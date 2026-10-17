@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Partner, PartnerStatus, User, UserStatus
 from app.db.postgres import get_session
 from app.services.partner_auth import hash_api_key
-from app.services.security import decode_access_claims, decode_access_token
+from app.services.security import decode_access_claims
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -57,7 +57,8 @@ async def get_current_user(
         raise _401
 
     try:
-        user_id = decode_access_token(credentials.credentials)
+        claims = decode_access_claims(credentials.credentials)
+        user_id = claims['sub']
     except JWTError:
         raise _401
 
@@ -65,6 +66,8 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
+        raise _401
+    if claims.get('ver', 0) != user.auth_version:
         raise _401
     if user.status != UserStatus.ACTIVE:
         raise HTTPException(
@@ -94,10 +97,11 @@ async def get_current_partner(
     # 1. Try Bearer JWT authentication (Primary login flow)
     if credentials is not None:
         try:
-            user_id = decode_access_token(credentials.credentials)
+            claims = decode_access_claims(credentials.credentials)
+            user_id = claims['sub']
             user_res = await session.execute(select(User).where(User.id == user_id))
             user = user_res.scalar_one_or_none()
-            if user is not None and user.status == UserStatus.ACTIVE and user.partner_id:
+            if user is not None and user.status == UserStatus.ACTIVE and user.partner_id and claims.get('ver', 0) == user.auth_version:
                 partner = await session.get(Partner, user.partner_id)
                 if partner is not None:
                     if partner.status != PartnerStatus.ACTIVE:

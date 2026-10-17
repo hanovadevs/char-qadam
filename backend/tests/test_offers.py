@@ -9,6 +9,7 @@ MVP acceptance criteria tested:
     ✅ Lazy expiry marks stale vouchers EXPIRED on next read.
 """
 from __future__ import annotations
+from zoneinfo import ZoneInfo
 
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -54,7 +55,7 @@ async def _sync_steps(client: AsyncClient, token: str, steps: int) -> None:
     r = await client.post(
         "/activity/sync",
         json={
-            "local_date": datetime.now(timezone.utc).date().isoformat(),
+            "local_date": datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat(),
             "eligible_steps": steps,
             "source": "manual",
             "sync_key": str(uuid.uuid4()),

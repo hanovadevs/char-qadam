@@ -29,6 +29,8 @@ from app.db.models import (
     Offer,
     OfferStatus,
     PointsLedger,
+    Partner,
+    PartnerStatus,
     User,
     Voucher,
     VoucherStatus,
@@ -106,6 +108,9 @@ async def redeem_offer(
 
     if offer.status != OfferStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offer is not active")
+    partner = await session.get(Partner, offer.partner_id)
+    if partner is None or partner.status != PartnerStatus.ACTIVE:
+        raise HTTPException(status_code=409, detail='Partner store is inactive')
 
     if offer.starts_at and offer.starts_at > now:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offer has not started yet")
