@@ -9,7 +9,12 @@ Rollback assets and a successfully restored public-schema backup are under
 `/root/stepsy-rollouts/20261017-audit` (restricted to root). The admin credential and
 signing key were rotated in the private backend `.env`; do not copy them into chat
 or Git. The database credential still requires provider-side revocation. The API
-remains on HTTP until an owned API domain is supplied; SMTP is not configured.
+remains on HTTP while DNS/TLS for the owner's selected `api.stepsyapp.com` are
+pending; SMTP is not configured. DNS currently uses Namecheap BasicDNS and the
+`api` hostname does not resolve. Add an A record with host `api`, value
+`72.62.250.191`, and TTL `Automatic` in the domain's Advanced DNS Host Records.
+After verifying DNS, configure only Stepsy's Nginx hostname/certificate, verify
+public HTTPS, then update the mobile/admin API URLs and rebuild.
 
 These instructions describe this repository's `backend/docker-compose.yml`.
 Recheck the server's current state before a later rollout.

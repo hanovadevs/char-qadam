@@ -107,7 +107,7 @@ These changes do not certify physical sensor accuracy or a production deployment
 | Priority | Gate | Concrete remaining work |
 |---|---|---|
 | P0 | Rotate exposed database credential | The API signing key/admin password have been rotated, and old JWT rejection is verified. The historically exposed database credential still requires provider-side revocation; Git history contains it. Never paste replacements into source. |
-| P0 | HTTPS and release URLs | The checked API is deployed, but mobile and Vercel defaults still use HTTP. The Stepsy Nginx site has only the VPS IP on port 80. An owned API domain was requested; enable valid TLS, configure release URLs and test production flows. |
+| P0 | HTTPS and release URLs | The checked API is deployed, but mobile and Vercel defaults still use HTTP. Owner selected api.stepsyapp.com under their purchased stepsyapp.com domain. DNS currently uses Namecheap BasicDNS; api does not resolve yet. Add its A record to 72.62.250.191, enable valid TLS, configure release URLs and test production flows. |
 | P0 | Physical Redmi accuracy | Idle and locked-screen smoke tests passed by owner report. Complete counted 500-step/restart/midnight trials. If raw sensor readings rise while stationary, diagnose those readings; no arbitrary step multiplier was introduced. |
 | P0 | Real auth/recovery configuration | Server Google audience is configured; verify real device OAuth and signing fingerprints. Configure SMTP and verify delivery and reset with a real test inbox. Recovery currently reports unavailable. |
 | P0 | Real partner rewards | Confirm contracts, coverage, stock, discount terms, funding, return/refund/cancellation handling and merchant training before claiming nationwide redemption availability. |
