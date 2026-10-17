@@ -98,10 +98,16 @@ These changes do not certify physical sensor accuracy or a production deployment
   exists. The legacy IP route remains for previously installed test APKs.
 - HTTPS APK rebuild passed (59.6 seconds), Flutter analysis had no issues and all
   34 Flutter tests passed. Admin production rebuild/audit passed with zero
-  vulnerabilities. The Redmi was disconnected, so this APK is not yet installed.
+  vulnerabilities. Installed this APK on the reconnected Redmi with `adb install
+  -r`; installation succeeded and the saved 194 steps remained intact.
+- HTTPS APK device startup: the app process stayed alive, the captured error-level
+  log contained no errors, motion permission remained granted, and the native
+  `StepTrackingService` was confirmed foreground (`isForeground=true`). The owner
+  confirmed the Steps screen is ready. Health Connect is absent on this phone;
+  its handled availability/read diagnostics do not prevent hardware tracking.
 - Follow-up CI [39040085789](https://github.com/hanovadevs/char-qadam/actions/runs/39040085789):
-  backend and admin jobs passed; Android analysis/Flutter tests passed and its
-  hosted APK build was still running at this audit update.
+  all three jobs passed, including Android analysis, Flutter tests, hosted APK
+  build and native counter tests.
 - Browser UI automation could not run: no browsers were exposed by the session.
 - CI now runs API migrations/tests, Flutter analysis/tests, Android build/native
   tests, and admin build/audit on main pushes and pull requests. The workflow is
@@ -118,7 +124,8 @@ These changes do not certify physical sensor accuracy or a production deployment
   The owner also reported that the locked-screen walk counted very well; exact
   before/after values and a reload-stability result were not supplied.
   Restart/midnight/battery trials and real OAuth/email checks remain open. The
-  phone was disconnected after installation for manual testing.
+  phone was initially disconnected for manual testing and later reconnected for
+  the successful HTTPS APK update above.
 
 ## Release gates and unfinished capabilities
 
