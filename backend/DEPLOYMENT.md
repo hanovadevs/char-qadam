@@ -3,18 +3,31 @@
 The audited rollout on 2026-10-17 used `/root/qadam/char-qadam/backend`, Compose
 service `qadam-backend`, container `qadam_backend`, and migrations through `0004`.
 Only this container was replaced; all other apps retained their IDs/start times.
-The checked application source was commit `ccfe58c`.
+The initial checked application source was commit `ccfe58c`. Follow-up commit
+`1fc687b` added HTTPS defaults, the Nginx site and private Docker ingress.
 
 Rollback assets and a successfully restored public-schema backup are under
 `/root/stepsy-rollouts/20261017-audit` (restricted to root). The admin credential and
 signing key were rotated in the private backend `.env`; do not copy them into chat
-or Git. The database credential still requires provider-side revocation. The API
-remains on HTTP while DNS/TLS for the owner's selected `api.stepsyapp.com` are
-pending; SMTP is not configured. DNS currently uses Namecheap BasicDNS and the
-`api` hostname does not resolve. Add an A record with host `api`, value
-`72.62.250.191`, and TTL `Automatic` in the domain's Advanced DNS Host Records.
-After verifying DNS, configure only Stepsy's Nginx hostname/certificate, verify
-public HTTPS, then update the mobile/admin API URLs and rebuild.
+or Git. The database credential still requires provider-side revocation; SMTP is
+not configured.
+
+The owner added `api` A -> `72.62.250.191` in Namecheap BasicDNS. The API is now
+live at `https://api.stepsyapp.com`. Its separate Nginx site is tracked in
+[`deploy/nginx/stepsy-api.conf`](../deploy/nginx/stepsy-api.conf) and installed at
+`/etc/nginx/sites-available/stepsy-api`. The legacy IP site was preserved for older
+test installations. No preexisting Nginx config file was modified.
+
+The certificate expires 2027-01-15; `certbot.timer` is enabled/active. A successful
+renewal dry run included the deploy hook (`nginx -t` followed by a graceful reload).
+Renewal uses webroot `/var/www/stepsy-acme`; preserve its HTTP challenge route when
+changing redirects. Evidence is in `/root/stepsy-rollouts/20261017-https`.
+
+Compose now publishes only `127.0.0.1:8001`. The server's private `.env` sets
+`FORWARDED_ALLOW_IPS=127.0.0.1,172.16.4.1` for its inspected host proxy gateway.
+If the Docker network changes, inspect the actual gateway and update this allowlist.
+Do not use a wildcard. This ensures slash-normalization redirects retain HTTPS.
+All other app containers retained their IDs/start times during the update.
 
 These instructions describe this repository's `backend/docker-compose.yml`.
 Recheck the server's current state before a later rollout.
@@ -35,7 +48,7 @@ Recheck the server's current state before a later rollout.
    origins. Use `.env.example` only as a variable reference; preserve real server
    configuration and keep credentials out of Git, terminal transcripts and images.
 5. Confirm the owned HTTPS API domain and reverse proxy. The mobile API URL and
-   admin proxy must target it for release. Do not publish the debug HTTP-default APK.
+   admin proxy must target it for release. Do not publish a debug APK as a release.
 
 ## Rollout using the repository Compose service
 

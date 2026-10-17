@@ -84,6 +84,24 @@ These changes do not certify physical sensor accuracy or a production deployment
 - Stepsy's new admin credential and signing key are stored only in the server's
   private backend `.env`. Google audience now matches the mobile client ID;
   genuine device OAuth still needs acceptance. SMTP remains unconfigured.
+- HTTPS follow-up `1fc687b`: owner added the domain's A record. Verified a trusted
+  certificate on `https://api.stepsyapp.com`, HTTP-to-HTTPS redirects, HTTPS-only
+  slash normalization, health/readiness 200 and authenticated admin login/config
+  200. Anonymous admin access stays 401. Certificate renewal dry run and deploy
+  hook succeeded; its timer is enabled/active. Certificate expires 2027-01-15.
+- Restricted Stepsy's Docker port to loopback; trusted only the inspected host
+  proxy gateway. Added a separate domain site; hashes of every preexisting Nginx
+  file and other containers' IDs/start times remained unchanged.
+- Updated Android/default API and all root/web Vercel/dev proxy configurations.
+  Vercel deployed `1fc687b` to production (READY); the admin portal returns 200
+  and its protected API proxy returns 401 anonymously. No Vercel env override
+  exists. The legacy IP route remains for previously installed test APKs.
+- HTTPS APK rebuild passed (59.6 seconds), Flutter analysis had no issues and all
+  34 Flutter tests passed. Admin production rebuild/audit passed with zero
+  vulnerabilities. The Redmi was disconnected, so this APK is not yet installed.
+- Follow-up CI [39040085789](https://github.com/hanovadevs/char-qadam/actions/runs/39040085789):
+  backend and admin jobs passed; Android analysis/Flutter tests passed and its
+  hosted APK build was still running at this audit update.
 - Browser UI automation could not run: no browsers were exposed by the session.
 - CI now runs API migrations/tests, Flutter analysis/tests, Android build/native
   tests, and admin build/audit on main pushes and pull requests. The workflow is
@@ -107,7 +125,6 @@ These changes do not certify physical sensor accuracy or a production deployment
 | Priority | Gate | Concrete remaining work |
 |---|---|---|
 | P0 | Rotate exposed database credential | The API signing key/admin password have been rotated, and old JWT rejection is verified. The historically exposed database credential still requires provider-side revocation; Git history contains it. Never paste replacements into source. |
-| P0 | HTTPS and release URLs | The checked API is deployed, but mobile and Vercel defaults still use HTTP. Owner selected api.stepsyapp.com under their purchased stepsyapp.com domain. DNS currently uses Namecheap BasicDNS; api does not resolve yet. Add its A record to 72.62.250.191, enable valid TLS, configure release URLs and test production flows. |
 | P0 | Physical Redmi accuracy | Idle and locked-screen smoke tests passed by owner report. Complete counted 500-step/restart/midnight trials. If raw sensor readings rise while stationary, diagnose those readings; no arbitrary step multiplier was introduced. |
 | P0 | Real auth/recovery configuration | Server Google audience is configured; verify real device OAuth and signing fingerprints. Configure SMTP and verify delivery and reset with a real test inbox. Recovery currently reports unavailable. |
 | P0 | Real partner rewards | Confirm contracts, coverage, stock, discount terms, funding, return/refund/cancellation handling and merchant training before claiming nationwide redemption availability. |
@@ -157,6 +174,8 @@ Use the isolated test database and development accounts for full redemption test
 - [Android health foreground-service prerequisites](https://developer.android.com/develop/background-work/services/fgs/service-types#health)
 - [Pinned health package behavior](https://pub.dev/packages/health/versions/13.3.1)
 - [Vite migration guidance](https://vite.dev/guide/migration)
+- [Certbot webroot renewal and deploy hooks](https://eff-certbot.readthedocs.io/en/stable/using.html)
+- [Uvicorn trusted proxy settings](https://www.uvicorn.org/settings/)
 
 
 ## Pushed batches
@@ -172,7 +191,9 @@ Use the isolated test database and development accounts for full redemption test
 - `ccfe58c`: optional admin portal path/regressions, phone test evidence, and
   hosted Android build disk cleanup. See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md)
   for the Docker rollout sequence and public deployment checks.
+- `1fc687b`: verified HTTPS API, private Docker ingress/trusted proxy, updated
+  mobile/admin defaults, reproducible Nginx config and successful APK rebuild.
 
 The debug testing artifact is `mobile/build/app/outputs/flutter-apk/app-debug.apk`.
-It uses the existing API default unless rebuilt with API_BASE_URL. Do not publish
-this debug/HTTP-default artifact as the Play release.
+It now defaults to `https://api.stepsyapp.com` unless overridden by API_BASE_URL.
+Do not publish this debug artifact as the Play release.

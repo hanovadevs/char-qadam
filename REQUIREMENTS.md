@@ -8,9 +8,9 @@ Updated 2026-10-17. This replaces the old GPS/MongoDB scaffold requirements.
 - The primary journey is daily steps -> server-calculated points -> partner offer -> single-use voucher -> merchant redemption.
 - Initial physical acceptance device: Redmi Note 11. Reported faults: fast/idle overcounting, intermittent tracking stops, and flickering totals on app reload.
 - Flutter, FastAPI, PostgreSQL, and the existing React admin portal remain the implementation.
-- The owner selected `api.stepsyapp.com` for the HTTPS API under their purchased
-  `stepsyapp.com` domain. Its DNS A record must point to `72.62.250.191`; DNS and
-  certificate activation are pending before changing runtime defaults.
+- The owner selected `api.stepsyapp.com` under their purchased `stepsyapp.com`
+  domain. Its A record points to `72.62.250.191`; HTTPS is live and verified.
+  Mobile defaults and admin proxies now use `https://api.stepsyapp.com`.
 - Rewards are discounts/free-item vouchers. Cash payouts and affiliate settlement are not implemented launch promises.
 - Partner commitments, redemption economics, final public domains, support contact, and retention policy still require business input. No partner arrangement is assumed to be confirmed.
 

@@ -48,7 +48,9 @@ For a USB-connected Android phone and local backend, use `adb reverse tcp:8000 t
 and `flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000` from `mobile/`.
 Use an isolated development database and development account for reward tests.
 
-The repository's historical HTTP VPS default is for existing testing only. A public
-release requires a configured HTTPS API, credential rotation, and the deployment
+The production API is `https://api.stepsyapp.com`; mobile defaults and admin
+proxies use it. HTTPS health, database readiness, authentication and certificate
+renewal were verified. The legacy IP route remains for older test installations.
+A public release still requires database credential rotation and the remaining
 checks in the launch audit. Never put signing keys or environment secrets in Git.
 The Docker rollout and verification sequence is in [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md).
