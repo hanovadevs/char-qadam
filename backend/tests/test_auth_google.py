@@ -24,7 +24,7 @@ def google_verifier(monkeypatch):
         if not token.startswith('test_google:'):
             raise ValueError('Invalid token')
         email = token.split(':', 1)[1]
-        return {'email': email, 'sub': 'test-user', 'email_verified': True}
+        return {'email': email, 'sub': 'test-user:' + email, 'email_verified': True, 'authoritative_email': True}
     monkeypatch.setattr('app.routers.auth.verify_google_id_token', verify)
 
 

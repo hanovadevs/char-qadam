@@ -2,7 +2,9 @@
 
 Routes
 ------
-POST /auth/register         Create a new account; returns a JWT.
+POST /auth/register         Create an account and send an email code.
+POST /auth/verify-email     Verify a single-use email code, then issue a JWT.
+POST /auth/resend-verification Resend an email code after cooldown.
 POST /auth/login            Authenticate with email+password; returns a JWT.
 POST /auth/google           Authenticate via Google OAuth ID Token; returns a JWT.
 POST /auth/forgot-password  Request a signed password reset token.
@@ -13,9 +15,13 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+import hmac
+import httpx
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -32,7 +38,9 @@ from app.schemas.auth import (
     ResetPasswordOut,
     TokenOut,
     UserOut,
+    VerificationOut, VerifyEmailIn, ResendVerificationIn,
 )
+from app.services.email_verification import challenge, clear_code, code_hash, decode_challenge
 from app.services.security import (
     create_access_token,
     create_password_reset_token,
@@ -46,17 +54,27 @@ from app.services.email import send_password_reset_email
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+async def _token(user: User, session: AsyncSession) -> TokenOut:
+    partner = await session.get(Partner, user.partner_id) if user.partner_id else None
+    return TokenOut(
+        access_token=create_access_token(user.id, extra_claims={
+            'role': user.role, 'partner_id': user.partner_id, 'ver': user.auth_version,
+        }), role=user.role, partner_id=user.partner_id,
+        partner_name=partner.name if partner else None,
+    )
+
+
 @router.post(
     "/register",
-    response_model=TokenOut,
+    response_model=VerificationOut,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
 )
 async def register(
     body: RegisterIn,
     session: AsyncSession = Depends(get_session),
-) -> TokenOut:
-    """Create a new user and return a JWT.
+) -> VerificationOut:
+    """Create an unverified account and send a mailbox challenge.
 
     Returns **409** if the email is already registered.
     """
@@ -79,30 +97,32 @@ async def register(
         timezone=body.timezone,
     )
     session.add(user)
-    await session.commit()
-
-    return TokenOut(
-        access_token=create_access_token(user.id, extra_claims={"role": user.role, "ver": user.auth_version}),
-        role=user.role,
-    )
+    try:
+        await session.flush()
+        response = await challenge(user)
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(409, 'An account with this email already exists')
+    return response
 
 
 @router.post(
     "/login",
-    response_model=TokenOut,
+    response_model=TokenOut | VerificationOut,
     summary="Log in and receive a JWT",
 )
 async def login(
     body: LoginIn,
     session: AsyncSession = Depends(get_session),
-) -> TokenOut:
+) -> TokenOut | VerificationOut:
     """Authenticate with email + password.
 
     Returns **401** on invalid credentials (deliberately vague to prevent
     email enumeration).
     """
     result = await session.execute(
-        select(User).where(User.email == body.email)
+        select(User).where(User.email == body.email).with_for_update()
     )
     user = result.scalar_one_or_none()
 
@@ -118,6 +138,11 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is suspended or deleted",
         )
+
+    if user.email_verified_at is None:
+        response = await challenge(user)
+        await session.commit()
+        return response
 
     partner_name = None
     if user.partner_id:
@@ -143,13 +168,13 @@ async def login(
 
 @router.post(
     "/google",
-    response_model=TokenOut,
+    response_model=TokenOut | VerificationOut,
     summary="Authenticate via Google OAuth ID Token",
 )
 async def google_auth(
     body: GoogleAuthIn,
     session: AsyncSession = Depends(get_session),
-) -> TokenOut:
+) -> TokenOut | VerificationOut:
     """Exchange a Google OAuth ID Token for a Qadam JWT.
 
     If the user does not exist in the system, a new account is automatically
@@ -158,12 +183,16 @@ async def google_auth(
     Returns **401** if the Google token is invalid or unverified.
     """
     settings = get_settings()
+    if not settings.google_client_id:
+        raise HTTPException(503, 'Google sign-in is temporarily unavailable.')
     try:
         verified_info = await verify_google_id_token(
             body.id_token,
             client_id=settings.google_client_id if settings.google_client_id else None,
         )
-        email = verified_info.get("email")
+        email = str(verified_info.get("email") or '').lower()
+    except httpx.HTTPError:
+        raise HTTPException(503, 'Could not reach Google. Please try again.')
     except Exception:
         email = None
 
@@ -174,12 +203,16 @@ async def google_auth(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Check if user already exists
-    result = await session.execute(
-        select(User).where(User.email == email)
-    )
+    # The stable Google subject is the identity; email is only used for first linking.
+    subject = verified_info['sub']
+    result = await session.execute(select(User).where(User.google_subject == subject).with_for_update())
     user = result.scalar_one_or_none()
-
+    bound = user is not None
+    if user is None:
+        result = await session.execute(select(User).where(User.email == email).with_for_update())
+        user = result.scalar_one_or_none()
+        if user and user.google_subject and user.google_subject != subject:
+            raise HTTPException(409, 'This email is linked to a different Google account. Please contact support.')
     if user is None:
         # Auto-register new user
         user = User(
@@ -191,7 +224,11 @@ async def google_auth(
             timezone=body.timezone,
         )
         session.add(user)
-        await session.commit()
+        try:
+            await session.flush()
+        except IntegrityError:
+            await session.rollback()
+            raise HTTPException(409, 'Account creation is already in progress. Please sign in again.')
     else:
         if user.status != UserStatus.ACTIVE:
             raise HTTPException(
@@ -199,18 +236,69 @@ async def google_auth(
                 detail="Account is suspended or deleted",
             )
 
-    partner_name = None
-    if user.partner_id:
-        partner = await session.get(Partner, user.partner_id)
-        if partner:
-            partner_name = partner.name
+    if not bound and not verified_info.get('authoritative_email', False):
+        response = await challenge(user, google_subject=subject)
+        await session.commit()
+        return response
+    if user.email_verified_at is None:
+        # Prevent a password planted before mailbox verification from remaining usable.
+        user.password_hash = hash_password(f'GoogleOAuth:{uuid.uuid4()}')
+        user.auth_version += 1
+        user.email_verified_at = datetime.now(timezone.utc)
+    user.google_subject = subject
+    clear_code(user)
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(409, 'Google account link has changed. Please sign in again.')
+    return await _token(user, session)
 
-    return TokenOut(
-        access_token=create_access_token(user.id, extra_claims={"role": user.role, "partner_id": user.partner_id, "ver": user.auth_version}),
-        role=user.role,
-        partner_id=user.partner_id,
-        partner_name=partner_name,
-    )
+
+async def _challenge_user(token: str, session: AsyncSession) -> tuple[User, dict]:
+    try:
+        claims = decode_challenge(token)
+    except Exception:
+        raise HTTPException(400, 'Verification expired. Please sign in again to request a new code.')
+    user = await session.scalar(select(User).where(User.id == claims['sub']).with_for_update())
+    if user is None or user.status != UserStatus.ACTIVE or user.auth_version != claims.get('ver'):
+        raise HTTPException(400, 'Verification expired. Please sign in again.')
+    if user.email_verified_at is not None and not claims.get('google_sub'):
+        raise HTTPException(400, 'Email already verified. Please sign in.')
+    return user, claims
+
+
+@router.post('/verify-email', response_model=TokenOut)
+async def verify_email(body: VerifyEmailIn, session: AsyncSession = Depends(get_session)) -> TokenOut:
+    user, claims = await _challenge_user(body.verification_token, session)
+    if (not user.verification_code_hash or not user.verification_expires_at
+            or user.verification_expires_at <= datetime.now(timezone.utc)):
+        raise HTTPException(400, 'Code expired. Please request a new code.')
+    if user.verification_attempts >= 5:
+        raise HTTPException(429, 'Too many incorrect codes. Request a new code after the resend timer.')
+    if not hmac.compare_digest(code_hash(user, body.code), user.verification_code_hash):
+        user.verification_attempts += 1
+        await session.commit()  # Failed attempts must survive the HTTP error/transaction rollback.
+        raise HTTPException(400, 'Incorrect verification code.')
+    if subject := claims.get('google_sub'):
+        if user.google_subject and user.google_subject != subject:
+            raise HTTPException(409, 'Google account link has changed. Please sign in again.')
+        if user.email_verified_at is None:
+            user.password_hash = hash_password(f'GoogleOAuth:{uuid.uuid4()}')
+        user.google_subject = subject
+    user.email_verified_at = user.email_verified_at or datetime.now(timezone.utc)
+    user.auth_version += 1
+    clear_code(user)
+    await session.commit()
+    return await _token(user, session)
+
+
+@router.post('/resend-verification', response_model=VerificationOut)
+async def resend_verification(body: ResendVerificationIn, session: AsyncSession = Depends(get_session)) -> VerificationOut:
+    user, claims = await _challenge_user(body.verification_token, session)
+    response = await challenge(user, google_subject=claims.get('google_sub'), force_send=True)
+    await session.commit()
+    return response
 
 
 @router.post(
@@ -236,7 +324,7 @@ async def forgot_password(
 
     reset_token: str | None = None
     if user is not None and user.status == UserStatus.ACTIVE:
-        reset_token = create_password_reset_token(user.id, user.password_hash)
+        reset_token = create_password_reset_token(user.id, user.password_hash, email=user.email, auth_version=user.auth_version)
         try:
             await asyncio.to_thread(send_password_reset_email, user.email, reset_token, settings)
         except Exception:
@@ -277,11 +365,13 @@ async def reset_password(
         )
 
     try:
-        decode_password_reset_token(body.reset_token, user.password_hash)
+        decode_password_reset_token(body.reset_token, user.password_hash, email=user.email, auth_version=user.auth_version)
     except Exception:
         raise HTTPException(status_code=400, detail='Invalid or expired password reset token')
     user.password_hash = hash_password(body.new_password)
     user.auth_version += 1
+    user.email_verified_at = user.email_verified_at or datetime.now(timezone.utc)
+    clear_code(user)
     await session.commit()
 
     return ResetPasswordOut(
@@ -316,4 +406,5 @@ async def me(
         country=current_user.country,
         timezone=current_user.timezone,
         created_at=current_user.created_at,
+        email_verified=current_user.email_verified_at is not None,
     )

@@ -59,7 +59,9 @@ async def test_google_rejects_invalid_claims(invalid):
 
 
 @pytest.mark.asyncio
-async def test_recovery_unavailable_without_delivery_and_no_tokens_leak(client):
+async def test_recovery_unavailable_without_delivery_and_no_tokens_leak(client, monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), 'smtp_host', '')
     response = await client.post('/auth/forgot-password', json={'email': 'anyone@example.com'})
     assert response.status_code == 503
     assert 'reset_token' not in response.json()

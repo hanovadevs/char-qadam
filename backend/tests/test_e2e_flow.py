@@ -17,6 +17,8 @@ Executes the complete user & merchant lifecycle in a single deterministic sequen
 from __future__ import annotations
 from zoneinfo import ZoneInfo
 
+from tests.auth_helpers import register_verified
+
 import uuid
 from datetime import datetime, timezone
 
@@ -76,11 +78,10 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
 
     try:
         # --- STEP 1: Register User ---
-        reg_resp = await client.post(
-            "/auth/register",
+        reg_resp = await register_verified(client,
             json={"email": email, "password": password, "country": "PK", "timezone": "Asia/Karachi"},
         )
-        assert reg_resp.status_code == 201, reg_resp.text
+        assert reg_resp.status_code == 200, reg_resp.text
         user_token = reg_resp.json()["access_token"]
         user_headers = {"Authorization": f"Bearer {user_token}"}
         partner_headers = {"X-Partner-Key": raw_partner_key}

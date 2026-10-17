@@ -54,3 +54,6 @@ renewal were verified. The legacy IP route remains for older test installations.
 A public release still requires database credential rotation and the remaining
 checks in the launch audit. Never put signing keys or environment secrets in Git.
 The Docker rollout and verification sequence is in [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md).
+
+Google's Android client/signing setup and mandatory email verification rollout
+are documented in [AUTH_SETUP.md](AUTH_SETUP.md).

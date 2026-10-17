@@ -9,6 +9,8 @@ Verifies:
 """
 from __future__ import annotations
 
+from tests.auth_helpers import register_verified
+
 import uuid
 from datetime import date, timedelta
 
@@ -52,8 +54,8 @@ async def _cleanup(emails: list[str]) -> None:
 
 
 async def _register_and_token(client: AsyncClient, email: str) -> str:
-    resp = await client.post("/auth/register", json={"email": email, "password": "password123"})
-    assert resp.status_code == 201, resp.text
+    resp = await register_verified(client, json={"email": email, "password": "password123"})
+    assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]
 
 

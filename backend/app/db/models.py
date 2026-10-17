@@ -98,6 +98,12 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     auth_version: Mapped[int] = mapped_column(Integer, default=0, server_default='0', nullable=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    google_subject: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    verification_code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verification_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verification_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default='0', nullable=False)
     role: Mapped[str] = mapped_column(String(32), default="USER", nullable=False)
     partner_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("partners.id", ondelete="SET NULL"), nullable=True, index=True

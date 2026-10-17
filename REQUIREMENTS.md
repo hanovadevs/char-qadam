@@ -26,6 +26,8 @@ Updated 2026-10-17. This replaces the old GPS/MongoDB scaffold requirements.
 | TRACK-6 | Expose source totals, raw counter, last sensor event, boot count, and tracking-service state for diagnosis. | Steps -> Tracking diagnostics on the physical phone. |
 | AUTH-1 | Email/password auth, genuine Google ID tokens with audience and verified-email checks, protected admin access. | Backend authorization and token-boundary tests. |
 | AUTH-2 | Recovery credentials go only to the registered inbox; reset tokens expire, work once, and revoke older sessions. | Mocked mail-delivery integration tests; real inbox delivery remains a release check. |
+| AUTH-3 | Email/password accounts must prove mailbox access before receiving API access; emailed codes expire, work once and resist guessing/resend abuse. | Verification/session/concurrency regressions and app verification flow; live SMTP delivery pending. |
+| AUTH-4 | Google sign-in must work with the actual Android package/signing certificate and bind the permanent Google identity. | API identity/linking tests; owner-reported error 10 requires Cloud client setup and physical acceptance. See AUTH_SETUP.md. |
 | PRIV-1 | Never show one account's cached wallet, points, or history to another account. | Account-scoped cache and delayed-401 regressions. |
 | PRIV-2 | Accurately explain collection, deactivation, retention, and erasure. | Product copy matches API behavior; a complete erasure/retention process is still required. |
 | POINTS-1 | Only the API calculates awards, using configured conversion and cap; concurrent and repeated daily syncs cannot double-mint points. | PostgreSQL first-sync race and cumulative-award tests. |

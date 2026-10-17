@@ -16,6 +16,8 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/auth/forgot-password": (10, 60),
     "/auth/reset-password": (10, 60),
     "/auth/google": (15, 60),
+    "/auth/verify-email": (15, 60),
+    "/auth/resend-verification": (5, 60),
     "/admin/auth/login": (10, 60),
 }
 

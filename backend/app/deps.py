@@ -69,6 +69,8 @@ async def get_current_user(
         raise _401
     if claims.get('ver', 0) != user.auth_version:
         raise _401
+    if user.email_verified_at is None:
+        raise HTTPException(status_code=401, detail='Please sign in and verify your email.', headers={'WWW-Authenticate': 'Bearer'})
     if user.status != UserStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -101,7 +103,7 @@ async def get_current_partner(
             user_id = claims['sub']
             user_res = await session.execute(select(User).where(User.id == user_id))
             user = user_res.scalar_one_or_none()
-            if user is not None and user.status == UserStatus.ACTIVE and user.partner_id and claims.get('ver', 0) == user.auth_version:
+            if user is not None and user.email_verified_at is not None and user.status == UserStatus.ACTIVE and user.partner_id and claims.get('ver', 0) == user.auth_version:
                 partner = await session.get(Partner, user.partner_id)
                 if partner is not None:
                     if partner.status != PartnerStatus.ACTIVE:

@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+from tests.auth_helpers import register_verified
+
 import uuid
 # pyrefly: ignore [missing-import]
 import pytest
@@ -46,8 +48,8 @@ async def test_forgot_password_and_reset_flow(client: AsyncClient, monkeypatch) 
 
     try:
         # 1. Register user
-        reg_resp = await client.post("/auth/register", json={"email": email, "password": password_old})
-        assert reg_resp.status_code == 201
+        reg_resp = await register_verified(client, json={"email": email, "password": password_old})
+        assert reg_resp.status_code == 200
         old_access_token = reg_resp.json()['access_token']
 
         # 2. Request forgot password

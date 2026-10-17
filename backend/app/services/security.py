@@ -91,7 +91,7 @@ def _password_fingerprint(password_hash: str) -> str:
     return hmac.new(get_settings().jwt_secret.encode(), password_hash.encode(), hashlib.sha256).hexdigest()
 
 
-def create_password_reset_token(user_id: str, password_hash: str) -> str:
+def create_password_reset_token(user_id: str, password_hash: str, *, email: str = '', auth_version: int = 0) -> str:
     """Mint a signed JWT for password reset that expires in 15 minutes."""
     settings = get_settings()
     now = datetime.now(timezone.utc)
@@ -99,18 +99,23 @@ def create_password_reset_token(user_id: str, password_hash: str) -> str:
         "sub": user_id,
         "type": "password_reset",
         "password_fingerprint": _password_fingerprint(password_hash),
+        "email": email,
+        "ver": auth_version,
         "iat": now,
         "exp": now + timedelta(minutes=15),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def decode_password_reset_token(token: str, password_hash: str | None = None) -> str:
+def decode_password_reset_token(token: str, password_hash: str | None = None, *, email: str | None = None, auth_version: int | None = None) -> str:
     """Validate password reset token and return the user_id."""
     settings = get_settings()
     payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     if payload.get("type") != "password_reset":
         raise JWTError("Invalid token type for password reset")
+    if ((email is not None and payload.get('email') != email)
+            or (auth_version is not None and payload.get('ver') != auth_version)):
+        raise JWTError('Password reset token has been invalidated')
     if password_hash is not None and not hmac.compare_digest(
         payload.get('password_fingerprint', ''), _password_fingerprint(password_hash)
     ):
@@ -155,5 +160,6 @@ async def verify_google_id_token(id_token: str, client_id: str | None = None) ->
             "email": email,
             "sub": data.get("sub", email),
             "email_verified": str(data.get("email_verified", "true")).lower() == "true",
+            "authoritative_email": email.lower().endswith('@gmail.com') or bool(data.get('hd')),
         }
 

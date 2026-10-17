@@ -1,4 +1,6 @@
 import asyncio
+from tests.auth_helpers import register_verified
+
 import uuid
 from datetime import datetime, timezone
 
@@ -17,7 +19,7 @@ def test_pakistan_midnight_precedes_utc_midnight():
 @pytest.mark.asyncio
 async def test_simultaneous_first_day_syncs_do_not_duplicate_awards(client):
     email = f'concurrent_{uuid.uuid4().hex}@example.com'
-    registered = await client.post('/auth/register', json={'email': email, 'password': 'test-password-123'})
+    registered = await register_verified(client, json={'email': email, 'password': 'test-password-123'})
     token = registered.json()['access_token']
     headers = {'Authorization': f'Bearer {token}'}
     date = local_today().isoformat()

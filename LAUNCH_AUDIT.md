@@ -156,6 +156,30 @@ deployment checks are recorded separately from local test results.
 
 ## Release gates and unfinished capabilities
 
+### Email verification and Google follow-up
+
+The owner requires mandatory email verification and reported Google
+`ApiException: 10`. The new auth batch adds an emailed-code screen and enforced
+server ownership gate, purpose-limited challenges, one-use/10-minute codes,
+durable attempt/cooldown controls, session revocation and safe Google subject
+binding. Customer/merchant email changes invalidate old ownership proof and
+provider links. Existing accounts are not silently marked verified.
+
+Validation: **114 backend tests passed** against a fresh isolated PostgreSQL
+database provisioned through migrations 0001-0007. **47 Flutter tests passed**,
+including actual verification/resend button interactions; analysis reported no
+issues. The final debug APK build passed (42.9 seconds). SMTP transport tests exercise
+SSL and STARTTLS authentication without real messages.
+
+The owner confirmed Hostinger sender `team@hanovadevs.com`. Encrypted SMTP
+connectivity from the Stepsy VPS passed; the supplied mailbox credential was
+rejected during authentication. The owner is checking that credential. No auth
+rollout/migration has been performed while delivery is unavailable. The owner
+also chose a new Google Cloud project; its web client ID and matching Android
+package/certificate registration are pending. [AUTH_SETUP.md](AUTH_SETUP.md)
+contains the exact public fingerprints and rollout procedure. These local tests
+do not establish actual inbox delivery or successful Google sign-in on the Redmi.
+
 | Priority | Gate | Concrete remaining work |
 |---|---|---|
 | P0 | Rotate exposed database credential | The API signing key/admin password have been rotated, and old JWT rejection is verified. The historically exposed database credential still requires provider-side revocation; Git history contains it. Never paste replacements into source. |

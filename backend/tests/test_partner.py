@@ -11,6 +11,8 @@ MVP acceptance criteria tested:
 from __future__ import annotations
 from zoneinfo import ZoneInfo
 
+from tests.auth_helpers import register_verified
+
 import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -85,7 +87,7 @@ async def _create_offer_for_partner(partner_id: str, points_cost: int = 50) -> s
 
 
 async def _register_and_earn(client: AsyncClient, email: str, steps: int = 10_000) -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": "testpass123"})
+    r = await register_verified(client, json={"email": email, "password": "testpass123"})
     token = r.json()["access_token"]
     await client.post(
         "/activity/sync",

@@ -17,6 +17,24 @@ def send_password_reset_email(email: str, token: str, settings: Settings) -> Non
         f'only be used once.\n\n{token}\n\n'
         'If you did not request this, ignore this email.'
     )
+    _send(message, settings)
+
+
+def send_verification_email(email: str, code: str, settings: Settings) -> None:
+    message = EmailMessage()
+    message['Subject'] = 'Verify your Stepsy email'
+    message['From'] = settings.smtp_from
+    message['To'] = email
+    message.set_content(
+        f'Your Stepsy verification code is: {code}\n\n'
+        'Enter it in the app to verify your email. The code expires in 10 minutes '
+        'and can only be used once. Never share this code.\n\n'
+        'If you did not request this, ignore this email.'
+    )
+    _send(message, settings)
+
+
+def _send(message: EmailMessage, settings: Settings) -> None:
     context = ssl.create_default_context()
     if settings.smtp_use_ssl:
         server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=15, context=context)

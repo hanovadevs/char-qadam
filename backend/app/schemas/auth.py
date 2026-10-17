@@ -9,21 +9,30 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
 # Requests
 # ---------------------------------------------------------------------------
 
-class RegisterIn(BaseModel):
+class EmailIn(BaseModel):
+    email: EmailStr
+
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).lower()
+
+
+class RegisterIn(EmailIn):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     country: str | None = Field(default=None, max_length=2)
     timezone: str | None = Field(default=None, max_length=64)
 
 
-class LoginIn(BaseModel):
+class LoginIn(EmailIn):
     email: EmailStr
     password: str
 
@@ -46,6 +55,23 @@ class TokenOut(BaseModel):
     partner_name: str | None = None
 
 
+class VerificationOut(BaseModel):
+    verification_required: bool = True
+    verification_token: str
+    email: EmailStr
+    message: str = 'Enter the six-digit code sent to your email. It expires in 10 minutes.'
+    resend_after_seconds: int = 60
+
+
+class VerifyEmailIn(BaseModel):
+    verification_token: str = Field(min_length=10, max_length=4096)
+    code: str = Field(pattern=r'^\d{6}$')
+
+
+class ResendVerificationIn(BaseModel):
+    verification_token: str = Field(min_length=10, max_length=4096)
+
+
 class UserOut(BaseModel):
     id: str
     email: EmailStr
@@ -56,11 +82,12 @@ class UserOut(BaseModel):
     country: str | None = None
     timezone: str | None = None
     created_at: datetime
+    email_verified: bool = True
 
     model_config = {"from_attributes": True}
 
 
-class ForgotPasswordIn(BaseModel):
+class ForgotPasswordIn(EmailIn):
     email: EmailStr
 
 

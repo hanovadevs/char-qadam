@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 
 import pytest
 from httpx import AsyncClient
@@ -30,6 +30,7 @@ async def test_sync_rejects_future_dates(client: AsyncClient) -> None:
                 id=user_id,
                 email=f"future_{uuid.uuid4().hex[:6]}@example.com",
                 password_hash="hash",
+                email_verified_at=datetime.now(timezone.utc),
                 status=UserStatus.ACTIVE,
             )
             session.add(user)
@@ -67,6 +68,7 @@ async def test_sync_rejects_stale_dates(client: AsyncClient) -> None:
                 id=user_id,
                 email=f"stale_{uuid.uuid4().hex[:6]}@example.com",
                 password_hash="hash",
+                email_verified_at=datetime.now(timezone.utc),
                 status=UserStatus.ACTIVE,
             )
             session.add(user)
@@ -103,6 +105,7 @@ async def test_admin_fraud_flags_and_user_suspension(admin_client: AsyncClient) 
                 id=user_id,
                 email=f"fraud_{uuid.uuid4().hex[:6]}@example.com",
                 password_hash="hash",
+                email_verified_at=datetime.now(timezone.utc),
                 status=UserStatus.ACTIVE,
             )
             act = ActivityDaily(

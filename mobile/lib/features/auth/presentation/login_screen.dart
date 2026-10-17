@@ -2,8 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../../../core/config/env_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/auth/auth_state_provider.dart';
 
@@ -50,47 +48,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final googleSignIn = GoogleSignIn(
-        serverClientId: EnvConfig.googleClientId,
-        scopes: const ['email', 'profile'],
-      );
-      await googleSignIn.signOut();
-
-      final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return;
-
-      final googleAuth = await googleUser.authentication;
-      final token = googleAuth.idToken;
-      if (token == null || token.isEmpty) {
-        throw Exception('Google did not return an ID token. Please try again.');
-      }
-      if (!mounted) return;
-
-      final success = await ref
-          .read(authStateProvider.notifier)
-          .loginWithGoogle(
-            idToken: token,
-            displayName: googleUser.displayName,
-            photoUrl: googleUser.photoUrl,
-          );
-      if (!success && mounted) {
-        throw Exception(
-          ref.read(authStateProvider).errorMessage ?? 'Google sign-in failed',
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}',
-          ),
-          backgroundColor: AppTheme.destructive,
-        ),
-      );
-    }
+    await ref.read(authStateProvider.notifier).signInWithGoogle();
   }
 
   @override

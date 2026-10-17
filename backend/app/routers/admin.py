@@ -34,6 +34,7 @@ from app.db.postgres import get_session
 from app.deps import get_current_admin
 from app.services.partner_auth import hash_api_key
 from app.services.security import create_access_token, hash_password
+from app.services.email_verification import change_email
 from app.services.voucher_sweep import sweep_expired_vouchers
 from app.services.local_date import local_today
 
@@ -473,10 +474,13 @@ async def update_partner(
         partner.email = email_clean
         # Also sync merchant user email
         merchant_user = (await session.execute(
-            select(User).where(User.partner_id == partner_id)
+            select(User).where(User.partner_id == partner_id).with_for_update()
         )).scalar_one_or_none()
         if merchant_user:
-            merchant_user.email = email_clean
+            existing = await session.scalar(select(User.id).where(User.email == email_clean, User.id != merchant_user.id))
+            if existing:
+                raise HTTPException(409, 'This email is already registered to another user.')
+            change_email(merchant_user, email_clean)
 
     session.add(AuditLog(
         id=str(uuid.uuid4()),
@@ -1121,7 +1125,7 @@ async def update_user(
     body: AdminUserPatchIn,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    user = await session.get(User, user_id)
+    user = await session.get(User, user_id, with_for_update=True)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -1132,7 +1136,7 @@ async def update_user(
         )).scalar_one_or_none()
         if existing:
             raise HTTPException(status_code=409, detail=f"Email '{email_clean}' is already registered to another user.")
-        user.email = email_clean
+        change_email(user, email_clean)
 
     if body.role is not None:
         user.role = body.role.strip().upper()

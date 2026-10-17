@@ -16,6 +16,12 @@ signing key were rotated in the private backend `.env`; do not copy them into ch
 or Git. The database credential still requires provider-side revocation; SMTP is
 not configured.
 
+Mandatory email verification (migration `0007`) is implemented in the next
+auth batch. Deploy it after a real SMTP sender is configured and tested, since
+existing accounts must verify their mailbox and old sessions will be rejected.
+See [AUTH_SETUP.md](../AUTH_SETUP.md) for the coordinated API/APK rollout and
+Google error-10 package/signing-certificate configuration.
+
 The owner added `api` A -> `72.62.250.191` in Namecheap BasicDNS. The API is now
 live at `https://api.stepsyapp.com`. Its separate Nginx site is tracked in
 [`deploy/nginx/stepsy-api.conf`](../deploy/nginx/stepsy-api.conf) and installed at

@@ -21,6 +21,7 @@ if parsed.host not in ('127.0.0.1', 'localhost', '::1') or not (parsed.database 
     raise RuntimeError('TEST_DATABASE_URL must target a loopback database ending in _test')
 os.environ.update(DATABASE_URL=test_url, ENVIRONMENT='test', DEBUG='false', JWT_SECRET='stepsy-isolated-test-secret-only-32-characters', SMTP_HOST='')
 os.environ['REDEMPTION_RECEIPT_KEYS'] = 'MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA='
+os.environ['GOOGLE_CLIENT_ID'] = 'isolated-google-test-client'
 
 import pytest
 import pytest_asyncio
@@ -58,7 +59,7 @@ def _patch_engine_for_tests():
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncClient:
+async def client(verification_emails) -> AsyncClient:
     """Async HTTPX client wired to the FastAPI app (no real server)."""
     from app.main import app
     async with AsyncClient(
@@ -66,7 +67,20 @@ async def client() -> AsyncClient:
         base_url="http://test",
         headers={"X-Bypass-Rate-Limit": "true"},
     ) as ac:
+        ac.verification_emails = verification_emails
         yield ac
+
+
+@pytest.fixture
+def verification_emails(monkeypatch):
+    from app.config import get_settings
+    settings = get_settings()
+    monkeypatch.setattr(settings, 'smtp_host', 'smtp.test')
+    monkeypatch.setattr(settings, 'smtp_from', 'team@example.com')
+    delivered = {}
+    monkeypatch.setattr('app.services.email_verification.send_verification_email',
+                        lambda email, code, settings: delivered.update({email: code}))
+    return delivered
 
 
 @pytest_asyncio.fixture

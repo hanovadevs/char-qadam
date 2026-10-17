@@ -11,6 +11,8 @@ MVP acceptance criteria tested:
 from __future__ import annotations
 from zoneinfo import ZoneInfo
 
+from tests.auth_helpers import register_verified
+
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -45,8 +47,8 @@ def _auth(token: str) -> dict:
 
 
 async def _register(client: AsyncClient, email: str) -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": "testpass123"})
-    assert r.status_code == 201, r.text
+    r = await register_verified(client, json={"email": email, "password": "testpass123"})
+    assert r.status_code == 200, r.text
     return r.json()["access_token"]
 
 
