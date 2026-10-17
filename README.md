@@ -23,6 +23,7 @@ settlement are not implemented product capabilities.
 - [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) — folder/file layout.
 - [REQUIREMENTS.md](./REQUIREMENTS.md) — MVP functional requirements.
 - [MODULES.md](./MODULES.md) — module/feature status checklist.
+- [UI_REDESIGN.md](./UI_REDESIGN.md) — native design system, walking buddy and admin-managed Maps setup.
 
 ## Quick start
 

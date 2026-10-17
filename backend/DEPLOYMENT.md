@@ -1,5 +1,16 @@
 # Docker rollout for the audited API
 
+Latest API source: `4a183d4`, deployed for the native UI/admin Maps refresh on
+2026-10-17. Migration 0008 is unchanged. The Stepsy-only Compose build/recreate
+completed successfully and the container is healthy. HTTPS readiness and
+non-mutating authenticated Maps validation probes passed. Private environment
+contents and all eight other app containers' IDs/start times remained unchanged.
+Root-only evidence/config backup is `/root/stepsy-rollouts/20261017-ui`; the
+previous image is `stepsy-backend:before-ui-20261017`. No schema/data migration or
+live store edits were needed. The matching admin auto-deployment is READY at
+`https://admin.stepsyapp.com`; its hosted asset includes the new Maps instructions.
+The subsequent walking-character follow-up changes the mobile presentation only.
+
 The audited rollout on 2026-10-17 used `/root/qadam/char-qadam/backend`, Compose
 service `qadam-backend`, container `qadam_backend`, and migrations through `0004`.
 Only this container was replaced; all other apps retained their IDs/start times.
@@ -34,7 +45,7 @@ ownership proof before receiving API access; old unverified sessions are rejecte
 Do not roll back to older code that grants unverified access, or erase ownership
 records by downgrading the schema.
 
-Current device-account deployment: `440f981` is live with migration `0008` and
+Device-account rollout: `440f981` was deployed with migration `0008` and
 the matching APK installed on the Redmi without clearing data (233 saved steps
 preserved). The owner confirmed primary login, rejection of a different Google
 account after logout, and return to the original account with rewards intact.

@@ -9,7 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../../../data/activity/health_service.dart';
 import '../providers/activity_provider.dart';
-import 'movement_ring.dart';
+import 'walking_progress.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -160,7 +160,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                   ),
                   const SizedBox(height: 16),
                   Center(
-                    child: MovementRing(steps: steps, goal: milestone),
+                    child: WalkingProgress(
+                      steps: steps,
+                      goal: milestone,
+                      enabled: state.hasPermission,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(

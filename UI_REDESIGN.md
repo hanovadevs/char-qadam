@@ -1,15 +1,17 @@
 # Stepsy UI refresh
 
 The direction is an everyday walking club: mint, deep teal, warm white and navy,
-with a clear movement ring and rewards that look like collectible tickets.
+with a walking buddy on a milestone path and rewards that look like collectible tickets.
 Existing routes, account ownership, step tracking and reward accounting stay in
-their current modules. No production screens or business services were removed.
+their current modules. Existing production routes and business services are preserved.
 
 ## What changed
 
-- Today puts the actual step total inside a milestone ring. Only the ring
-  interpolates; the number updates directly with tabular figures. Milestones
-  explain the next destination without changing the configured earning cap.
+- Today places an original 2D walking buddy on a curved milestone path. Its
+  position follows actual steps; the decorative arm/leg walk cycle runs only
+  while the screen is visible, the app is foregrounded and motion is allowed.
+  Reduced motion or disabled tracking holds an idle pose. The number updates
+  directly with tabular figures. Milestones never change the configured earning cap.
 - Points connects the available balance to rewards, retaining transaction
   history, pagination, loading and retry states. Unknown balances display a dash.
 - Rewards uses ticket cards, real discount terms, point costs, progress to
@@ -32,6 +34,7 @@ their current modules. No production screens or business services were removed.
 - History charts encode recorded step totals by bar length. Missing records use
   a dash, real zeroes use 0; averages use recorded days. Touch/keyboard selection,
   tooltips and semantic labels expose values without relying only on color.
+  The chart opens at its newest period, so the selected bar is visible on narrow phones.
 
 ## Admin location setup
 

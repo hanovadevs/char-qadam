@@ -14,6 +14,7 @@ class AppTheme {
   static const String displayFont = 'SpaceGrotesk';
   static const Color mintWash = Color(0xFFE5F6F0);
   static const Color onDeep = Color(0xFFDAF7EE);
+  static const Color walkerSkin = Color(0xFFF1C9A7);
   static const Duration motion = Duration(milliseconds: 220);
   static const Curve easeOut = Curves.easeOutCubic;
   static const List<FontFeature> tabular = [FontFeature.tabularFigures()];

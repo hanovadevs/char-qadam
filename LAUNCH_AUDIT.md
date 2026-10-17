@@ -159,7 +159,7 @@ deployment checks are recorded separately from local test results.
 ### Native UI and reward journey refresh
 
 The mint/teal theme now uses bundled Manrope/Space Grotesk type, a native
-milestone ring, ticket reward/pass cards and clearer navigation across Today,
+milestone path with a 2D walking buddy, ticket reward/pass cards and clearer navigation across Today,
 Points, Rewards, My rewards, Profile and progress history. Login/onboarding and
 loading states share the type/motion rules. Reduced motion is respected, step
 numerals never replay a count-up, and missing history differs from real zeroes.
@@ -174,15 +174,36 @@ purchase journal rather than showing success. Real reward balances were not
 spent for UI testing.
 
 Local validation: **143 backend tests** on a fresh 0001–0008 database, **63
-Flutter tests**, clean analysis, **3 admin tests** and the admin production build
+Flutter tests** in the initial batch, clean analysis, **3 admin tests** and the admin production build
 passed. Native screen tests use the actual router at 320/375/414/768 dp and
 1.6× text at 320 dp, including confirmation/QR flows. Rendered previews use
 clearly fictional fixtures. The debug APK installed successfully on the Redmi
-with 233 saved steps preserved; owner visual acceptance and the final hosted
-rollout are recorded in the deployment follow-up. See
+with 233 saved steps preserved. The owner accepted the design and requested
+a more interesting progress bar with a 2D walking character; that follow-up adds
+a native rig and pause/resume regression coverage. Final hosted rollout and
+installation evidence are recorded in the deployment follow-up. See
 [UI_REDESIGN.md](UI_REDESIGN.md) for the six supplied skills, implementation and
 Maps setup. The hosted Sleek API was unavailable without a configured key;
 no hosted Sleek output or full Hallmark certification is claimed.
+
+Deployment follow-up: API commit `4a183d4` is healthy at the existing HTTPS
+endpoint with migration 0008 unchanged. Live non-mutating probes confirmed
+readiness, anonymous admin rejection, rejection of unsafe Maps links before any
+write, and valid/clear location payloads reaching normal store lookup. Root-only
+evidence/config backup and rollback image context are under
+`/root/stepsy-rollouts/20261017-ui`. Private configuration and all eight other app
+container IDs/start times were unchanged. No live store or reward records were
+modified for those probes.
+
+The Vercel production deployment `dpl_32CaxhW5DPHEPe5rnQ3YVpNHvbzb` for
+`4a183d4` is READY. `https://admin.stepsyapp.com/login` and its JavaScript asset
+returned 200; the hosted asset contains the new Maps setup and clearing help.
+Initial GitHub run [39051255837](https://github.com/hanovadevs/char-qadam/actions/runs/39051255837)
+passed backend/admin checks; Android analysis/tests passed and its APK build was
+still running when the character follow-up was prepared. Local follow-up checks
+passed **64 Flutter tests**, clean analysis and an APK rebuild (22.3 seconds).
+The walking buddy's lifecycle/off-screen/reduced-motion pause behavior has
+regression coverage. The narrow history chart now starts at the newest bar.
 
 ### Device account and repeated-step protection
 

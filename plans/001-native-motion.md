@@ -23,18 +23,24 @@ PLAN-TEMPLATE.md were not included, so this plan does not claim their full audit
 
 ## New progress motion
 
-MovementRing uses a TweenAnimationBuilder<double> for the arc only, with the
-shared AppTheme.motion (220 ms) and AppTheme.easeOut (Curves.easeOutCubic).
-motionDuration returns Duration.zero under reduced motion. The displayed step
-number is direct Text with tabular figures, so returning to the screen or
-refreshing never replays a count-up. No celebration delay blocks redemption;
-navigation to the saved voucher follows success immediately. No new repeating
-animation or motion dependency was added.
+WalkingProgress uses a 1,200 ms AnimationController for an original flat 2D
+character's arm/leg cycle. Its canvas is isolated behind a RepaintBoundary;
+only the small path/character repaint on frames. No asset downloads, WebView,
+sprite atlas or animation package is needed. TickerMode.valuesOf, lifecycle
+observations, the tracking permission flag and reduced-motion preferences stop
+that cycle when it should be idle. It restarts only when all conditions allow.
+
+Path position uses a TweenAnimationBuilder<double> for actual step progress,
+with AppTheme.motion (220 ms) and AppTheme.easeOut (Curves.easeOutCubic).
+motionDuration returns Duration.zero under reduced motion. Step numerals remain
+direct tabular Text and never count up on refresh. The original ring was replaced
+after the owner requested a more interesting progress bar and walking character.
+No celebration delay blocks navigation to a saved voucher.
 
 ## Checks
 
 Run the full Flutter suite and the redesign flow suite. Check small screens,
 large text and the same flow with disableAnimations enabled. Review the rendered
-ring, chart, card, modal and native navigation on the connected Redmi. Tracking
+walking character/path, chart, card, modal and native navigation on the connected Redmi. Tracking
 must continue to use the existing provider/service, with saved steps preserved
 across adb install -r. No force-stop/reboot guarantees are introduced.

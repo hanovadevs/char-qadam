@@ -160,6 +160,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                   SizedBox(
                     height: 210,
                     child: _HistoryBars(
+                      key: ValueKey(_range),
                       periods: periods,
                       selected: index,
                       onSelect: (value) => setState(() => _selected = value),
@@ -172,7 +173,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Tap a period to explore. A dash means no synced records.',
+                    'Swipe and tap a period to explore. A dash means no synced records.',
                     style: AppTheme.captionStyle,
                   ),
                 ],
@@ -300,6 +301,7 @@ class _HistoryBars extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelect;
   const _HistoryBars({
+    super.key,
     required this.periods,
     required this.selected,
     required this.onSelect,
@@ -316,6 +318,7 @@ class _HistoryBars extends StatelessWidget {
       );
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
+        reverse: true,
         child: SizedBox(
           width: width,
           child: Row(
