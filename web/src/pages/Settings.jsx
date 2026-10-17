@@ -1,7 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 
 export default function Settings({ user }) {
+  const [config, setConfig] = useState(null);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    let active = true;
+    api.getConfig().then((data) => { if (active) setConfig(data); })
+      .catch((err) => { if (active) setError(err.message); });
+    return () => { active = false; };
+  }, []);
   return (
     <div className="container-main" style={{ maxWidth: '800px' }}>
       {/* Header */}
@@ -14,6 +22,7 @@ export default function Settings({ user }) {
         </p>
       </div>
 
+      {error && <p role="alert" style={{ color: 'var(--status-danger)' }}>Configuration could not be loaded: {error}</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {/* Environment Profile */}
         <div className="stepsy-card">
@@ -25,21 +34,21 @@ export default function Settings({ user }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)', fontSize: '13px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Backend API Host</span>
               <span className="font-mono" style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                72.62.250.191 (FastAPI & PostgreSQL)
+                Configured API gateway
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)', fontSize: '13px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Web Deployment</span>
               <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                admin.stepsyapp.com (Vercel Global Edge)
+                {window.location.host}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Platform Environment</span>
               <span style={{ fontWeight: '700', color: 'var(--brand-teal)' }}>
-                PRODUCTION LIVE
+                {config?.environment || 'Unavailable'}
               </span>
             </div>
           </div>
@@ -55,21 +64,21 @@ export default function Settings({ user }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)', fontSize: '13px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Step-to-Point Conversion Rate</span>
               <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                100 Steps = 1 Point
+                {config ? `${config.steps_per_point.toLocaleString()} Steps = 1 Point` : 'Unavailable'}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)', fontSize: '13px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Daily Step Eligibility Cap</span>
               <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                30,000 Steps / Day
+                {config ? `${config.daily_step_cap.toLocaleString()} Steps / Day` : 'Unavailable'}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Default Voucher Validity Period</span>
               <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                30 Days from Issuance
+                {config ? `${config.voucher_validity_days} Days from Issuance` : 'Unavailable'}
               </span>
             </div>
           </div>

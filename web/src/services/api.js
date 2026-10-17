@@ -68,6 +68,10 @@ class ApiClient {
     return this.request('/admin/auth/me');
   }
 
+  async getConfig() {
+    return this.request('/admin/config');
+  }
+
   logout() {
     this.setToken(null);
     window.location.href = '/login';

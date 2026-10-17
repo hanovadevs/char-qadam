@@ -262,7 +262,7 @@ export default function Stores() {
         discount_value: Number(dealForm.discount_value),
         points_cost: Number(dealForm.points_cost),
         min_basket: dealForm.min_basket ? Number(dealForm.min_basket) : undefined,
-        inventory: dealForm.inventory ? Number(dealForm.inventory) : undefined,
+        inventory: dealForm.inventory === '' ? null : Number(dealForm.inventory),
         status: dealForm.status,
       });
       setIsAddDealOpen(false);

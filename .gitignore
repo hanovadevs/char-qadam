@@ -5,6 +5,7 @@
 .env.local
 .local-test-postgres/
 *-test-results.txt
+*-build-results.txt
 .venv/
 web/dist/
 
@@ -27,13 +28,13 @@ mobile/.flutter-plugins-dependencies
 mobile/build/
 mobile/.pub-cache/
 mobile/.pub/
-mobile/pubspec.lock
 mobile/**/generated_plugin_registrant.*
 mobile/.idea/
 *.iml
 
 # Android
 mobile/android/.gradle/
+mobile/android/build/
 mobile/android/local.properties
 mobile/android/key.properties
 mobile/android/app/*.jks
@@ -52,6 +53,7 @@ mobile/**/*.pbxuser
 node_modules/
 **/node_modules/
 web/.next/
+*-audit-results.json
 
 # ---------- IDE / Editors ----------
 .vscode/

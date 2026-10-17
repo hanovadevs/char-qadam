@@ -82,7 +82,7 @@ export default function Deals() {
         discount_value: Number(dealForm.discount_value),
         points_cost: Number(dealForm.points_cost),
         min_basket: dealForm.min_basket ? Number(dealForm.min_basket) : undefined,
-        inventory: dealForm.inventory ? Number(dealForm.inventory) : undefined,
+        inventory: dealForm.inventory === '' ? null : Number(dealForm.inventory),
         status: dealForm.status,
       });
       setIsCreateOpen(false);
@@ -122,7 +122,7 @@ export default function Deals() {
         discount_value: Number(editDealForm.discount_value),
         points_cost: Number(editDealForm.points_cost),
         min_basket: editDealForm.min_basket ? Number(editDealForm.min_basket) : undefined,
-        inventory: editDealForm.inventory !== '' ? Number(editDealForm.inventory) : undefined,
+        inventory: editDealForm.inventory === '' ? null : Number(editDealForm.inventory),
         status: editDealForm.status,
       });
       setIsEditOpen(false);
