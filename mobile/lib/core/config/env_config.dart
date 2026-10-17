@@ -22,6 +22,6 @@ class EnvConfig {
     if (_envGoogleClientId.isNotEmpty) {
       return _envGoogleClientId;
     }
-    return '762647497862-fskb3lmbg5hkuqee4cb0hmjv7goelf92.apps.googleusercontent.com';
+    return '98556293307-3mrudhprtrgadopvjjfucclb22hoq6ls.apps.googleusercontent.com';
   }
 }

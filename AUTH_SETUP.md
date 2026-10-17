@@ -11,7 +11,7 @@ local debug build has:
 | Android package | `com.stepsy.run` |
 | Debug certificate SHA-1 | `0F:40:FE:40:AB:FF:26:EB:EE:60:66:2D:1D:71:DD:93:2C:2F:D2:B7` |
 | Debug certificate SHA-256 | `E0:23:0C:B7:03:E4:CD:B9:1E:FF:32:99:E8:26:22:C3:C4:7B:E4:A1:0A:65:37:C3:16:2C:7B:D8:D3:8A:59:D6` |
-| Web/server client ID | `762647497862-fskb3lmbg5hkuqee4cb0hmjv7goelf92.apps.googleusercontent.com` |
+| Web/server client ID | `98556293307-3mrudhprtrgadopvjjfucclb22hoq6ls.apps.googleusercontent.com` |
 
 In Google Cloud's Google Auth Platform -> Clients, select the project owning
 that web client. Create or correct an **Android** OAuth client using the package
@@ -36,15 +36,15 @@ References: [Flutter Android sign-in configuration](https://pub.dev/packages/goo
 
 ## Verification email
 
-The owner selected `team@hanovadevs.com` and confirmed Hostinger. Use these
+The owner selected `contact@hanovadevs.com` and confirmed Hostinger. Use these
 settings in the private backend `.env`:
 
 ```dotenv
 SMTP_HOST=smtp.hostinger.com
 SMTP_PORT=465
 SMTP_USE_SSL=true
-SMTP_USERNAME=team@hanovadevs.com
-SMTP_FROM=Stepsy <team@hanovadevs.com>
+SMTP_USERNAME=contact@hanovadevs.com
+SMTP_FROM=Stepsy <contact@hanovadevs.com>
 SMTP_PASSWORD=<mailbox password, kept private>
 ```
 
@@ -54,10 +54,11 @@ before deploying migration 0007: existing accounts have no historical mailbox
 ownership proof and will need verification on their next login. Old access
 tokens cannot access customer or merchant endpoints until verification.
 
-Initial live setup check: encrypted SMTP connectivity from the VPS passed, but
-mailbox authentication with the supplied local credential was rejected. The
-owner was asked to verify the full mailbox/password. No verification migration
-or API rollout has been performed while email delivery remains unavailable.
+Initial setup using `team@hanovadevs.com` was rejected. The owner corrected the
+mailbox to `contact@hanovadevs.com`; authenticated SMTP over SSL now passes.
+The owner also supplied the new Google web client ID shown above. The matching
+APK passed analysis, all 47 Flutter tests and its debug build (39.6 seconds).
+The coordinated API rollout and physical Google acceptance are pending below.
 
 Reference: [Hostinger mail configuration](https://support.hostinger.com/en/articles/1575756-how-to-get-email-account-configuration-details-for-hostinger-email).
 
