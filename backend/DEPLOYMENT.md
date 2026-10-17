@@ -5,6 +5,10 @@ service `qadam-backend`, container `qadam_backend`, and migrations through `0004
 Only this container was replaced; all other apps retained their IDs/start times.
 The initial checked application source was commit `ccfe58c`. Follow-up commit
 `1fc687b` added HTTPS defaults, the Nginx site and private Docker ingress.
+Reward recovery follow-up `769eff0` is also deployed, with migrations through
+`0006`; its fresh backup/restore evidence and private key backup are under
+`/root/stepsy-rollouts/20261017-redemption`. The updated recovery APK is built;
+install it on the Redmi when reconnected. Existing sessions were preserved.
 
 Rollback assets and a successfully restored public-schema backup are under
 `/root/stepsy-rollouts/20261017-audit` (restricted to root). The admin credential and
@@ -34,6 +38,29 @@ Recheck the server's current state before a later rollout.
 
 ## Before replacing the running service
 
+For reward recovery (migrations 0005-0006), configure `REDEMPTION_RECEIPT_KEYS`
+before installing the updated mobile build. Generate a dedicated Fernet key;
+never reuse the JWT key or regenerate this key on each deploy. It encrypts the
+saved voucher response inside the same transaction as the point deduction.
+Back it up privately with the database backup. For rotation, prepend the new key
+and retain older keys in the comma-separated list until existing receipts have
+been re-encrypted. Keep the keyring and receipt rows through application rollbacks.
+Missing/unreadable receipt keys fail without spending points again; the original
+voucher remains available in Wallet.
+
+The mobile client persists the request ID and confirmed points cost per account,
+and clears it only after displaying the result (or a definitive rejected request).
+The Recover purchase control remains available when the offer leaves the catalog.
+Older clients without an Idempotency-Key retain their legacy behavior; distribute
+the new APK for purchase recovery. Do not roll back to an API that ignores these
+keys while the updated client is in use.
+
+The schema uses FastAPI's own authentication and an owning PostgreSQL connection.
+Migration 0006 enables RLS without client policies on all backend tables, denying
+direct Data API access to anon/authenticated roles while preserving the backend
+owner connection. It does not FORCE RLS on the owner. New direct Data API use
+requires an explicit access-model review; do not add blanket public policies.
+
 1. Record the current Git commit and container image ID. Keep the previous image
    available. Check disk space and take a database backup through the existing
    database operator; verify its restoration procedure.
@@ -61,7 +88,7 @@ docker compose run --rm --no-deps qadam-backend alembic current
 ```
 
 Check the existing database revision before starting the new app. The checked
-chain is `0001 -> 0002 -> 0003 -> 0004`. If the database has existing tables but no
+chain is `0001 -> 0002 -> 0003 -> 0004 -> 0005 -> 0006`. If the database has existing tables but no
 Alembic revision, inspect its schema before establishing a baseline. Do not stamp
 `head` or delete tables to silence a migration failure. Migration 0003 accommodates
 the older manually added merchant columns; it does not invent merchant identities.

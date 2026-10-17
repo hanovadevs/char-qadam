@@ -52,7 +52,8 @@ commercially sustainable; confirmed partner inventory was not supplied.
 - Corrected the optional API-hosted admin portal's repository path and covered
   both bundled portal/assets and API-only deployments with route checks.
 
-These changes do not certify physical sensor accuracy or a production deployment.
+Physical sensor acceptance still needs the longer trials below. Production
+deployment checks are recorded separately from local test results.
 
 ## Checks and evidence
 
@@ -105,9 +106,35 @@ These changes do not certify physical sensor accuracy or a production deployment
   `StepTrackingService` was confirmed foreground (`isForeground=true`). The owner
   confirmed the Steps screen is ready. Health Connect is absent on this phone;
   its handled availability/read diagnostics do not prevent hardware tracking.
+  The owner subsequently confirmed the short walk and refresh check was all good;
+  the exact final count was not supplied, so no percentage accuracy is claimed.
 - Follow-up CI [39040085789](https://github.com/hanovadevs/char-qadam/actions/runs/39040085789):
   all three jobs passed, including Android analysis, Flutter tests, hosted APK
   build and native counter tests.
+- Reward recovery follow-up `769eff0`: **101 backend tests** passed with migrations
+  through 0006; **42 Flutter tests** and analysis passed; debug APK build passed
+  (37.9 seconds). Added a persisted per-account purchase journal, encrypted server
+  receipts, same-voucher retry recovery, confirmed-price checks, a Recover purchase
+  control for offers no longer in the catalog, and safe short-code collision retries.
+- Deployed `769eff0` to Stepsy only after a fresh public-schema backup restored
+  successfully in an isolated PostgreSQL container. Configured a dedicated recovery
+  key privately without rotating the existing session/signing key. Production
+  migrations reached 0006; HTTPS admin login/config/readiness all return 200;
+  the live API exposes the idempotency header and replay field. Recovery key
+  encryption/decryption was verified inside the actual production image.
+- The database security audit found all 10 existing public tables lacked RLS.
+  Migration 0006 now protects all 11 tables, including receipts, with no client
+  policies. The owning FastAPI connection retains access. Direct checks as both
+  Supabase `anon` and `authenticated` roles returned zero visible user rows.
+  A restricted-role regression also proves receipt inserts are rejected.
+  The Supabase advisor connector could not access this project; these checks used
+  the owner's authorized server connection and isolated PostgreSQL tests instead.
+- Verified other running app container IDs/start times stayed unchanged during
+  the recovery rollout. Its APK is ready but not installed: the Redmi disconnected
+  after the prior successful HTTPS walk/refresh test.
+- Recovery CI [39042790366](https://github.com/hanovadevs/char-qadam/actions/runs/39042790366):
+  backend and admin passed; Android analysis/Flutter tests passed and its hosted
+  APK build was still running at this update. The local APK build passed.
 - Browser UI automation could not run: no browsers were exposed by the session.
 - CI now runs API migrations/tests, Flutter analysis/tests, Android build/native
   tests, and admin build/audit on main pushes and pull requests. The workflow is
@@ -138,7 +165,7 @@ These changes do not certify physical sensor accuracy or a production deployment
 | P0 | Abuse resistance | The API still accepts client-reported step totals. Caps, monotonic updates and permission checks are not device attestation; assess Play Integrity, provenance checks, replay/audit controls and rollout limits. |
 | P0 | Erasure and privacy | Deactivation revokes access but retains rows. Implement a reviewed erasure/anonymization and retention process, publish the policy and account-deletion route, and complete Play disclosures before release. |
 | P1 | Checkout terms and savings | POS does not yet capture/enforce basket minimums. Percentage/free-item values are not actual PKR savings; add basket-aware rules before using savings totals as financial facts. |
-| P1 | Issuance retry idempotency | API locking prevents balance overspend, but an ambiguous failed issuance response can lead to another valid purchase on retry. Add persisted request idempotency and a recovery UI. |
+| P1 | Reward recovery rollout | Install the recovery APK and verify issuance/recovery with test merchant inventory. Older clients without a saved purchase ID retain legacy retry behavior. |
 | P1 | Offline history | Current-day snapshots recover counts; automatic seven-day backfill and explicit stale/offline labels remain incomplete. Long gaps spanning midnight cannot be reconstructed from a cumulative counter alone. |
 | P1 | Voucher links | Confirm the owned public domain, deploy Android assetlinks for the signing certificate, preserve post-login destinations, and replace the code-only deep-link screen with a wallet lookup. |
 | P1 | Notifications | Notification payload navigation, scheduled reminders, and a complete expiry-delivery lifecycle are unfinished despite older module labels. |
@@ -183,6 +210,8 @@ Use the isolated test database and development accounts for full redemption test
 - [Vite migration guidance](https://vite.dev/guide/migration)
 - [Certbot webroot renewal and deploy hooks](https://eff-certbot.readthedocs.io/en/stable/using.html)
 - [Uvicorn trusted proxy settings](https://www.uvicorn.org/settings/)
+- [Fernet receipt encryption and key rotation](https://cryptography.io/en/stable/fernet/)
+- [Supabase Data API access controls](https://supabase.com/docs/guides/api/securing-your-api)
 
 
 ## Pushed batches
@@ -200,6 +229,8 @@ Use the isolated test database and development accounts for full redemption test
   for the Docker rollout sequence and public deployment checks.
 - `1fc687b`: verified HTTPS API, private Docker ingress/trusted proxy, updated
   mobile/admin defaults, reproducible Nginx config and successful APK rebuild.
+- `769eff0`: retry-safe reward issuance/recovery, confirmed-price protection,
+  encrypted receipts, safe collision retries and private Data API tables.
 
 The debug testing artifact is `mobile/build/app/outputs/flutter-apk/app-debug.apk`.
 It now defaults to `https://api.stepsyapp.com` unless overridden by API_BASE_URL.

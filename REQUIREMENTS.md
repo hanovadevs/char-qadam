@@ -33,6 +33,9 @@ Updated 2026-10-17. This replaces the old GPS/MongoDB scaffold requirements.
 | REWARD-1 | Only active, in-date, in-stock offers from active partners can be issued; balances and inventory update atomically. | Backend offer/stock/balance tests. |
 | REWARD-2 | A store can validate/redeem only its own vouchers; a voucher can be consumed once. | Cross-store and concurrent redemption regressions. |
 | REWARD-3 | Newly issued vouchers and updated balances appear without restarting the app. | Wallet/points providers invalidated after issuance; physical flow pending. |
+| REWARD-4 | Retry a confirmed reward purchase using the same saved request ID; recover the same voucher after timeout/restart, including sold-out offers. | Concurrent-retry, encrypted-receipt, restart/journal and recovery-button regressions. |
+| REWARD-5 | Charge only the points cost the customer confirmed. | Price-change rejection before spending; retries preserve the original request cost. |
+| OPS-3 | Protect backend-managed tables from direct Supabase Data API access. | RLS enabled with no client policies; owning FastAPI role works, unprivileged role reads no customer rows and cannot insert receipts. |
 | ADMIN-1 | Every admin operation except login requires an admin access token. | Missing/customer/reset-token rejection tests. |
 | ADMIN-2 | Validate reward costs/terms; distinguish zero stock from unlimited stock and allow removing limits. | API validation and inventory-null tests; updated portal payloads. |
 | ADMIN-3 | Display the live server conversion, cap, validity, and environment. | Protected /admin/config contract; no invented production status or cap. |
