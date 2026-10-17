@@ -31,6 +31,8 @@ settlement are not implemented product capabilities.
 cd backend
 python -m venv .venv && .venv\Scripts\Activate.ps1   # Windows
 pip install -r requirements.txt
+# Configure a local .env and PostgreSQL database before running migrations.
+alembic upgrade head
 uvicorn app.main:app --reload        # http://127.0.0.1:8000/health
 ```
 
@@ -49,3 +51,4 @@ Use an isolated development database and development account for reward tests.
 The repository's historical HTTP VPS default is for existing testing only. A public
 release requires a configured HTTPS API, credential rotation, and the deployment
 checks in the launch audit. Never put signing keys or environment secrets in Git.
+The Docker rollout and verification sequence is in [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md).

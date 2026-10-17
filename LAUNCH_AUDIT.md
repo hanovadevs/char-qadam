@@ -67,19 +67,31 @@ These changes do not certify physical sensor accuracy or a production deployment
 - Admin: Vite 8.3.4 production build passed; npm audit reported zero vulnerabilities.
 - Fresh migration 0001-0004 provisioning is exercised by the full backend suite;
   migrations rather than ORM create_all now define the test schema.
-- Live read-only checks: `/health` reports `ok` / `production`, but the sync
-  schema lacks daily points, `/admin/config` returns 404, and unauthenticated
-  `/admin/auth/me` returns 200. This confirms the VPS still runs the old API.
-  The checked changes have not been deployed there; deployment access/workflow
-  is confirmed to use Docker; the VPS connection and project directory were
-  requested from the owner because only local Docker contexts are configured here.
+- Initial live checks found the old API: the sync schema lacked daily points,
+  `/admin/config` returned 404, and anonymous `/admin/auth/me` returned 200.
+  After the owner supplied SSH access, deployed checked commit `ccfe58c` to
+  **only** `qadam_backend` from `/root/qadam/char-qadam/backend`.
+- Deployment: preserved the prior image/config, backed up all 10 Stepsy public
+  tables (including Alembic), and successfully restored the archive in an isolated
+  PostgreSQL 17 container. Removed that temporary container. Production migrations
+  advanced from 0002 through 0004; the replacement container is healthy.
+- Verified public `/health` and database `/health/ready` return 200; anonymous
+  `/admin/auth/me` and `/admin/config` now return 401. The public sync schema
+  includes daily earned points, conversion and cap. Real admin login/config return
+  200; a token signed with the previous JWT key returns 401 after key rotation.
+- Compared every other running container's ID and start time with the pre-rollout
+  baseline: none changed or restarted. No other app or Nginx site was modified.
+- Stepsy's new admin credential and signing key are stored only in the server's
+  private backend `.env`. Google audience now matches the mobile client ID;
+  genuine device OAuth still needs acceptance. SMTP remains unconfigured.
 - Browser UI automation could not run: no browsers were exposed by the session.
 - CI now runs API migrations/tests, Flutter analysis/tests, Android build/native
   tests, and admin build/audit on main pushes and pull requests. The workflow is
   newly added. On run 39030447871, backend and admin jobs passed; Android
   analysis/tests passed, but the APK build exhausted the hosted runner's disk.
   The workflow now removes unused hosted .NET/Haskell/CodeQL toolchains before
-  building; the corrected run is pending.
+  building. Corrected run [39031262328](https://github.com/hanovadevs/char-qadam/actions/runs/39031262328)
+  passed all three jobs, including the Android APK and native counter tests.
 - Redmi Note 11 (2201117TG, Android 13 / API 33): APK installed successfully after
   MIUI approval/reconnection. The app process remained alive, 42 frames were
   recorded, and the captured error-level startup log contained no fatal error.
@@ -94,10 +106,10 @@ These changes do not certify physical sensor accuracy or a production deployment
 
 | Priority | Gate | Concrete remaining work |
 |---|---|---|
-| P0 | Rotate exposed database credential | Remove it from use and deployment environments; Git history still contains it. Never paste the replacement into source. |
-| P0 | HTTPS and deployment | Default mobile API and Vercel proxy still target HTTP. Confirm a controlled API domain, enable valid TLS, configure release URLs, migrate and deploy the API, then test actual production flows. |
-| P0 | Physical Redmi accuracy | Test the new APK. If raw sensor readings rise while truly stationary, obtain those readings and tune/replace the source based on evidence; no arbitrary step multiplier was introduced. |
-| P0 | Real auth/recovery configuration | Configure the correct Google web-client audience and Android package/signing fingerprints. Configure SMTP and verify delivery and reset with a real test inbox. |
+| P0 | Rotate exposed database credential | The API signing key/admin password have been rotated, and old JWT rejection is verified. The historically exposed database credential still requires provider-side revocation; Git history contains it. Never paste replacements into source. |
+| P0 | HTTPS and release URLs | The checked API is deployed, but mobile and Vercel defaults still use HTTP. The Stepsy Nginx site has only the VPS IP on port 80. An owned API domain was requested; enable valid TLS, configure release URLs and test production flows. |
+| P0 | Physical Redmi accuracy | Idle and locked-screen smoke tests passed by owner report. Complete counted 500-step/restart/midnight trials. If raw sensor readings rise while stationary, diagnose those readings; no arbitrary step multiplier was introduced. |
+| P0 | Real auth/recovery configuration | Server Google audience is configured; verify real device OAuth and signing fingerprints. Configure SMTP and verify delivery and reset with a real test inbox. Recovery currently reports unavailable. |
 | P0 | Real partner rewards | Confirm contracts, coverage, stock, discount terms, funding, return/refund/cancellation handling and merchant training before claiming nationwide redemption availability. |
 | P0 | Abuse resistance | The API still accepts client-reported step totals. Caps, monotonic updates and permission checks are not device attestation; assess Play Integrity, provenance checks, replay/audit controls and rollout limits. |
 | P0 | Erasure and privacy | Deactivation revokes access but retains rows. Implement a reviewed erasure/anonymization and retention process, publish the policy and account-deletion route, and complete Play disclosures before release. |
@@ -106,7 +118,7 @@ These changes do not certify physical sensor accuracy or a production deployment
 | P1 | Offline history | Current-day snapshots recover counts; automatic seven-day backfill and explicit stale/offline labels remain incomplete. Long gaps spanning midnight cannot be reconstructed from a cumulative counter alone. |
 | P1 | Voucher links | Confirm the owned public domain, deploy Android assetlinks for the signing certificate, preserve post-login destinations, and replace the code-only deep-link screen with a wallet lookup. |
 | P1 | Notifications | Notification payload navigation, scheduled reminders, and a complete expiry-delivery lifecycle are unfinished despite older module labels. |
-| P1 | Operations/scale | Test backup restore, multiworker rate limiting, load/latency, queue/job observability, support/audit workflows, and deployment rollback with a representative launch load. |
+| P1 | Operations/scale | One Stepsy public-schema backup/restore was verified. Automate retention/off-host backups; test multiworker rate limiting, load/latency, job observability, support/audit workflows and deployment rollback under representative load. |
 | P2 | Profile/localization | Persist name/avatar beyond the locally cached Google profile; decide Urdu/localization and accessibility acceptance. iOS remains outside the initial launch. |
 
 ## Redmi Note 11 test protocol
@@ -156,6 +168,10 @@ Use the isolated test database and development accounts for full redemption test
   diagnostics, cache/session/onboarding fixes and Flutter/native regressions.
 - `bda0e89`: admin configuration/stock fixes, dependency security updates and
   generated-output cleanup.
+- `d747810`: current product requirements, launch audit, and verification CI.
+- `ccfe58c`: optional admin portal path/regressions, phone test evidence, and
+  hosted Android build disk cleanup. See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md)
+  for the Docker rollout sequence and public deployment checks.
 
 The debug testing artifact is `mobile/build/app/outputs/flutter-apk/app-debug.apk`.
 It uses the existing API default unless rebuilt with API_BASE_URL. Do not publish
