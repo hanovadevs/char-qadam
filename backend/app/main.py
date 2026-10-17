@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(vouchers.router)
     app.include_router(partner.router)
     app.include_router(leaderboard.router)
+    app.include_router(admin.public_router)
     app.include_router(admin.router)
 
 

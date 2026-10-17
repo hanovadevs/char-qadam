@@ -10,15 +10,16 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import ActivityDaily, User
+from app.db.models import ActivityDaily, LedgerReason, PointsLedger, User
 from app.db.postgres import get_session
 from app.deps import get_current_user
 from app.schemas.activity import ActivityPeriod, ActivityRangeOut, SyncIn, SyncOut
 from app.services.activity import sync_activity
+from app.services.local_date import local_today
 
 router = APIRouter(prefix="/activity", tags=["activity"])
 
@@ -51,7 +52,7 @@ async def sync(
             detail="Invalid date format. Expected YYYY-MM-DD",
         )
 
-    today = date.today()
+    today = local_today(current_user.timezone)
     if sync_date > today:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -74,12 +75,22 @@ async def sync(
         session=session,
         settings=settings,
     )
+    daily_points = (await session.execute(
+        select(func.coalesce(func.sum(PointsLedger.delta), 0))
+        .join(ActivityDaily, PointsLedger.ref_id == ActivityDaily.id)
+        .where(ActivityDaily.user_id == current_user.id,
+               ActivityDaily.local_date == body.local_date,
+               PointsLedger.reason == LedgerReason.STEP_EARN)
+    )).scalar_one()
     return SyncOut(
         local_date=body.local_date,
         eligible_steps=result.eligible_steps,
         points_awarded=result.points_awarded,
         balance=result.balance,
         is_replay=result.is_replay,
+        points_earned_today=int(daily_points),
+        steps_per_point=settings.steps_per_point,
+        daily_step_cap=settings.daily_step_cap,
     )
 
 
@@ -98,7 +109,7 @@ async def get_activity(
     Days with no synced data are omitted from ``days`` but counted in the
     date window for ``total_steps``.
     """
-    today = date.today()
+    today = local_today(current_user.timezone)
     if range == "today":
         start = today
     elif range == "week":

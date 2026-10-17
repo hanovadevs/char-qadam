@@ -1,7 +1,7 @@
 """Shared pytest fixtures for the Qadam backend test suite.
 
 Uses httpx.AsyncClient with the FastAPI ASGI transport — no real server
-needed.  DATABASE_URL is read from .env so tests hit the Supabase dev DB.
+needed. TEST_DATABASE_URL must point at an isolated loopback test database.
 
 Event loop / connection pool
 -----------------------------
@@ -10,6 +10,16 @@ engine factory with ``NullPool`` for the test session so each test gets a
 fresh connection (no pool) and there are no "event loop closed" errors.
 """
 from __future__ import annotations
+
+import os
+from sqlalchemy.engine import make_url
+
+# Never load DATABASE_URL from a developer's .env or exercise a shared database.
+test_url = os.environ.get('TEST_DATABASE_URL', 'postgresql+asyncpg://stepsy_test:local-audit-only@127.0.0.1:55432/stepsy_test')
+parsed = make_url(test_url)
+if parsed.host not in ('127.0.0.1', 'localhost', '::1') or not (parsed.database or '').endswith('_test'):
+    raise RuntimeError('TEST_DATABASE_URL must target a loopback database ending in _test')
+os.environ.update(DATABASE_URL=test_url, ENVIRONMENT='test', DEBUG='false', JWT_SECRET='stepsy-isolated-test-secret-only-32-characters', SMTP_HOST='')
 
 import pytest
 import pytest_asyncio
@@ -37,10 +47,15 @@ def _patch_engine_for_tests():
     _pg_module._engine = test_engine
     _pg_module._session_factory = test_factory
 
-    yield
-
     import asyncio
-    asyncio.get_event_loop().run_until_complete(test_engine.dispose())
+    from app.db.base import Base
+    import app.db.models
+    async def prepare():
+        async with test_engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+    asyncio.run(prepare())
+    yield
+    asyncio.run(test_engine.dispose())
 
 
 @pytest_asyncio.fixture
@@ -50,5 +65,14 @@ async def client() -> AsyncClient:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
+        headers={"X-Bypass-Rate-Limit": "true"},
     ) as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def admin_client(client):
+    from app.services.security import create_access_token
+    token = create_access_token(subject='admin_user_root', extra_claims={'role': 'ADMIN'})
+    client.headers['Authorization'] = f'Bearer {token}'
+    return client

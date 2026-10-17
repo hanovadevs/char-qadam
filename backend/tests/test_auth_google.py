@@ -18,6 +18,16 @@ from app.db.models import User, UserStatus
 from app.db.postgres import get_session_factory
 
 
+@pytest.fixture(autouse=True)
+def google_verifier(monkeypatch):
+    async def verify(token, client_id=None):
+        if not token.startswith('test_google:'):
+            raise ValueError('Invalid token')
+        email = token.split(':', 1)[1]
+        return {'email': email, 'sub': 'test-user', 'email_verified': True}
+    monkeypatch.setattr('app.routers.auth.verify_google_id_token', verify)
+
+
 def _email() -> str:
     return f"google_{uuid.uuid4().hex[:8]}@example.com"
 
@@ -39,7 +49,7 @@ async def test_google_auth_auto_register(client: AsyncClient) -> None:
     try:
         r = await client.post(
             "/auth/google",
-            json={"id_token": f"mock_google_token:{email}", "country": "PK", "timezone": "Asia/Karachi"},
+            json={"id_token": f"test_google:{email}", "country": "PK", "timezone": "Asia/Karachi"},
         )
         assert r.status_code == 200, r.text
         body = r.json()
@@ -65,7 +75,7 @@ async def test_google_auth_existing_user_login(client: AsyncClient) -> None:
         assert reg.status_code == 201
 
         # 2. Login via Google OAuth
-        g_login = await client.post("/auth/google", json={"id_token": f"mock_google_token:{email}"})
+        g_login = await client.post("/auth/google", json={"id_token": f"test_google:{email}"})
         assert g_login.status_code == 200
         token = g_login.json()["access_token"]
 
@@ -88,7 +98,7 @@ async def test_google_auth_suspended_user_blocked(client: AsyncClient) -> None:
     """Suspended/deleted user attempting Google login receives 403."""
     email = _email()
     try:
-        reg = await client.post("/auth/google", json={"id_token": f"mock_google_token:{email}"})
+        reg = await client.post("/auth/google", json={"id_token": f"test_google:{email}"})
         assert reg.status_code == 200
 
         # Suspend user
@@ -100,7 +110,7 @@ async def test_google_auth_suspended_user_blocked(client: AsyncClient) -> None:
             await session.commit()
 
         # Attempt Google login
-        r = await client.post("/auth/google", json={"id_token": f"mock_google_token:{email}"})
+        r = await client.post("/auth/google", json={"id_token": f"test_google:{email}"})
         assert r.status_code == 403
     finally:
         await _cleanup(email)

@@ -2,7 +2,7 @@
 from functools import lru_cache
 from typing import Union
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,8 +43,16 @@ class Settings(BaseSettings):
         return v
 
     # Points engine — server-side earning rule
-    steps_per_point: int = 100          # 100 steps = 1 point
-    daily_step_cap: int = 20_000        # max eligible steps counted per day
+    steps_per_point: int = Field(default=100, gt=0)
+    daily_step_cap: int = Field(default=20_000, gt=0)
+
+    # Password reset delivery. No reset credentials are returned by the API.
+    smtp_host: str = ''
+    smtp_port: int = 587
+    smtp_username: str = ''
+    smtp_password: str = ''
+    smtp_from: str = ''
+    smtp_use_ssl: bool = False
 
     # Vouchers
     voucher_validity_days: int = 30     # days from issuance until a voucher expires
@@ -71,7 +79,9 @@ class Settings(BaseSettings):
     def _validate_production_invariants(self) -> "Settings":
         """Enforce strict security requirements when deployed in production."""
         if self.environment.lower() == "production":
-            if self.jwt_secret in ("change-me-in-production", "secret", "test-secret") or len(self.jwt_secret) < 32:
+            if self.admin_password == 'admin123' or len(self.admin_password) < 12:
+                raise ValueError('Production requires an ADMIN_PASSWORD of at least 12 characters, without the default value')
+            if self.jwt_secret.startswith('change-me') or self.jwt_secret in ("secret", "test-secret") or len(self.jwt_secret) < 32:
                 raise ValueError(
                     "CRITICAL: Production deployment requires a secure JWT_SECRET with at least 32 characters! "
                     "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"

@@ -66,7 +66,7 @@ class ForgotPasswordIn(BaseModel):
 
 class ForgotPasswordOut(BaseModel):
     message: str
-    reset_token: str | None = None  # Populated in debug/dev mode
+    reset_token: str | None = None  # Always empty; delivery is through verified email access.
 
 
 class ResetPasswordIn(BaseModel):

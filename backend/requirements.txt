@@ -21,6 +21,7 @@ bcrypt==4.3.0                 # passlib 1.7.4 is incompatible with bcrypt>=5.x
 # Misc
 python-multipart==0.0.20
 email-validator==2.2.0
+tzdata==2025.2
 
 # Dev / testing
 httpx==0.28.1

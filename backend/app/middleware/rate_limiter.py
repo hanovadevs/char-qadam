@@ -15,6 +15,8 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/auth/register": (15, 60),
     "/auth/forgot-password": (10, 60),
     "/auth/reset-password": (10, 60),
+    "/auth/google": (15, 60),
+    "/admin/auth/login": (10, 60),
 }
 
 
@@ -28,7 +30,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         settings = get_settings()
 
         # In testing/debug bypass if disabled or test header present
-        if request.headers.get("X-Bypass-Rate-Limit") == "true":
+        if settings.environment == 'test' and request.headers.get("X-Bypass-Rate-Limit") == "true":
             return await call_next(request)
 
         path = request.url.path

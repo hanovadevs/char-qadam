@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.db.models import ActivityDaily, LedgerReason, PointsLedger
+from app.db.models import ActivityDaily, LedgerReason, PointsLedger, User
 from app.services.points import get_balance
 
 
@@ -46,6 +46,10 @@ async def sync_activity(
     """
     # ------------------------------------------------------------------ clamp
     clamped = min(eligible_steps, settings.daily_step_cap)
+
+    # A missing daily row cannot be row-locked. Serialize on the existing user
+    # first so simultaneous foreground/background first syncs cannot both insert.
+    await session.execute(select(User).where(User.id == user_id).with_for_update())
 
     # ------------------------------------------------ fetch existing day row
     result = await session.execute(

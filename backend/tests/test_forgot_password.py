@@ -33,10 +33,16 @@ async def _cleanup(email: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_forgot_password_and_reset_flow(client: AsyncClient) -> None:
+async def test_forgot_password_and_reset_flow(client: AsyncClient, monkeypatch) -> None:
     email = _email()
     password_old = "oldpassword123"
     password_new = "newpassword456"
+    from app.config import get_settings
+    settings = get_settings()
+    monkeypatch.setattr(settings, 'smtp_host', 'smtp.test')
+    monkeypatch.setattr(settings, 'smtp_from', 'support@stepsy.test')
+    delivered = []
+    monkeypatch.setattr('app.routers.auth.send_password_reset_email', lambda email, token, settings: delivered.append((email, token)))
 
     try:
         # 1. Register user
@@ -48,8 +54,9 @@ async def test_forgot_password_and_reset_flow(client: AsyncClient) -> None:
         assert forgot_resp.status_code == 200
         data = forgot_resp.json()
         assert "message" in data
-        reset_token = data.get("reset_token")
-        assert reset_token is not None
+        assert data.get('reset_token') is None
+        assert delivered[0][0] == email
+        reset_token = delivered[0][1]
 
         # 3. Reset password with valid token
         reset_resp = await client.post(
@@ -58,6 +65,9 @@ async def test_forgot_password_and_reset_flow(client: AsyncClient) -> None:
         )
         assert reset_resp.status_code == 200
         assert "successfully updated" in reset_resp.json()["message"]
+
+        replay = await client.post('/auth/reset-password', json={'reset_token': reset_token, 'new_password': 'another-password'})
+        assert replay.status_code == 400
 
         # 4. Old password must fail
         fail_login = await client.post("/auth/login", json={"email": email, "password": password_old})

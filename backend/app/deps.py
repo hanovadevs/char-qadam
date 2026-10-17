@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Partner, PartnerStatus, User, UserStatus
 from app.db.postgres import get_session
 from app.services.partner_auth import hash_api_key
-from app.services.security import decode_access_token
+from app.services.security import decode_access_claims, decode_access_token
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -25,6 +25,20 @@ _401 = HTTPException(
     detail="Invalid or expired token",
     headers={"WWW-Authenticate": "Bearer"},
 )
+
+
+async def get_current_admin(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> dict:
+    if credentials is None:
+        raise _401
+    try:
+        claims = decode_access_claims(credentials.credentials)
+    except JWTError:
+        raise _401
+    if claims.get('role') != 'ADMIN' or claims['sub'] != 'admin_user_root':
+        raise HTTPException(status_code=403, detail='Admin access required')
+    return claims
 
 
 async def get_current_user(

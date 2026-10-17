@@ -31,11 +31,33 @@ from app.db.models import (
     VoucherStatus,
 )
 from app.db.postgres import get_session
+from app.deps import get_current_admin
 from app.services.partner_auth import hash_api_key
 from app.services.security import create_access_token, hash_password
 from app.services.voucher_sweep import sweep_expired_vouchers
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+public_router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
+
+
+@router.post('/vouchers/sweep-expired', summary='Expire unused vouchers past their expiry')
+async def sweep_vouchers(session: AsyncSession = Depends(get_session)) -> dict:
+    result = await sweep_expired_vouchers(session)
+    return {**result, 'message': 'Expired vouchers updated'}
+
+
+@router.get('/fraud/flags', summary='Review high daily activity; flags are not proof of fraud')
+async def fraud_flags(session: AsyncSession = Depends(get_session)) -> list[dict]:
+    settings = get_settings()
+    rows = (await session.execute(
+        select(User.id, User.email, User.status, func.sum(ActivityDaily.eligible_steps), func.count(ActivityDaily.id))
+        .join(ActivityDaily, ActivityDaily.user_id == User.id)
+        .group_by(User.id, User.email, User.status)
+        .having(func.avg(ActivityDaily.eligible_steps) >= settings.daily_step_cap * 0.9)
+    )).all()
+    return [dict(user_id=id, email=email, status=state.value, total_lifetime_steps=int(total),
+                 days_recorded=days, risk_score=50, flags=['HIGH_DAILY_AVERAGE_CADENCE'])
+            for id, email, state, total, days in rows]
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +153,7 @@ class AdminVoucherRedeemIn(BaseModel):
 # 1. Admin Authentication
 # ---------------------------------------------------------------------------
 
-@router.post("/auth/login", summary="Admin Portal Login")
+@public_router.post("/auth/login", summary="Admin Portal Login")
 async def admin_login(body: AdminLoginIn) -> dict[str, Any]:
     settings = get_settings()
     if (

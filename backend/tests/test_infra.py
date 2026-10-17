@@ -35,34 +35,35 @@ async def test_health_liveness_and_readiness(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_partner_provisioning(client: AsyncClient) -> None:
+async def test_admin_partner_provisioning(admin_client: AsyncClient) -> None:
     partner_name = f"Test Bakery {uuid.uuid4().hex[:6]}"
     factory = get_session_factory()
     partner_id: str | None = None
 
     try:
-        resp = await client.post("/admin/partners", json={"name": partner_name})
+        resp = await admin_client.post("/admin/partners", json={"name": partner_name, "email": f"merchant_{uuid.uuid4().hex}@example.com", "password": "merchant-test-123", "generate_api_key": True})
         assert resp.status_code == 201
         data = resp.json()
-        partner_id = data["partner_id"]
+        partner_id = data["id"]
         raw_key = data["raw_api_key"]
 
         assert data["name"] == partner_name
         assert raw_key.startswith("pk_live_")
 
         # Test using newly provisioned key with POS /info endpoint
-        info_resp = await client.get("/partner/v1/info", headers={"X-Partner-Key": raw_key})
+        info_resp = await admin_client.get("/partner/v1/info", headers={"X-Partner-Key": raw_key})
         assert info_resp.status_code == 200
         assert info_resp.json()["partner_id"] == partner_id
     finally:
         if partner_id:
             async with factory() as session:
+                await session.execute(delete(User).where(User.partner_id == partner_id))
                 await session.execute(delete(Partner).where(Partner.id == partner_id))
                 await session.commit()
 
 
 @pytest.mark.asyncio
-async def test_voucher_expiration_sweep(client: AsyncClient) -> None:
+async def test_voucher_expiration_sweep(admin_client: AsyncClient) -> None:
     factory = get_session_factory()
     partner_id = str(uuid.uuid4())
     offer_id = str(uuid.uuid4())
@@ -96,7 +97,7 @@ async def test_voucher_expiration_sweep(client: AsyncClient) -> None:
             await session.commit()
 
         # Trigger sweep endpoint
-        sweep_resp = await client.post("/admin/vouchers/sweep-expired")
+        sweep_resp = await admin_client.post("/admin/vouchers/sweep-expired")
         assert sweep_resp.status_code == 200
         data = sweep_resp.json()
         assert data["swept_count"] >= 1

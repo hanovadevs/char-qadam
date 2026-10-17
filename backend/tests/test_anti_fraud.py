@@ -93,7 +93,7 @@ async def test_sync_rejects_stale_dates(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_fraud_flags_and_user_suspension(client: AsyncClient) -> None:
+async def test_admin_fraud_flags_and_user_suspension(admin_client: AsyncClient) -> None:
     factory = get_session_factory()
     user_id = str(uuid.uuid4())
 
@@ -118,7 +118,7 @@ async def test_admin_fraud_flags_and_user_suspension(client: AsyncClient) -> Non
             await session.commit()
 
         # 1. Fetch fraud flags
-        flags_resp = await client.get("/admin/fraud/flags")
+        flags_resp = await admin_client.get("/admin/fraud/flags")
         assert flags_resp.status_code == 200
         data = flags_resp.json()
         target = next((u for u in data if u["user_id"] == user_id), None)
@@ -126,7 +126,7 @@ async def test_admin_fraud_flags_and_user_suspension(client: AsyncClient) -> Non
         assert "HIGH_DAILY_AVERAGE_CADENCE" in target["flags"]
 
         # 2. Suspend user
-        suspend_resp = await client.post(
+        suspend_resp = await admin_client.patch(
             f"/admin/users/{user_id}/status",
             json={"status": "SUSPENDED", "reason": "Suspected bot step generation"},
         )

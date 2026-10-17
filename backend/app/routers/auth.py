@@ -11,6 +11,7 @@ GET  /auth/me               Return the authenticated user's profile.
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -40,6 +41,7 @@ from app.services.security import (
     verify_google_id_token,
     verify_password,
 )
+from app.services.email import send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -223,6 +225,9 @@ async def forgot_password(
 
     Returns 200 regardless of whether the email exists to prevent enumeration.
     """
+    settings = get_settings()
+    if not settings.smtp_host or not settings.smtp_from:
+        raise HTTPException(status_code=503, detail='Password recovery is temporarily unavailable. Please contact support.')
     result = await session.execute(
         select(User).where(User.email == body.email)
     )
@@ -230,11 +235,14 @@ async def forgot_password(
 
     reset_token: str | None = None
     if user is not None and user.status == UserStatus.ACTIVE:
-        reset_token = create_password_reset_token(user.id)
+        reset_token = create_password_reset_token(user.id, user.password_hash)
+        try:
+            await asyncio.to_thread(send_password_reset_email, user.email, reset_token, settings)
+        except Exception:
+            raise HTTPException(status_code=503, detail='Password recovery is temporarily unavailable. Please try again later.')
 
     return ForgotPasswordOut(
-        message="If this email is registered, password reset instructions have been generated.",
-        reset_token=reset_token,
+        message="If this email is registered, password reset instructions have been sent.",
     )
 
 
@@ -257,7 +265,7 @@ async def reset_password(
         )
 
     result = await session.execute(
-        select(User).where(User.id == user_id)
+        select(User).where(User.id == user_id).with_for_update()
     )
     user = result.scalar_one_or_none()
 
@@ -267,6 +275,10 @@ async def reset_password(
             detail="User not found or account is inactive",
         )
 
+    try:
+        decode_password_reset_token(body.reset_token, user.password_hash)
+    except Exception:
+        raise HTTPException(status_code=400, detail='Invalid or expired password reset token')
     user.password_hash = hash_password(body.new_password)
     await session.commit()
 
