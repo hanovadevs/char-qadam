@@ -41,6 +41,7 @@ from app.schemas.auth import (
     VerificationOut, VerifyEmailIn, ResendVerificationIn,
 )
 from app.services.email_verification import challenge, clear_code, code_hash, decode_challenge
+from app.services.device_binding import require_device_key, claim_device, check_device_available
 from app.services.security import (
     create_access_token,
     create_password_reset_token,
@@ -54,11 +55,14 @@ from app.services.email import send_password_reset_email
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-async def _token(user: User, session: AsyncSession) -> TokenOut:
+async def _token(user: User, session: AsyncSession, key: str) -> TokenOut:
+    binding = await claim_device(key, user, session)
+    await session.commit()
     partner = await session.get(Partner, user.partner_id) if user.partner_id else None
     return TokenOut(
         access_token=create_access_token(user.id, extra_claims={
             'role': user.role, 'partner_id': user.partner_id, 'ver': user.auth_version,
+            'did': binding.id, 'dgen': binding.generation,
         }), role=user.role, partner_id=user.partner_id,
         partner_name=partner.name if partner else None,
     )
@@ -72,6 +76,7 @@ async def _token(user: User, session: AsyncSession) -> TokenOut:
 )
 async def register(
     body: RegisterIn,
+    key: str = Depends(require_device_key),
     session: AsyncSession = Depends(get_session),
 ) -> VerificationOut:
     """Create an unverified account and send a mailbox challenge.
@@ -96,10 +101,11 @@ async def register(
         country=body.country,
         timezone=body.timezone,
     )
+    await check_device_available(key, user.id, session)
     session.add(user)
     try:
         await session.flush()
-        response = await challenge(user)
+        response = await challenge(user, device_id=key)
         await session.commit()
     except IntegrityError:
         await session.rollback()
@@ -114,6 +120,7 @@ async def register(
 )
 async def login(
     body: LoginIn,
+    key: str = Depends(require_device_key),
     session: AsyncSession = Depends(get_session),
 ) -> TokenOut | VerificationOut:
     """Authenticate with email + password.
@@ -139,31 +146,13 @@ async def login(
             detail="Account is suspended or deleted",
         )
 
+    await check_device_available(key, user.id, session)
     if user.email_verified_at is None:
-        response = await challenge(user)
+        response = await challenge(user, device_id=key)
         await session.commit()
         return response
 
-    partner_name = None
-    if user.partner_id:
-        partner = await session.get(Partner, user.partner_id)
-        if partner:
-            partner_name = partner.name
-
-    token = create_access_token(
-        user.id,
-        extra_claims={
-            "role": user.role,
-            "partner_id": user.partner_id,
-            "ver": user.auth_version,
-        },
-    )
-    return TokenOut(
-        access_token=token,
-        role=user.role,
-        partner_id=user.partner_id,
-        partner_name=partner_name,
-    )
+    return await _token(user, session, key)
 
 
 @router.post(
@@ -173,6 +162,7 @@ async def login(
 )
 async def google_auth(
     body: GoogleAuthIn,
+    key: str = Depends(require_device_key),
     session: AsyncSession = Depends(get_session),
 ) -> TokenOut | VerificationOut:
     """Exchange a Google OAuth ID Token for a Qadam JWT.
@@ -236,8 +226,9 @@ async def google_auth(
                 detail="Account is suspended or deleted",
             )
 
+    await check_device_available(key, user.id, session)
     if not bound and not verified_info.get('authoritative_email', False):
-        response = await challenge(user, google_subject=subject)
+        response = await challenge(user, device_id=key, google_subject=subject)
         await session.commit()
         return response
     if user.email_verified_at is None:
@@ -248,16 +239,17 @@ async def google_auth(
     user.google_subject = subject
     clear_code(user)
     try:
-        await session.commit()
+        return await _token(user, session, key)
     except IntegrityError:
         await session.rollback()
         raise HTTPException(409, 'Google account link has changed. Please sign in again.')
-    return await _token(user, session)
 
 
-async def _challenge_user(token: str, session: AsyncSession) -> tuple[User, dict]:
+async def _challenge_user(token: str, session: AsyncSession, key: str) -> tuple[User, dict]:
     try:
         claims = decode_challenge(token)
+        if claims.get('did') != key:
+            raise ValueError('Verification belongs to another device')
     except Exception:
         raise HTTPException(400, 'Verification expired. Please sign in again to request a new code.')
     user = await session.scalar(select(User).where(User.id == claims['sub']).with_for_update())
@@ -265,12 +257,13 @@ async def _challenge_user(token: str, session: AsyncSession) -> tuple[User, dict
         raise HTTPException(400, 'Verification expired. Please sign in again.')
     if user.email_verified_at is not None and not claims.get('google_sub'):
         raise HTTPException(400, 'Email already verified. Please sign in.')
+    await check_device_available(key, user.id, session)
     return user, claims
 
 
 @router.post('/verify-email', response_model=TokenOut)
-async def verify_email(body: VerifyEmailIn, session: AsyncSession = Depends(get_session)) -> TokenOut:
-    user, claims = await _challenge_user(body.verification_token, session)
+async def verify_email(body: VerifyEmailIn, key: str = Depends(require_device_key), session: AsyncSession = Depends(get_session)) -> TokenOut:
+    user, claims = await _challenge_user(body.verification_token, session, key)
     if (not user.verification_code_hash or not user.verification_expires_at
             or user.verification_expires_at <= datetime.now(timezone.utc)):
         raise HTTPException(400, 'Code expired. Please request a new code.')
@@ -289,14 +282,13 @@ async def verify_email(body: VerifyEmailIn, session: AsyncSession = Depends(get_
     user.email_verified_at = user.email_verified_at or datetime.now(timezone.utc)
     user.auth_version += 1
     clear_code(user)
-    await session.commit()
-    return await _token(user, session)
+    return await _token(user, session, key)
 
 
 @router.post('/resend-verification', response_model=VerificationOut)
-async def resend_verification(body: ResendVerificationIn, session: AsyncSession = Depends(get_session)) -> VerificationOut:
-    user, claims = await _challenge_user(body.verification_token, session)
-    response = await challenge(user, google_subject=claims.get('google_sub'), force_send=True)
+async def resend_verification(body: ResendVerificationIn, key: str = Depends(require_device_key), session: AsyncSession = Depends(get_session)) -> VerificationOut:
+    user, claims = await _challenge_user(body.verification_token, session, key)
+    response = await challenge(user, device_id=key, google_subject=claims.get('google_sub'), force_send=True)
     await session.commit()
     return response
 

@@ -15,14 +15,13 @@ from sqlalchemy import delete
 
 from app.db.models import ActivityDaily, User, UserStatus
 from app.db.postgres import get_session_factory
-from app.services.security import create_access_token
+from tests.auth_helpers import device_token
 
 
 @pytest.mark.asyncio
 async def test_sync_rejects_future_dates(client: AsyncClient) -> None:
     factory = get_session_factory()
     user_id = str(uuid.uuid4())
-    token = create_access_token(user_id)
 
     try:
         async with factory() as session:
@@ -35,6 +34,8 @@ async def test_sync_rejects_future_dates(client: AsyncClient) -> None:
             )
             session.add(user)
             await session.commit()
+
+        token = await device_token(client, user_id)
 
         # Attempt to sync for tomorrow
         tomorrow = (date.today() + timedelta(days=1)).isoformat()
@@ -60,7 +61,6 @@ async def test_sync_rejects_future_dates(client: AsyncClient) -> None:
 async def test_sync_rejects_stale_dates(client: AsyncClient) -> None:
     factory = get_session_factory()
     user_id = str(uuid.uuid4())
-    token = create_access_token(user_id)
 
     try:
         async with factory() as session:
@@ -73,6 +73,8 @@ async def test_sync_rejects_stale_dates(client: AsyncClient) -> None:
             )
             session.add(user)
             await session.commit()
+
+        token = await device_token(client, user_id)
 
         # Attempt to sync for 10 days ago (past 7-day threshold)
         stale_date = (date.today() - timedelta(days=10)).isoformat()

@@ -300,8 +300,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 14),
           _buildPrivacyRow(
             Icons.cloud_upload_outlined,
-            'AGGREGATE SYNCS ONLY',
-            'Only your daily total step count is sent to earn points.',
+            'STEPS & DEVICE CHECK',
+            'Daily totals earn points. An app-scoped device identifier prevents repeat rewards across accounts.',
           ),
           const SizedBox(height: 14),
           _buildPrivacyRow(

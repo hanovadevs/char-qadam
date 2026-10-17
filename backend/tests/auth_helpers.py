@@ -1,5 +1,28 @@
+import secrets
+from app.services.security import decode_access_claims
+
+
+def auth_headers(token):
+    """Route each simulated user's session through the device that issued it."""
+    claims = decode_access_claims(token)
+    return {'Authorization': f'Bearer {token}', 'X-Device-ID': claims['did']}
+
+
+async def device_token(client, user_id):
+    from app.db.models import User
+    from app.db.postgres import get_session_factory
+    from app.services.device_binding import claim_device
+    from app.services.security import create_access_token
+    async with get_session_factory()() as session:
+        user = await session.get(User, user_id)
+        binding = await claim_device(client.headers['X-Device-ID'], user, session)
+        await session.commit()
+        return create_access_token(user_id, extra_claims={'ver': user.auth_version, 'did': binding.id, 'dgen': binding.generation})
+
+
 async def register_verified(client, *, json):
-    """Exercise actual registration and the code delivered by the test mail transport."""
+    """Provision a distinct test phone, then complete actual mailbox verification."""
+    client.headers['X-Device-ID'] = secrets.token_hex(32)
     registration = await client.post('/auth/register', json=json)
     assert registration.status_code == 201, registration.text
     assert 'access_token' not in registration.json()

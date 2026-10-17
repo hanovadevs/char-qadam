@@ -13,6 +13,8 @@ from zoneinfo import ZoneInfo
 
 from tests.auth_helpers import register_verified
 
+from tests.auth_helpers import auth_headers
+
 import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -45,7 +47,7 @@ def _email() -> str:
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 def _partner_header(key: str) -> dict:

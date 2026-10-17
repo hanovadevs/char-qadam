@@ -35,6 +35,7 @@ from app.deps import get_current_admin
 from app.services.partner_auth import hash_api_key
 from app.services.security import create_access_token, hash_password
 from app.services.email_verification import change_email
+from app.services.device_binding import release_devices
 from app.services.voucher_sweep import sweep_expired_vouchers
 from app.services.local_date import local_today
 
@@ -1142,7 +1143,12 @@ async def update_user(
         user.role = body.role.strip().upper()
 
     if body.status is not None:
-        user.status = UserStatus(body.status.strip().upper())
+        next_status = UserStatus(body.status.strip().upper())
+        if next_status != user.status:
+            user.status = next_status
+            user.auth_version += 1
+            if next_status == UserStatus.DELETED:
+                await release_devices(user, session)
 
     session.add(AuditLog(
         id=str(uuid.uuid4()),

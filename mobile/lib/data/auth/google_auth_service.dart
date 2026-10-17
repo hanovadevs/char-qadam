@@ -24,6 +24,8 @@ class GoogleAuthService {
 
   static Future<({String token, String? name, String? photo})?> signIn() async {
     try {
+      // Always show the account chooser after logout or a rejected account.
+      await _client.signOut();
       final account = await _client.signIn();
       if (account == null) return null;
       final authentication = await account.authentication;

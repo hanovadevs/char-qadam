@@ -12,6 +12,7 @@ fresh connection (no pool) and there are no "event loop closed" errors.
 from __future__ import annotations
 
 import os
+import secrets
 from sqlalchemy.engine import make_url
 
 # Never load DATABASE_URL from a developer's .env or exercise a shared database.
@@ -65,7 +66,7 @@ async def client(verification_emails) -> AsyncClient:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
-        headers={"X-Bypass-Rate-Limit": "true"},
+        headers={"X-Bypass-Rate-Limit": "true", "X-Device-ID": secrets.token_hex(32)},
     ) as ac:
         ac.verification_emails = verification_emails
         yield ac

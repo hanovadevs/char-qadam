@@ -33,6 +33,12 @@ Mandatory email verification is enforced. Existing accounts need mailbox
 ownership proof before receiving API access; old unverified sessions are rejected.
 Do not roll back to older code that grants unverified access, or erase ownership
 records by downgrading the schema.
+
+The device-account batch adds migration `0008`; deploy it with the matching APK.
+It requires the device header and device-bound user tokens, so old clients need
+the update and existing users sign in again to choose their phone's account.
+No account balances or vouchers are merged or deleted. Device consumption
+history survives deactivation. See [DEVICE_POLICY.md](../DEVICE_POLICY.md).
 See [AUTH_SETUP.md](../AUTH_SETUP.md) for the coordinated API/APK rollout and
 Google error-10 package/signing-certificate configuration.
 
@@ -108,7 +114,7 @@ docker compose run --rm --no-deps qadam-backend alembic current
 ```
 
 Check the existing database revision before starting the new app. The checked
-chain is `0001 -> 0002 -> 0003 -> 0004 -> 0005 -> 0006 -> 0007`. If the database has existing tables but no
+chain is `0001 -> 0002 -> 0003 -> 0004 -> 0005 -> 0006 -> 0007 -> 0008`. If the database has existing tables but no
 Alembic revision, inspect its schema before establishing a baseline. Do not stamp
 `head` or delete tables to silence a migration failure. Migration 0003 accommodates
 the older manually added merchant columns; it does not invent merchant identities.

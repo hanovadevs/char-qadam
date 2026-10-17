@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qadam/data/api/api_client.dart';
+import 'package:qadam/data/auth/device_identity.dart';
 import 'package:qadam/data/auth/auth_repository.dart';
 import 'package:qadam/data/auth/auth_state_provider.dart';
 import 'package:qadam/data/auth/email_verification.dart';
@@ -106,7 +107,10 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
     storage = TokenStorage();
-    api = ApiClient(tokenStorage: storage);
+    api = ApiClient(
+      tokenStorage: storage,
+      deviceIdentity: DeviceIdentity(loader: () async => 'a' * 64),
+    );
     adapter = VerificationAdapter();
     api.dio.httpClientAdapter = adapter;
   });

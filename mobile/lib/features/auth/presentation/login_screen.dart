@@ -126,6 +126,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  const Text(
+                    'One active account per phone. Deactivate it in Profile before switching accounts.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.inkSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
                   // Error banner if any
                   if (authState.errorMessage != null) ...[
                     Container(

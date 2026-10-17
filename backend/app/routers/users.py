@@ -22,6 +22,8 @@ from app.deps import get_current_user
 from app.schemas.auth import UserOut
 from app.schemas.users import PatchUserIn
 from app.services.security import hash_password, verify_password
+from app.services.device_binding import release_devices
+from sqlalchemy import select
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -81,7 +83,10 @@ async def delete_me(
 
     Returns **204 No Content** on success.
     """
+    current_user = await session.scalar(select(User).where(User.id == current_user.id).with_for_update().execution_options(populate_existing=True))
     current_user.status = UserStatus.DELETED
+    current_user.auth_version += 1
+    await release_devices(current_user, session)
     session.add(current_user)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -90,6 +90,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      'One active account per phone. Deactivate your current account in Profile before creating another on this phone.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.inkSecondary,
+                      ),
+                    ),
+                  ),
                   const Text(
                     'NEW MEMBERSHIP',
                     style: TextStyle(

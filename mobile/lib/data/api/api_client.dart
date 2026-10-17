@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/env_config.dart';
 import '../auth/token_storage.dart';
+import '../auth/device_identity.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final tokenStorage = ref.watch(tokenStorageProvider);
@@ -17,10 +18,12 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 class ApiClient {
   late final Dio _dio;
   final TokenStorage tokenStorage;
+  final DeviceIdentity deviceIdentity;
 
   void Function()? onUnauthorized;
 
-  ApiClient({required this.tokenStorage}) {
+  ApiClient({required this.tokenStorage, DeviceIdentity? deviceIdentity})
+    : deviceIdentity = deviceIdentity ?? DeviceIdentity() {
     _dio = Dio(
       BaseOptions(
         baseUrl: EnvConfig.baseUrl,
@@ -36,6 +39,17 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          try {
+            options.headers['X-Device-ID'] = await this.deviceIdentity.getKey();
+          } catch (_) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                error: 'Device identity unavailable. Please restart Stepsy.',
+              ),
+            );
+            return;
+          }
           final token = await tokenStorage.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -44,7 +58,8 @@ class ApiClient {
         },
         onError: (DioException error, handler) async {
           final currentToken = await tokenStorage.getToken();
-          if (error.response?.statusCode == 401 &&
+          if ((error.response?.statusCode == 401 ||
+                  error.response?.statusCode == 426) &&
               currentToken != null &&
               error.requestOptions.headers['Authorization'] ==
                   'Bearer $currentToken') {

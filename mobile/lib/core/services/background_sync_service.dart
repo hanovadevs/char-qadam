@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:workmanager/workmanager.dart';
 import '../config/env_config.dart';
+import '../../data/auth/device_identity.dart';
 
 /// Unique identifiers for the WorkManager job.
 const String _kPeriodicSyncTask = 'com.stepsy.run.periodicStepSync';
@@ -76,6 +77,10 @@ class BackgroundSyncService {
     if (token == null || token.isEmpty) {
       return true; // not logged in; nothing to sync, not a failure
     }
+    final deviceKey = await DeviceIdentity.getBackgroundKey();
+    if (deviceKey == null) {
+      return true; // foreground app must establish identity first
+    }
 
     final now = DateTime.now();
     final todayStr = DateFormat('yyyy-MM-dd').format(now);
@@ -96,6 +101,7 @@ class BackgroundSyncService {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
+            'X-Device-ID': deviceKey,
           },
         ),
       );
@@ -116,7 +122,7 @@ class BackgroundSyncService {
       }
     } on DioException catch (e) {
       // 401 = expired token: nothing we can refresh here, don't hammer retries.
-      if (e.response?.statusCode == 401) return true;
+      if ([401, 426].contains(e.response?.statusCode)) return true;
       debugPrint('Background sync HTTP error: ${e.message}');
       return false; // transient (network/5xx) → let WorkManager retry
     } catch (e) {

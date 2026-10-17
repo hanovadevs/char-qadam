@@ -184,7 +184,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Your account will be deactivated and you will be signed out. Your activity and reward records are retained.',
+              'Your account will be deactivated and you will be signed out. This phone can then use a different account. Activity and reward records stay with this account; steps already rewarded on this phone cannot earn points again.',
               style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
             ),
             const SizedBox(height: 24),

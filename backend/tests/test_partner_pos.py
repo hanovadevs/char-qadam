@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from tests.auth_helpers import register_verified
 
+from tests.auth_helpers import auth_headers
+
 import uuid
 from datetime import date, datetime, timezone
 import pytest
@@ -29,7 +31,7 @@ from app.services.partner_auth import hash_api_key
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 def _partner_header(key: str) -> dict:

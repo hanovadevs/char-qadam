@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qadam/data/api/api_client.dart';
+import 'package:qadam/data/auth/device_identity.dart';
 import 'package:qadam/data/auth/auth_state_provider.dart';
 import 'package:qadam/data/auth/token_storage.dart';
 import 'package:qadam/routing/app_router.dart';
@@ -57,7 +58,10 @@ void main() {
     'a delayed 401 from an old session cannot log out the new session',
     () async {
       final storage = MemoryTokenStorage();
-      final client = ApiClient(tokenStorage: storage);
+      final client = ApiClient(
+        tokenStorage: storage,
+        deviceIdentity: DeviceIdentity(loader: () async => 'a' * 64),
+      );
       final adapter = DeferredAdapter();
       client.dio.httpClientAdapter = adapter;
       final request = client.get('/auth/me');

@@ -46,7 +46,7 @@ def change_email(user: User, email: str) -> None:
     user.auth_version += 1
 
 
-async def challenge(user: User, *, google_subject: str | None = None, force_send: bool = False) -> VerificationOut:
+async def challenge(user: User, *, device_id: str, google_subject: str | None = None, force_send: bool = False) -> VerificationOut:
     settings = get_settings()
     now = datetime.now(timezone.utc)
     remaining = max(0, 60 - int((now - user.verification_sent_at).total_seconds())) if user.verification_sent_at else 0
@@ -65,7 +65,7 @@ async def challenge(user: User, *, google_subject: str | None = None, force_send
         user.verification_sent_at = now
         user.verification_attempts = 0
         remaining = 60
-    claims = {'sub': user.id, 'type': 'email_verification', 'ver': user.auth_version,
+    claims = {'sub': user.id, 'type': 'email_verification', 'ver': user.auth_version, 'did': device_id,
               'iat': now, 'exp': now + timedelta(minutes=30)}
     if google_subject:
         claims['google_sub'] = google_subject

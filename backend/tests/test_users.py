@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from tests.auth_helpers import register_verified
 
+from tests.auth_helpers import auth_headers
+
 import uuid
 
 import pytest
@@ -32,7 +34,7 @@ def _email() -> str:
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 async def _register(client: AsyncClient, email: str, password: str = "startpass1") -> str:
@@ -216,7 +218,7 @@ async def test_delete_invalidates_jwt(client: AsyncClient) -> None:
 
         # Old token must now be rejected
         me = await client.get("/auth/me", headers=_auth(token))
-        assert me.status_code == 403
+        assert me.status_code == 401
     finally:
         await _cleanup(email)
 
@@ -230,15 +232,9 @@ async def test_delete_blocks_login(client: AsyncClient) -> None:
         token = await _register(client, email, password)
         await client.delete("/users/me", headers=_auth(token))
 
-        # Even the correct password should not work after deletion.
-        # Note: Our login endpoint doesn't check status, only get_current_user does.
-        # Login itself currently returns a token (by design — could be tightened post-MVP),
-        # but any subsequent authenticated call will 403.
         login = await client.post("/auth/login", json={"email": email, "password": password})
-        if login.status_code == 200:
-            new_token = login.json()["access_token"]
-            me = await client.get("/auth/me", headers={"Authorization": f"Bearer {new_token}"})
-            assert me.status_code == 403
+        assert login.status_code == 403
+        assert 'access_token' not in login.json()
     finally:
         await _cleanup(email)
 

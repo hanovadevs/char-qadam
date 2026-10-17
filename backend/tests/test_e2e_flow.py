@@ -189,7 +189,7 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
 
         # Verify token is immediately revoked
         revoked_me = await client.get("/auth/me", headers=user_headers)
-        assert revoked_me.status_code == 403
+        assert revoked_me.status_code == 401
 
     finally:
         # --- CLEANUP ---

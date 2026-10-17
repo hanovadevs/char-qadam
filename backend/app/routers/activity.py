@@ -20,6 +20,7 @@ from app.deps import get_current_user
 from app.schemas.activity import ActivityPeriod, ActivityRangeOut, SyncIn, SyncOut
 from app.services.activity import sync_activity
 from app.services.local_date import local_today
+from app.services.device_binding import require_device_key
 
 router = APIRouter(prefix="/activity", tags=["activity"])
 
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/activity", tags=["activity"])
 )
 async def sync(
     body: SyncIn,
+    device_id: str = Depends(require_device_key),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SyncOut:
@@ -68,6 +70,8 @@ async def sync(
     settings = get_settings()
     result = await sync_activity(
         user_id=current_user.id,
+        device_id=device_id,
+        auth_version=current_user.auth_version,
         local_date=body.local_date,
         eligible_steps=body.eligible_steps,
         source=body.source,

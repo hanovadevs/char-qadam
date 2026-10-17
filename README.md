@@ -57,3 +57,6 @@ The Docker rollout and verification sequence is in [backend/DEPLOYMENT.md](backe
 
 Google's Android client/signing setup and mandatory email verification rollout
 are documented in [AUTH_SETUP.md](AUTH_SETUP.md).
+
+The one-active-account device rule and protection against earning twice from the
+same phone's steps are documented in [DEVICE_POLICY.md](DEVICE_POLICY.md).

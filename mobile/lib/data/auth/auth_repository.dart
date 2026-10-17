@@ -170,6 +170,11 @@ class AuthRepository {
   }
 
   Exception _handleDioError(DioException error) {
+    if (error.response == null &&
+        error.error is String &&
+        (error.error as String).startsWith('Device identity unavailable')) {
+      return Exception(error.error);
+    }
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError) {

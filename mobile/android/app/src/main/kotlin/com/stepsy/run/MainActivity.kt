@@ -8,6 +8,7 @@ import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import java.time.LocalDate
+import android.provider.Settings
 
 // Must extend FlutterFragmentActivity (not FlutterActivity) so the `health`
 // plugin can register its Health Connect permission ActivityResultLauncher.
@@ -17,6 +18,15 @@ import java.time.LocalDate
 class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "stepsy/device_identity").setMethodCallHandler { call, result ->
+            if (call.method != "fingerprint") {
+                result.notImplemented()
+            } else {
+                val id = DeviceIdentity.fingerprint(Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
+                if (id == null) result.error("DEVICE_ID_UNAVAILABLE", "Device identity is unavailable", null)
+                else result.success(id)
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "stepsy/step_tracking").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {

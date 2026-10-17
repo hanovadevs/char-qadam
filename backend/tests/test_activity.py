@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from tests.auth_helpers import register_verified
 
+from tests.auth_helpers import auth_headers
+
 import uuid
 from datetime import date
 
@@ -59,7 +61,7 @@ async def _register_and_token(client: AsyncClient, email: str) -> str:
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 # ---------------------------------------------------------------------------

@@ -28,10 +28,12 @@ Updated 2026-10-17. This replaces the old GPS/MongoDB scaffold requirements.
 | AUTH-2 | Recovery credentials go only to the registered inbox; reset tokens expire, work once, and revoke older sessions. | Integration regressions plus actual inbox delivery, reset, replay rejection and old-session revocation on the live API. |
 | AUTH-3 | Email/password accounts must prove mailbox access before receiving API access; emailed codes expire, work once and resist guessing/resend abuse. | Verification/session/concurrency regressions, app verification screen tests and live inbox/code/gate checks passed. |
 | AUTH-4 | Google sign-in must work with the actual Android package/signing certificate and bind the permanent Google identity. | New Cloud client configured; owner confirmed Redmi sign-in, live exchange returned 200. Release/Play signing registration remains required. See AUTH_SETUP.md. |
+| AUTH-5 | A device has one active account until that account is deactivated; logout and suspension do not release it. Enforce this on the API for email and Google access. | Device binding, generation checks and competing-sign-in/verification regressions; see DEVICE_POLICY.md. |
 | PRIV-1 | Never show one account's cached wallet, points, or history to another account. | Account-scoped cache and delayed-401 regressions. |
 | PRIV-2 | Accurately explain collection, deactivation, retention, and erasure. | Product copy matches API behavior; a complete erasure/retention process is still required. |
 | POINTS-1 | Only the API calculates awards, using configured conversion and cap; concurrent and repeated daily syncs cannot double-mint points. | PostgreSQL first-sync race and cumulative-award tests. |
 | POINTS-2 | Daily windows follow the user's IANA timezone, defaulting to Asia/Karachi. | Test at 20:00 UTC / 01:00 Pakistan. |
+| POINTS-3 | Device steps already consumed cannot earn points again after account replacement; keep wallets private and preserve historical credits. | Transfer/replay/cap/deactivation-race and legacy-credit regressions. |
 | REWARD-1 | Only active, in-date, in-stock offers from active partners can be issued; balances and inventory update atomically. | Backend offer/stock/balance tests. |
 | REWARD-2 | A store can validate/redeem only its own vouchers; a voucher can be consumed once. | Cross-store and concurrent redemption regressions. |
 | REWARD-3 | Newly issued vouchers and updated balances appear without restarting the app. | Wallet/points providers invalidated after issuance; physical flow pending. |

@@ -34,6 +34,7 @@ from app.db.models import (
     Partner,
     PartnerStatus,
     User,
+    UserStatus,
     Voucher,
     VoucherStatus,
     RedemptionRequest,
@@ -106,10 +107,13 @@ async def redeem_offer(
     cipher = _receipt_cipher(settings) if request_key else None
 
     # 1. Lock user row — serialises concurrent redeems for the same user
+    authenticated_version = user.auth_version
     locked_user = await session.execute(
-        select(User).where(User.id == user.id).with_for_update()
+        select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True)
     )
-    locked_user.scalar_one()  # raises if somehow missing
+    user = locked_user.scalar_one()
+    if user.status != UserStatus.ACTIVE or user.auth_version != authenticated_version:
+        raise HTTPException(401, 'Account access changed. Please sign in again.')
 
     if request_key:
         receipt = (await session.execute(select(RedemptionRequest).where(

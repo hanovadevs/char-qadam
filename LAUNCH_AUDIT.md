@@ -156,6 +156,24 @@ deployment checks are recorded separately from local test results.
 
 ## Release gates and unfinished capabilities
 
+### Device account and repeated-step protection
+
+The owner reproduced the same phone steps in two accounts with separate wallets.
+The new batch enforces one active account per app-scoped Android device, including
+Google/email sign-in, verification and protected APIs. Logout and suspension
+retain the binding; deactivation releases it and revokes sessions. Account wallets
+are kept separate. Independent device-day consumption survives account changes,
+preventing the same physical total from earning points again. Legacy credits
+seed consumption without granting new points or changing historical rewards.
+
+Local checks: **124 backend tests passed** on a fresh database through migrations
+0001-0008; **53 Flutter tests**, clean analysis, **10 native tests** and the debug
+APK build (44.7 seconds) passed. Coverage includes competing first claims,
+verification races, copied/legacy tokens, transfer, daily caps, wallet isolation,
+legacy credit seeding and deactivation/sync races. See
+[DEVICE_POLICY.md](DEVICE_POLICY.md) for behavior, coordinated rollout and the
+limits of a client-supplied identifier versus hardware attestation.
+
 ### Email verification and Google follow-up
 
 The owner requires mandatory email verification and reported Google

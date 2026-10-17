@@ -141,6 +141,25 @@ class Device(Base):
     user: Mapped[User] = relationship(back_populates="devices")
 
 
+class DeviceBinding(Base):
+    """App-scoped Android identity. Survives account deactivation/deletion."""
+    __tablename__ = 'device_bindings'
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default='0')
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class DeviceActivityDaily(Base):
+    """Consumed physical daily total; never reset when an account is changed."""
+    __tablename__ = 'device_activity_daily'
+
+    device_id: Mapped[str] = mapped_column(ForeignKey('device_bindings.id', ondelete='RESTRICT'), primary_key=True)
+    local_date: Mapped[str] = mapped_column(String(10), primary_key=True)
+    eligible_steps: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default='0')
+
+
 class ActivityDaily(Base):
     """One normalized row per user per local calendar day.
 

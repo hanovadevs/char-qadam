@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qadam/core/services/cache_service.dart';
 import 'package:qadam/data/api/api_client.dart';
+import 'package:qadam/data/auth/device_identity.dart';
 import 'package:qadam/data/auth/token_storage.dart';
 import 'package:qadam/data/models/offer_models.dart';
 import 'package:qadam/data/rewards/redemption_journal.dart';
@@ -186,7 +187,10 @@ void main() {
   test(
     'timeout retry after restart sends the same ID and price; success waits for acknowledgement',
     () async {
-      final api = ApiClient(tokenStorage: NoToken());
+      final api = ApiClient(
+        tokenStorage: NoToken(),
+        deviceIdentity: DeviceIdentity(loader: () async => 'a' * 64),
+      );
       final adapter = PurchaseAdapter();
       api.dio.httpClientAdapter = adapter;
       RewardsRepository repository() => RewardsRepository(
@@ -217,7 +221,10 @@ void main() {
     test(
       '$status response ${status == 402 ? 'clears rejected' : 'retains uncertain'} purchase',
       () async {
-        final api = ApiClient(tokenStorage: NoToken());
+        final api = ApiClient(
+          tokenStorage: NoToken(),
+          deviceIdentity: DeviceIdentity(loader: () async => 'a' * 64),
+        );
         api.dio.httpClientAdapter = PurchaseAdapter()
           ..timeout = false
           ..failureStatus = status;
