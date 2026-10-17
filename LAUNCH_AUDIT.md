@@ -49,33 +49,46 @@ commercially sustainable; confirmed partner inventory was not supplied.
   production/cap values. Corrected deactivation copy to match retained records.
 - Updated vulnerable admin router/build dependencies, committed the Flutter lock
   file, and stopped tracking generated HTML/JS/build reports.
+- Corrected the optional API-hosted admin portal's repository path and covered
+  both bundled portal/assets and API-only deployments with route checks.
 
 These changes do not certify physical sensor accuracy or a production deployment.
 
 ## Checks and evidence
 
-- Backend: **88 tests passed** on isolated PostgreSQL with migrations 0001-0004;
+- Backend: **90 tests passed** on isolated PostgreSQL with migrations 0001-0004;
   includes reset replay/session revocation, concurrent first syncs, cross-store
   rejection, inactive-store issuance, and inventory validation.
 - Flutter: **34 tests passed** and **analysis reported no issues** after final
   tracking, session, onboarding, and deactivation-copy changes.
 - Android: debug APK build passed; **7 native counter tests passed** (zero
   failures/errors), covering reboot, midnight, overlap, and stale/duplicate events.
-  The final incremental APK rebuild also passed.
+  The final incremental APK rebuild also passed (37.4 seconds).
 - Admin: Vite 8.3.4 production build passed; npm audit reported zero vulnerabilities.
 - Fresh migration 0001-0004 provisioning is exercised by the full backend suite;
   migrations rather than ORM create_all now define the test schema.
-- Live read-only `/health`: service reports `ok`, environment `production`.
-  The checked changes have not been deployed to that host in this session.
+- Live read-only checks: `/health` reports `ok` / `production`, but the sync
+  schema lacks daily points, `/admin/config` returns 404, and unauthenticated
+  `/admin/auth/me` returns 200. This confirms the VPS still runs the old API.
+  The checked changes have not been deployed there; deployment access/workflow
+  is confirmed to use Docker; the VPS connection and project directory were
+  requested from the owner because only local Docker contexts are configured here.
 - Browser UI automation could not run: no browsers were exposed by the session.
 - CI now runs API migrations/tests, Flutter analysis/tests, Android build/native
   tests, and admin build/audit on main pushes and pull requests. The workflow is
-  newly added; a green GitHub run is a separate verification from local success.
-- Redmi Note 11 (2201117TG, Android 13 / API 33) connected over USB. First install
-  returned INSTALL_FAILED_USER_RESTRICTED; after the owner approved the phone
-  prompt, the device disconnected before retry. The new APK is not installed or
-  startup-verified yet. Physical accuracy/reboot/battery and real OAuth/email
-  acceptance remain unverified.
+  newly added. On run 39030447871, backend and admin jobs passed; Android
+  analysis/tests passed, but the APK build exhausted the hosted runner's disk.
+  The workflow now removes unused hosted .NET/Haskell/CodeQL toolchains before
+  building; the corrected run is pending.
+- Redmi Note 11 (2201117TG, Android 13 / API 33): APK installed successfully after
+  MIUI approval/reconnection. The app process remained alive, 42 frames were
+  recorded, and the captured error-level startup log contained no fatal error.
+- Product-owner physical smoke: **63 steps recorded; no step increments while
+  still**. This is one user-reported sanity check, not the full accuracy benchmark.
+  The owner also reported that the locked-screen walk counted very well; exact
+  before/after values and a reload-stability result were not supplied.
+  Restart/midnight/battery trials and real OAuth/email checks remain open. The
+  phone was disconnected after installation for manual testing.
 
 ## Release gates and unfinished capabilities
 
