@@ -9,7 +9,7 @@ Reward recovery follow-up `769eff0` is also deployed, with migrations through
 `0006`; its fresh backup/restore evidence and private key backup are under
 `/root/stepsy-rollouts/20261017-redemption`.
 
-Current auth deployment: `c01f65e` is live with migration `0007`, the owner's new
+Auth rollout: `c01f65e` was deployed with migration `0007`, the owner's new
 Google project and Hostinger sender `contact@hanovadevs.com`. The matching APK is
 installed on the Redmi and saved steps remained 233. The owner confirmed Google
 sign-in and the live API returned 200. Actual verification and password-reset
@@ -34,11 +34,27 @@ ownership proof before receiving API access; old unverified sessions are rejecte
 Do not roll back to older code that grants unverified access, or erase ownership
 records by downgrading the schema.
 
-The device-account batch adds migration `0008`; deploy it with the matching APK.
-It requires the device header and device-bound user tokens, so old clients need
-the update and existing users sign in again to choose their phone's account.
+Current device-account deployment: `440f981` is live with migration `0008` and
+the matching APK installed on the Redmi without clearing data (233 saved steps
+preserved). The owner confirmed primary login, rejection of a different Google
+account after logout, and return to the original account with rewards intact.
+It requires the device header and device-bound user tokens, so older clients
+need the update and existing users sign in again to choose their phone's account.
 No account balances or vouchers are merged or deleted. Device consumption
 history survives deactivation. See [DEVICE_POLICY.md](../DEVICE_POLICY.md).
+
+Root-only rollout evidence is under `/root/stepsy-rollouts/20261017-device`.
+The 41,230-byte pre-migration public-schema archive restored successfully at
+0007 in an isolated PostgreSQL 17 container before activation. The rollback image
+is `stepsy-backend:before-device-20261017`; private environment contents were
+preserved and all eight other app containers retained their IDs/start times.
+Post-rollout checks confirmed 0008 and RLS on all 12 application tables (excluding
+the migration bookkeeping table). Live disposable-account probes passed device
+conflicts, deactivation/transfer, zero points for replayed 1,000 steps, one point
+for the next 100, retained original credits, legacy/copied-token rejection and
+actual email verification. All temporary test users were removed. Backend,
+admin and Android CI passed in
+[39048543060](https://github.com/hanovadevs/char-qadam/actions/runs/39048543060).
 See [AUTH_SETUP.md](../AUTH_SETUP.md) for the coordinated API/APK rollout and
 Google error-10 package/signing-certificate configuration.
 

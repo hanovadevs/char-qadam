@@ -76,3 +76,20 @@ transfer. The physical Redmi check signs into the intended account, logs out,
 rejects a different account, and successfully returns to the intended account.
 Use disposable development accounts for deactivation tests, preserving real
 customer accounts and vouchers.
+
+## Verified rollout, 2026-10-17
+
+Deployed `440f981` and migration 0008 to the Stepsy container only after a
+successful isolated restore of its pre-migration backup. All 12 application
+tables retain RLS. Live HTTPS probes with disposable accounts verified blocked
+switching, session/device checks, release on deactivation, retained original
+credits, and zero points for the replacement account's first 1,000 already
+rewarded steps followed by one point at 1,100. Real mailbox verification also
+passed with the device binding. Temporary records were removed.
+
+The matching APK was installed on the Redmi Note 11 with 233 saved steps
+preserved. The owner confirmed primary sign-in, rejection of another Google
+account after logout, and return to the original account with its points and
+vouchers intact. Real account deactivation was not needed for this phone test.
+Backend, admin and Android checks passed in
+[GitHub Actions](https://github.com/hanovadevs/char-qadam/actions/runs/39048543060).

@@ -174,6 +174,21 @@ legacy credit seeding and deactivation/sync races. See
 [DEVICE_POLICY.md](DEVICE_POLICY.md) for behavior, coordinated rollout and the
 limits of a client-supplied identifier versus hardware attestation.
 
+Deployed `440f981` with migration 0008 after restoring the 41,230-byte pre-rollout
+backup in an isolated PostgreSQL 17 container. All 12 application tables retain
+RLS. The Stepsy container is healthy; private configuration and all eight other
+app containers were preserved. Live disposable-account checks passed blocked
+switching, deactivation/transfer, legacy/copied-token rejection, original credit
+retention and real email verification. Replaying the same 1,000 steps on the
+replacement account earned zero points; reaching 1,100 earned one. Temporary
+test records were removed.
+
+Installed the matching APK on the Redmi without clearing data (233 steps
+preserved). The owner confirmed original-account login, rejection of a different
+Google account after logout, and successful return with points/vouchers intact.
+Backend, admin and Android CI passed in
+[39048543060](https://github.com/hanovadevs/char-qadam/actions/runs/39048543060).
+
 ### Email verification and Google follow-up
 
 The owner requires mandatory email verification and reported Google
@@ -246,8 +261,11 @@ inbox deliverability remain release checks.
    do not change the clock on an account with real rewards to fabricate history.
 8. Earn a test reward, view it in the already-open wallet, validate at its own
    store, redeem once, reject replay and another store, then refresh the wallet.
-9. Log out and sign into another account. The previous wallet/balance/history
-   must not appear and tracking must stop at logout until enabled again.
+9. Log out and try another account: the phone ownership conflict must block it.
+   Return to the original account and verify its wallet/balance/history remain
+   intact. Tracking must stop at logout until enabled again. Use disposable
+   accounts for deactivation/transfer tests; rewarded device steps must not earn
+   points a second time after transfer.
 
 For local USB development: run API on port 8000, run
 `adb reverse tcp:8000 tcp:8000`, then from `mobile/` run
@@ -283,6 +301,8 @@ Use the isolated test database and development accounts for full redemption test
   mobile/admin defaults, reproducible Nginx config and successful APK rebuild.
 - `769eff0`: retry-safe reward issuance/recovery, confirmed-price protection,
   encrypted receipts, safe collision retries and private Data API tables.
+- `440f981`: one active account per phone, device-bound sessions, persistent
+  device-day reward consumption, coordinated API/APK rollout and regressions.
 
 The debug testing artifact is `mobile/build/app/outputs/flutter-apk/app-debug.apk`.
 It now defaults to `https://api.stepsyapp.com` unless overridden by API_BASE_URL.
