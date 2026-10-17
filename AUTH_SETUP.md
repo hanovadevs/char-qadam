@@ -4,7 +4,7 @@
 
 The owner reported `ApiException: 10` on the Redmi. This indicates an Android
 OAuth configuration problem, before the backend token exchange. The installed
-local debug build has:
+local debug build now signs in successfully with the owner's new Cloud project:
 
 | Setting | Value |
 |---|---|
@@ -58,7 +58,22 @@ Initial setup using `team@hanovadevs.com` was rejected. The owner corrected the
 mailbox to `contact@hanovadevs.com`; authenticated SMTP over SSL now passes.
 The owner also supplied the new Google web client ID shown above. The matching
 APK passed analysis, all 47 Flutter tests and its debug build (39.6 seconds).
-The coordinated API rollout and physical Google acceptance are pending below.
+It is installed on the Redmi; saved steps remained 233 before and after the
+update. The owner confirmed Google sign-in continues, the live API returned 200
+for `/auth/google`, and the foreground step-tracking service is running.
+
+The API at `https://api.stepsyapp.com` is deployed from `c01f65e` with migration
+0007. A mixed-case legacy `Google_Client_ID` entry was removed: Pydantic resolves
+settings case-insensitively, so retaining it alongside `GOOGLE_CLIENT_ID` selected
+the old audience. Keep a single canonical key and verify the actual runtime value.
+
+The live HTTPS registration flow delivered its verification email to the real
+inbox. Unverified access, incorrect codes, resend cooldown and replay were
+rejected; the correct code enabled verified sign-in. Password recovery also
+delivered its mail, worked once and revoked the previous session. The temporary
+test account was removed after these checks; passwords, codes and tokens were
+not printed or committed. External inbox deliverability and the production Play
+signing identity remain release acceptance checks.
 
 Reference: [Hostinger mail configuration](https://support.hostinger.com/en/articles/1575756-how-to-get-email-account-configuration-details-for-hostinger-email).
 
@@ -100,6 +115,14 @@ delivery, wrong/expired code and verified-login smoke checks. Install the new AP
 using `adb install -r`, preserving app data. Confirm Google on-device after Cloud
 client configuration. Unit/mock mail tests do not establish inbox delivery or
 Google OAuth acceptance.
+
+The 2026-10-17 rollout backup is under `/root/stepsy-rollouts/20261017-auth`
+(root-only). The 40,189-byte public-schema archive restored all 11 tables at 0006
+in an isolated PostgreSQL 17 container before migration. Production is now at
+0007 and all 11 tables retain RLS. Existing database/JWT/admin/receipt secrets
+were preserved. All eight other app containers retained their IDs/start times.
+CI [39045527202](https://github.com/hanovadevs/char-qadam/actions/runs/39045527202)
+passed for the deployed source.
 
 Authentication references: [Google ID token verification and mailbox authority](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token),
 [OWASP email verification](https://cheatsheetseries.owasp.org/cheatsheets/Email_Validation_and_Verification_Cheat_Sheet.html).

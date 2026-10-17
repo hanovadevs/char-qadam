@@ -7,18 +7,32 @@ The initial checked application source was commit `ccfe58c`. Follow-up commit
 `1fc687b` added HTTPS defaults, the Nginx site and private Docker ingress.
 Reward recovery follow-up `769eff0` is also deployed, with migrations through
 `0006`; its fresh backup/restore evidence and private key backup are under
-`/root/stepsy-rollouts/20261017-redemption`. The updated recovery APK is built;
-install it on the Redmi when reconnected. Existing sessions were preserved.
+`/root/stepsy-rollouts/20261017-redemption`.
+
+Current auth deployment: `c01f65e` is live with migration `0007`, the owner's new
+Google project and Hostinger sender `contact@hanovadevs.com`. The matching APK is
+installed on the Redmi and saved steps remained 233. The owner confirmed Google
+sign-in and the live API returned 200. Actual verification and password-reset
+emails reached the test inbox; code/replay/session controls passed. The temporary
+test account was removed. The foreground tracking service is running.
+
+Its root-only backup/config/previous image evidence is under
+`/root/stepsy-rollouts/20261017-auth`. The public archive (40,189 bytes) restored
+all 11 tables at 0006 in an isolated PostgreSQL 17 container before migration.
+All 11 production tables retain RLS. The existing database/JWT/admin/receipt
+secrets were preserved; all eight other app containers retained their IDs and
+start times. The prior image is `stepsy-backend:before-auth-20261017`.
 
 Rollback assets and a successfully restored public-schema backup are under
 `/root/stepsy-rollouts/20261017-audit` (restricted to root). The admin credential and
 signing key were rotated in the private backend `.env`; do not copy them into chat
-or Git. The database credential still requires provider-side revocation; SMTP is
-not configured.
+or Git. The historically exposed database credential still requires provider-side
+revocation. SMTP authentication and real inbox delivery now pass.
 
-Mandatory email verification (migration `0007`) is implemented in the next
-auth batch. Deploy it after a real SMTP sender is configured and tested, since
-existing accounts must verify their mailbox and old sessions will be rejected.
+Mandatory email verification is enforced. Existing accounts need mailbox
+ownership proof before receiving API access; old unverified sessions are rejected.
+Do not roll back to older code that grants unverified access, or erase ownership
+records by downgrading the schema.
 See [AUTH_SETUP.md](../AUTH_SETUP.md) for the coordinated API/APK rollout and
 Google error-10 package/signing-certificate configuration.
 
@@ -94,7 +108,7 @@ docker compose run --rm --no-deps qadam-backend alembic current
 ```
 
 Check the existing database revision before starting the new app. The checked
-chain is `0001 -> 0002 -> 0003 -> 0004 -> 0005 -> 0006`. If the database has existing tables but no
+chain is `0001 -> 0002 -> 0003 -> 0004 -> 0005 -> 0006 -> 0007`. If the database has existing tables but no
 Alembic revision, inspect its schema before establishing a baseline. Do not stamp
 `head` or delete tables to silence a migration failure. Migration 0003 accommodates
 the older manually added merchant columns; it does not invent merchant identities.

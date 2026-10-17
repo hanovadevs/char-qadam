@@ -171,20 +171,30 @@ including actual verification/resend button interactions; analysis reported no
 issues. The final debug APK build passed (42.9 seconds). SMTP transport tests exercise
 SSL and STARTTLS authentication without real messages.
 
-The owner confirmed Hostinger sender `team@hanovadevs.com`. Encrypted SMTP
-connectivity from the Stepsy VPS passed; the supplied mailbox credential was
-rejected during authentication. The owner is checking that credential. No auth
-rollout/migration has been performed while delivery is unavailable. The owner
-also chose a new Google Cloud project; its web client ID and matching Android
-package/certificate registration are pending. [AUTH_SETUP.md](AUTH_SETUP.md)
-contains the exact public fingerprints and rollout procedure. These local tests
-do not establish actual inbox delivery or successful Google sign-in on the Redmi.
+The owner corrected the Hostinger mailbox to `contact@hanovadevs.com` and supplied
+a new Google Cloud web client. Deployed `c01f65e` and migration 0007 after the
+40,189-byte Stepsy backup restored all 11 tables at 0006 in an isolated PostgreSQL
+17 container. Production retains RLS on all 11 tables. Removed a legacy mixed-case
+Google environment key that overrode the new canonical setting; verified runtime
+audience and SMTP authentication before activation.
+
+Actual verification and reset messages reached the real test inbox through the
+live HTTPS API. Unverified access, wrong codes, cooldown/replay rejection,
+verified login and reset session revocation passed; the temporary test account
+was removed. Installed the new APK without clearing data: the saved count was
+233 before and after. The owner confirmed Google login continues; its live API
+exchange returned 200, the app is running and its foreground step service resumed.
+All eight other app containers retained their IDs/start times. CI
+[39045527202](https://github.com/hanovadevs/char-qadam/actions/runs/39045527202)
+passed. [AUTH_SETUP.md](AUTH_SETUP.md) records public fingerprints, sender and
+rollout details. Production Play signing/Google audience publication and external
+inbox deliverability remain release checks.
 
 | Priority | Gate | Concrete remaining work |
 |---|---|---|
 | P0 | Rotate exposed database credential | The API signing key/admin password have been rotated, and old JWT rejection is verified. The historically exposed database credential still requires provider-side revocation; Git history contains it. Never paste replacements into source. |
 | P0 | Physical Redmi accuracy | Idle and locked-screen smoke tests passed by owner report. Complete counted 500-step/restart/midnight trials. If raw sensor readings rise while stationary, diagnose those readings; no arbitrary step multiplier was introduced. |
-| P0 | Real auth/recovery configuration | Server Google audience is configured; verify real device OAuth and signing fingerprints. Configure SMTP and verify delivery and reset with a real test inbox. Recovery currently reports unavailable. |
+| P0 | Public auth distribution | Debug-device Google login and live verification/reset inbox flows passed. Register production/Play signing certificates, publish the Google audience/required branding and verify external inbox delivery before public launch. |
 | P0 | Real partner rewards | Confirm contracts, coverage, stock, discount terms, funding, return/refund/cancellation handling and merchant training before claiming nationwide redemption availability. |
 | P0 | Abuse resistance | The API still accepts client-reported step totals. Caps, monotonic updates and permission checks are not device attestation; assess Play Integrity, provenance checks, replay/audit controls and rollout limits. |
 | P0 | Erasure and privacy | Deactivation revokes access but retains rows. Implement a reviewed erasure/anonymization and retention process, publish the policy and account-deletion route, and complete Play disclosures before release. |
