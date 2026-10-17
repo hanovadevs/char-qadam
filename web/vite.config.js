@@ -13,7 +13,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/admin': {
-        target: 'http://72.62.250.191',
+        target: 'https://api.stepsyapp.com',
         changeOrigin: true,
       },
     },
