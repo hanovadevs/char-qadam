@@ -174,7 +174,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Delete account',
+              'Deactivate account',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -184,7 +184,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Are you sure you want to delete your account? Your step history, points balance, and active vouchers will be permanently removed.',
+              'Your account will be deactivated and you will be signed out. Your activity and reward records are retained.',
               style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
             ),
             const SizedBox(height: 24),
@@ -230,7 +230,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         if (mounted) setState(() => _isUpdating = false);
                       }
                     },
-                    child: const Text('Delete account'),
+                    child: const Text('Deactivate account'),
                   ),
                 ),
               ],
@@ -448,7 +448,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const Divider(height: 1, color: AppTheme.hairline),
                 _buildSettingRow(
                   icon: CupertinoIcons.trash,
-                  title: 'Delete account',
+                  title: 'Deactivate account',
                   titleColor: AppTheme.destructive,
                   iconColor: AppTheme.destructive,
                   onTap: () => _confirmDeleteAccount(context),

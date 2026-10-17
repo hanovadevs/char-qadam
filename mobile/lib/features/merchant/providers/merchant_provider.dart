@@ -47,30 +47,35 @@ class MerchantState {
       partnerApiKey: partnerApiKey ?? this.partnerApiKey,
       storeId: storeId ?? this.storeId,
       partnerInfo: clearPartnerInfo ? null : (partnerInfo ?? this.partnerInfo),
-      activeValidation: clearValidation ? null : (activeValidation ?? this.activeValidation),
+      activeValidation: clearValidation
+          ? null
+          : (activeValidation ?? this.activeValidation),
       lastRedemption: lastRedemption ?? this.lastRedemption,
       history: history ?? this.history,
       isLoading: isLoading ?? this.isLoading,
       isRedeeming: isRedeeming ?? this.isRedeeming,
       errorMessage: clearMessages ? null : (errorMessage ?? this.errorMessage),
-      successMessage: clearMessages ? null : (successMessage ?? this.successMessage),
+      successMessage: clearMessages
+          ? null
+          : (successMessage ?? this.successMessage),
     );
   }
 }
 
-final merchantProvider =
-    StateNotifierProvider<MerchantNotifier, MerchantState>((ref) {
-  final repository = ref.watch(merchantRepositoryProvider);
-  final authState = ref.watch(authStateProvider);
-  return MerchantNotifier(repository: repository, authState: authState);
-});
+final merchantProvider = StateNotifierProvider<MerchantNotifier, MerchantState>(
+  (ref) {
+    final repository = ref.watch(merchantRepositoryProvider);
+    final authState = ref.watch(authStateProvider);
+    return MerchantNotifier(repository: repository, authState: authState);
+  },
+);
 
 class MerchantNotifier extends StateNotifier<MerchantState> {
   final MerchantRepository repository;
   final AuthState authState;
 
   MerchantNotifier({required this.repository, required this.authState})
-      : super(const MerchantState()) {
+    : super(const MerchantState()) {
     initMerchantSession();
   }
 
@@ -88,6 +93,7 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
     }
 
     await loadPartnerInfo();
+    if (!mounted) return;
     await loadHistory();
   }
 
@@ -95,8 +101,10 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final info = await repository.getPartnerInfo();
+      if (!mounted) return;
       state = state.copyWith(partnerInfo: info, isLoading: false);
     } catch (e) {
+      if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }
@@ -113,24 +121,20 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
       final validation = await repository.validateVoucher(
         codeOrToken: codeOrToken,
       );
-      state = state.copyWith(
-        isLoading: false,
-        activeValidation: validation,
-      );
+      if (!mounted) return false;
+      state = state.copyWith(isLoading: false, activeValidation: validation);
       return true;
     } catch (e) {
+      if (!mounted) return false;
       final msg = e.toString().replaceAll('Exception: ', '');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: msg,
-      );
+      state = state.copyWith(isLoading: false, errorMessage: msg);
       return false;
     }
   }
 
   Future<bool> confirmRedeem({String? orderReference}) async {
     final val = state.activeValidation;
-    if (val == null) return false;
+    if (val == null || state.isRedeeming) return false;
 
     state = state.copyWith(isRedeeming: true, clearMessages: true);
 
@@ -141,20 +145,20 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
         orderReference: orderReference,
       );
 
+      if (!mounted) return true;
       state = state.copyWith(
         isRedeeming: false,
         lastRedemption: result,
-        successMessage: 'VOUCHER REDEEMED • DISCOUNT ${val.discountDisplay} APPLIED',
+        successMessage:
+            'VOUCHER REDEEMED • DISCOUNT ${val.discountDisplay} APPLIED',
         clearValidation: true,
       );
       await loadHistory();
       return true;
     } catch (e) {
+      if (!mounted) return false;
       final msg = e.toString().replaceAll('Exception: ', '');
-      state = state.copyWith(
-        isRedeeming: false,
-        errorMessage: msg,
-      );
+      state = state.copyWith(isRedeeming: false, errorMessage: msg);
       return false;
     }
   }
@@ -162,6 +166,7 @@ class MerchantNotifier extends StateNotifier<MerchantState> {
   Future<void> loadHistory() async {
     try {
       final history = await repository.getRedemptions();
+      if (!mounted) return;
       state = state.copyWith(history: history);
     } catch (_) {}
   }

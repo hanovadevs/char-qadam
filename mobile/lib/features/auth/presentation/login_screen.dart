@@ -30,7 +30,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authStateProvider.notifier).login(
+    final success = await ref
+        .read(authStateProvider.notifier)
+        .login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -41,10 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final error = ref.read(authStateProvider).errorMessage;
       if (error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: AppTheme.destructive,
-          ),
+          SnackBar(content: Text(error), backgroundColor: AppTheme.destructive),
         );
       }
     }
@@ -64,20 +63,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       final googleAuth = await googleUser.authentication;
       final token = googleAuth.idToken;
-      final idToken = (token != null && token.isNotEmpty)
-          ? token
-          : 'mock_google_token:${googleUser.email}';
+      if (token == null || token.isEmpty) {
+        throw Exception('Google did not return an ID token. Please try again.');
+      }
+      if (!mounted) return;
 
-      await ref.read(authStateProvider.notifier).loginWithGoogle(
-            idToken: idToken,
+      final success = await ref
+          .read(authStateProvider.notifier)
+          .loginWithGoogle(
+            idToken: token,
             displayName: googleUser.displayName,
             photoUrl: googleUser.photoUrl,
           );
+      if (!success && mounted) {
+        throw Exception(
+          ref.read(authStateProvider).errorMessage ?? 'Google sign-in failed',
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}'),
+          content: Text(
+            'Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}',
+          ),
           backgroundColor: AppTheme.destructive,
         ),
       );
@@ -93,7 +102,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 32.0,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
@@ -115,18 +127,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           height: 54,
                           decoration: BoxDecoration(
                             color: AppTheme.surfaceMuted,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusMd,
+                            ),
                             border: Border.all(color: AppTheme.hairline),
                           ),
                           padding: const EdgeInsets.all(8),
                           child: Image.asset(
                             'assets/icon/Stepsy_Icon1.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => const Icon(
-                              Icons.directions_walk,
-                              size: 28,
-                              color: AppTheme.accentSolid,
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.directions_walk,
+                                  size: 28,
+                                  color: AppTheme.accentSolid,
+                                ),
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -160,16 +175,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       decoration: BoxDecoration(
                         color: AppTheme.surface,
                         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                        border: Border.all(color: AppTheme.destructive.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: AppTheme.destructive.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(CupertinoIcons.exclamationmark_circle, color: AppTheme.destructive, size: 18),
+                          const Icon(
+                            CupertinoIcons.exclamationmark_circle,
+                            color: AppTheme.destructive,
+                            size: 18,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               authState.errorMessage!,
-                              style: const TextStyle(color: AppTheme.destructive, fontSize: 13, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                color: AppTheme.destructive,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -209,7 +234,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter your email';
                             }
-                            final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                            final emailRegex = RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                            );
                             if (!emailRegex.hasMatch(value.trim())) {
                               return 'Please enter a valid email address';
                             }
@@ -252,7 +279,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             hintText: 'Enter your password',
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                                _obscurePassword
+                                    ? CupertinoIcons.eye_slash
+                                    : CupertinoIcons.eye,
                                 size: 18,
                                 color: AppTheme.inkSecondary,
                               ),
@@ -282,7 +311,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     height: 18,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.surface),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppTheme.surface,
+                                      ),
                                     ),
                                   )
                                 : const Text('Sign in'),
@@ -297,7 +328,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               child: Text(
                                 'or',
-                                style: TextStyle(fontSize: 13, color: AppTheme.inkTertiary),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.inkTertiary,
+                                ),
                               ),
                             ),
                             Expanded(child: Divider(color: AppTheme.hairline)),
@@ -308,7 +342,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
-                            onPressed: authState.isLoading ? null : _handleGoogleSignIn,
+                            onPressed: authState.isLoading
+                                ? null
+                                : _handleGoogleSignIn,
                             child: const Text('Continue with Google'),
                           ),
                         ),
@@ -322,7 +358,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       const Text(
                         "Don't have an account? ",
-                        style: TextStyle(color: AppTheme.inkSecondary, fontSize: 14),
+                        style: TextStyle(
+                          color: AppTheme.inkSecondary,
+                          fontSize: 14,
+                        ),
                       ),
                       TextButton(
                         onPressed: () => context.go('/register'),
@@ -364,14 +403,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         height: 36,
                         fit: BoxFit.contain,
                         filterQuality: FilterQuality.high,
-                        errorBuilder: (context, error, stackTrace) => const Text(
-                          'Hanova Devs',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.inkPrimary,
-                          ),
-                        ),
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Text(
+                              'Hanova Devs',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.inkPrimary,
+                              ),
+                            ),
                       ),
                     ],
                   ),

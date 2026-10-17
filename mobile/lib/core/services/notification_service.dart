@@ -2,22 +2,25 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
   static const String _channelId = 'stepsy_channel';
   static const String _channelName = 'Stepsy Movement & Rewards';
-  static const String _channelDesc = 'Daily step tracking reminders and voucher expiry notices';
+  static const String _channelDesc =
+      'Daily step tracking reminders and voucher expiry notices';
 
-  static const AndroidNotificationDetails _androidDetails = AndroidNotificationDetails(
-    _channelId,
-    _channelName,
-    channelDescription: _channelDesc,
-    importance: Importance.high,
-    priority: Priority.high,
-    showWhen: true,
-    icon: '@mipmap/ic_launcher',
-  );
+  static const AndroidNotificationDetails _androidDetails =
+      AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDesc,
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        icon: '@mipmap/ic_launcher',
+      );
 
   static const NotificationDetails _notificationDetails = NotificationDetails(
     android: _androidDetails,
@@ -33,7 +36,9 @@ class NotificationService {
     if (_initialized) return;
 
     try {
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
       const darwinSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
@@ -63,13 +68,17 @@ class NotificationService {
     if (kIsWeb) return true;
     try {
       if (defaultTargetPlatform == TargetPlatform.android) {
-        final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+        final androidImpl = _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
         final granted = await androidImpl?.requestNotificationsPermission();
         return granted ?? false;
       } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final iosImpl = _plugin.resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
+        final iosImpl = _plugin
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >();
         final granted = await iosImpl?.requestPermissions(
           alert: true,
           badge: true,
@@ -84,38 +93,6 @@ class NotificationService {
     }
   }
 
-  /// Display an ongoing 24/7 background step tracking notification (keeps pedometer active)
-  static Future<void> updateOngoingStepNotification({
-    required int stepsToday,
-    required int dailyGoal,
-  }) async {
-    if (kIsWeb) return;
-    try {
-      await initialize();
-      const androidOngoingDetails = AndroidNotificationDetails(
-        'stepsy_tracking_channel',
-        'Stepsy 24/7 Step Tracking',
-        channelDescription: 'Ongoing background pedometer tracking service',
-        importance: Importance.low,
-        priority: Priority.low,
-        ongoing: true,
-        autoCancel: false,
-        showWhen: false,
-        icon: '@mipmap/ic_launcher',
-      );
-      const details = NotificationDetails(android: androidOngoingDetails);
-      await _plugin.show(
-        9999,
-        'STEPSY • TRACKING STEPS',
-        '$stepsToday / $dailyGoal steps today • Earning rewards',
-        details,
-        payload: '/steps',
-      );
-    } catch (e) {
-      debugPrint('Error updating ongoing tracking notification: $e');
-    }
-  }
-
   /// Display an instant notification
   static Future<void> showNotification({
     required int id,
@@ -126,7 +103,13 @@ class NotificationService {
     if (kIsWeb) return;
     try {
       await initialize();
-      await _plugin.show(id, title, body, _notificationDetails, payload: payload);
+      await _plugin.show(
+        id,
+        title,
+        body,
+        _notificationDetails,
+        payload: payload,
+      );
     } catch (e) {
       debugPrint('Error showing notification: $e');
     }
@@ -157,7 +140,8 @@ class NotificationService {
     await showNotification(
       id: 2000 + shortCode.hashCode.abs() % 1000,
       title: 'STEPSY • VOUCHER EXPIRING SOON',
-      body: 'Your pass for $offerTitle ($shortCode) expires in $daysLeft ${daysLeft == 1 ? "day" : "days"}! Redeem at store.',
+      body:
+          'Your pass for $offerTitle ($shortCode) expires in $daysLeft ${daysLeft == 1 ? "day" : "days"}! Redeem at store.',
       payload: '/wallet',
     );
   }
@@ -170,7 +154,8 @@ class NotificationService {
     await showNotification(
       id: 3000 + shortCode.hashCode.abs() % 1000,
       title: 'STEPSY • VOUCHER READY IN WALLET',
-      body: '$offerTitle ($shortCode) pass is ready to present at store checkout.',
+      body:
+          '$offerTitle ($shortCode) pass is ready to present at store checkout.',
       payload: '/wallet',
     );
   }
@@ -184,7 +169,8 @@ class NotificationService {
     await showNotification(
       id: 4001,
       title: 'STEPSY • POINTS MINTED',
-      body: '+$pointsAwarded PTS earned from today\'s movement! Balance: $totalBalance PTS.',
+      body:
+          '+$pointsAwarded PTS earned from today\'s movement! Balance: $totalBalance PTS.',
       payload: '/points',
     );
   }

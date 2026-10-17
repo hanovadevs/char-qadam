@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/cache_service.dart';
+import '../../core/services/background_sync_service.dart';
+import '../../core/services/notification_service.dart';
+import '../activity/health_service.dart';
 import '../api/api_client.dart';
 import '../models/user_model.dart';
 import 'auth_repository.dart';
@@ -10,11 +14,7 @@ import 'token_storage.dart';
 const String _kGoogleNameKey = 'google_display_name';
 const String _kGooglePhotoKey = 'google_photo_url';
 
-enum AuthStatus {
-  initial,
-  authenticated,
-  unauthenticated,
-}
+enum AuthStatus { initial, authenticated, unauthenticated }
 
 class AuthState {
   final AuthStatus status;
@@ -105,6 +105,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Attempt to refresh the profile in the background if online
       try {
         final user = await authRepository.getMe();
+        if (!mounted || await tokenStorage.getToken() != token) return;
         await tokenStorage.saveUser(user);
         state = state.copyWith(user: user);
       } catch (_) {
@@ -122,7 +123,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login({required String email, required String password}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final token = await authRepository.login(email: email, password: password);
+      final token = await authRepository.login(
+        email: email,
+        password: password,
+      );
       await tokenStorage.saveToken(token);
       final user = await authRepository.getMe();
       await tokenStorage.saveUser(user);
@@ -250,18 +254,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    final userId = state.user?.id;
     await tokenStorage.clearAll();
     await _saveGoogleProfile(null, null); // clear cached Google profile
     state = const AuthState(
       status: AuthStatus.unauthenticated,
       isLoading: false,
     );
+    await HealthService.stopTracking();
+    await BackgroundSyncService.cancel();
+    await NotificationService.cancelAll();
+    await CacheService(userId: userId).clearAccountCache();
   }
 
   Future<(String?, String?)> _loadGoogleProfile() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return (prefs.getString(_kGoogleNameKey), prefs.getString(_kGooglePhotoKey));
+      return (
+        prefs.getString(_kGoogleNameKey),
+        prefs.getString(_kGooglePhotoKey),
+      );
     } catch (_) {
       return (null, null);
     }

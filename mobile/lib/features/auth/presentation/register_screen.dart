@@ -47,25 +47,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (googleUser == null) return; // user cancelled the picker
 
       final googleAuth = await googleUser.authentication;
-      // Prefer the verified Google ID token; fall back to the REAL signed-in
-      // email if the OAuth client doesn't return one — never a demo user.
       final token = googleAuth.idToken;
-      final idToken = (token != null && token.isNotEmpty)
-          ? token
-          : 'mock_google_token:${googleUser.email}';
+      if (token == null || token.isEmpty) {
+        throw Exception('Google did not return an ID token. Please try again.');
+      }
+      if (!mounted) return;
 
-      await ref.read(authStateProvider.notifier).loginWithGoogle(
-            idToken: idToken,
+      final success = await ref
+          .read(authStateProvider.notifier)
+          .loginWithGoogle(
+            idToken: token,
             country: _countryController.text.trim().toUpperCase(),
             timezone: _timezoneController.text.trim(),
             displayName: googleUser.displayName,
             photoUrl: googleUser.photoUrl,
           );
+      if (!success && mounted) {
+        throw Exception(
+          ref.read(authStateProvider).errorMessage ?? 'Google sign-in failed',
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}'),
+          content: Text(
+            'Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}',
+          ),
           backgroundColor: AppTheme.accentRed,
         ),
       );
@@ -75,7 +83,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authStateProvider.notifier).register(
+    final success = await ref
+        .read(authStateProvider.notifier)
+        .register(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           country: _countryController.text.trim().toUpperCase(),
@@ -88,10 +98,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final error = ref.read(authStateProvider).errorMessage;
       if (error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: AppTheme.accentRed,
-          ),
+          SnackBar(content: Text(error), backgroundColor: AppTheme.accentRed),
         );
       }
     }
@@ -114,7 +121,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 16.0,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
@@ -147,12 +157,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 16),
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppTheme.accentRed,
+                            size: 16,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               authState.errorMessage!,
-                              style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                color: AppTheme.accentRed,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -183,7 +201,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your email';
                       }
-                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                      final emailRegex = RegExp(
+                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                      );
                       if (!emailRegex.hasMatch(value.trim())) {
                         return 'Please enter a valid email address';
                       }
@@ -211,7 +231,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       hintText: 'At least 8 characters',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           size: 18,
                         ),
                         onPressed: () {
@@ -253,7 +275,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       hintText: 'Re-enter your password',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           size: 18,
                         ),
                         onPressed: () {
@@ -284,7 +308,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.white,
+                              ),
                             ),
                           )
                         : const Text('CREATE ACCOUNT'),
@@ -299,7 +325,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         padding: EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
                           'OR',
-                          style: TextStyle(fontSize: 10, fontFamily: AppTheme.monoFont, color: AppTheme.grey),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontFamily: AppTheme.monoFont,
+                            color: AppTheme.grey,
+                          ),
                         ),
                       ),
                       Expanded(child: Divider(color: AppTheme.border)),
@@ -321,7 +351,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     children: [
                       const Text(
                         'ALREADY REGISTERED?',
-                        style: TextStyle(color: AppTheme.grey, fontSize: 11, letterSpacing: 0.5),
+                        style: TextStyle(
+                          color: AppTheme.grey,
+                          fontSize: 11,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                       TextButton(
                         onPressed: () => context.go('/login'),
@@ -359,14 +393,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         height: 36,
                         fit: BoxFit.contain,
                         filterQuality: FilterQuality.high,
-                        errorBuilder: (context, error, stackTrace) => const Text(
-                          'Hanova Devs',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.black,
-                          ),
-                        ),
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Text(
+                              'Hanova Devs',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.black,
+                              ),
+                            ),
                       ),
                     ],
                   ),

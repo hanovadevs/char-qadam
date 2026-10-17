@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -7,6 +9,9 @@ import '../../../core/services/notification_service.dart';
 import '../../../data/activity/activity_repository.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../data/models/activity_models.dart';
+import '../../points/providers/points_provider.dart';
+import '../../../core/services/background_sync_service.dart';
+import '../../../data/auth/auth_state_provider.dart';
 
 class ActivityState {
   final int todaySteps;
@@ -14,6 +19,7 @@ class ActivityState {
   final int pointsEarnedToday;
   final int userBalance;
   final int dailyCap;
+  final int stepsPerPoint;
   final int currentStreakDays;
   final bool isSyncing;
   final bool hasPermission;
@@ -28,6 +34,7 @@ class ActivityState {
     this.pointsEarnedToday = 0,
     this.userBalance = 0,
     this.dailyCap = 20000,
+    this.stepsPerPoint = 100,
     this.currentStreakDays = 0,
     this.isSyncing = false,
     this.hasPermission = false,
@@ -43,6 +50,7 @@ class ActivityState {
     int? pointsEarnedToday,
     int? userBalance,
     int? dailyCap,
+    int? stepsPerPoint,
     int? currentStreakDays,
     bool? isSyncing,
     bool? hasPermission,
@@ -57,6 +65,7 @@ class ActivityState {
       pointsEarnedToday: pointsEarnedToday ?? this.pointsEarnedToday,
       userBalance: userBalance ?? this.userBalance,
       dailyCap: dailyCap ?? this.dailyCap,
+      stepsPerPoint: stepsPerPoint ?? this.stepsPerPoint,
       currentStreakDays: currentStreakDays ?? this.currentStreakDays,
       isSyncing: isSyncing ?? this.isSyncing,
       hasPermission: hasPermission ?? this.hasPermission,
@@ -68,93 +77,144 @@ class ActivityState {
   }
 }
 
-final activityProvider =
-    StateNotifierProvider<ActivityNotifier, ActivityState>((ref) {
-  final healthService = ref.watch(healthServiceProvider);
-  final activityRepository = ref.watch(activityRepositoryProvider);
-  return ActivityNotifier(
-    healthService: healthService,
-    activityRepository: activityRepository,
-  );
-});
+final activityProvider = StateNotifierProvider<ActivityNotifier, ActivityState>(
+  (ref) {
+    final healthService = ref.watch(healthServiceProvider);
+    final activityRepository = ref.watch(activityRepositoryProvider);
+    final authenticated = ref.watch(
+      authStateProvider.select(
+        (state) => state.status == AuthStatus.authenticated,
+      ),
+    );
+    if (authenticated) unawaited(BackgroundSyncService.initialize());
+    return ActivityNotifier(
+      healthService: healthService,
+      activityRepository: activityRepository,
+      onPointsChanged: () => ref.invalidate(pointsProvider),
+      autoStart: authenticated,
+    );
+  },
+);
 
 class ActivityNotifier extends StateNotifier<ActivityState> {
   final HealthService healthService;
   final ActivityRepository activityRepository;
+  final DateTime Function() now;
+  final void Function()? onPointsChanged;
   final _uuid = const Uuid();
-
   StreamSubscription<int>? _stepStreamSub;
-  Timer? _debounceTimer;
-
+  Timer? _syncTimer;
+  Timer? _dayTimer;
   bool _permissionsRequested = false;
   DateTime? _lastSyncAt;
+  late String _day;
+  int _historyRequest = 0;
+  bool _requestInFlight = false;
 
   ActivityNotifier({
     required this.healthService,
     required this.activityRepository,
-  }) : super(const ActivityState()) {
-    _listenToStepStream();
-    initAndSync();
-  }
-
-  void _listenToStepStream() {
-    _stepStreamSub = healthService.stepStream.listen((liveSteps) {
-      if (liveSteps > state.todaySteps) {
-        state = state.copyWith(todaySteps: liveSteps);
-        _scheduleDebouncedSync();
+    DateTime Function()? clock,
+    this.onPointsChanged,
+    bool autoStart = true,
+  }) : now = clock ?? DateTime.now,
+       super(const ActivityState()) {
+    _day = _today();
+    _stepStreamSub = healthService.stepStream.listen((steps) {
+      if (!mounted) return;
+      _checkDay();
+      if (steps > state.todaySteps) {
+        state = state.copyWith(todaySteps: steps);
+        _scheduleSync();
       }
     });
+    if (autoStart) {
+      _dayTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (_checkDay()) initAndSync(force: true);
+      });
+    }
+    if (autoStart) initAndSync();
   }
 
-  void _scheduleDebouncedSync() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(seconds: 10), () {
-      if (state.todaySteps > state.serverSteps) {
-        _performSync(
-          steps: state.todaySteps,
-          source: 'health',
-          date: _getTodayString(),
-        );
-      }
-    });
+  bool _checkDay() {
+    final day = _today();
+    if (day == _day) return false;
+    _day = day;
+    _lastSyncAt = null;
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    state = ActivityState(
+      hasPermission: state.hasPermission,
+      userBalance: state.userBalance,
+      dailyCap: state.dailyCap,
+      stepsPerPoint: state.stepsPerPoint,
+      selectedRange: state.selectedRange,
+    );
+    return true;
   }
 
-  /// Initialize health permissions, fetch steps, sync with server, and load history.
-  ///
-  /// Safe to call on every app resume: permissions are only requested once per
-  /// session, and repeated calls within a short window are throttled so the
-  /// screen doesn't re-sync/reload constantly.
-  Future<void> initAndSync() async {
-    if (state.isSyncing) return;
-    if (_lastSyncAt != null &&
-        DateTime.now().difference(_lastSyncAt!) < const Duration(seconds: 30)) {
+  void _scheduleSync({Duration delay = const Duration(seconds: 10)}) {
+    if (_syncTimer != null ||
+        _requestInFlight ||
+        !mounted ||
+        min(state.todaySteps, state.dailyCap) <= state.serverSteps) {
       return;
     }
-    _lastSyncAt = DateTime.now();
+    // A fixed window keeps syncing during continuous walking. A resetting
+    // debounce waits forever if the user never stops moving.
+    _syncTimer = Timer(delay, () {
+      _syncTimer = null;
+      _checkDay();
+      if (min(state.todaySteps, state.dailyCap) > state.serverSteps) {
+        _performSync(steps: state.todaySteps, source: 'health', date: _day);
+      }
+    });
+  }
 
-    state = state.copyWith(isSyncing: true, errorMessage: null);
-
-    // Request OS permissions only on the first run — re-requesting on every
-    // resume spams the permission APIs and floods the log.
-    if (!_permissionsRequested) {
-      _permissionsRequested = true;
-      final hasPerm = await healthService.requestPermissions();
-      state = state.copyWith(hasPermission: hasPerm);
+  Future<void> initAndSync({bool force = false}) async {
+    _checkDay();
+    if (_requestInFlight) return;
+    if (!force &&
+        _lastSyncAt != null &&
+        now().difference(_lastSyncAt!) < const Duration(seconds: 30)) {
+      return;
     }
-
-    final rawSteps = await healthService.fetchTodaySteps();
-    state = state.copyWith(todaySteps: rawSteps);
-
-    // If steps > 0, sync to server
-    if (rawSteps > 0) {
-      await _performSync(
-        steps: rawSteps,
-        source: 'health',
-        date: _getTodayString(),
-      );
-    } else {
-      await loadHistory(state.selectedRange);
-      state = state.copyWith(isSyncing: false);
+    _requestInFlight = true;
+    state = state.copyWith(isSyncing: true);
+    final date = _day;
+    try {
+      if (!_permissionsRequested || force) {
+        _permissionsRequested = true;
+        final permitted = await healthService.requestPermissions();
+        if (!mounted) return;
+        state = state.copyWith(hasPermission: permitted);
+      }
+      final steps = await healthService.fetchTodaySteps();
+      if (!mounted) return;
+      if (_checkDay() || _day != date) return;
+      state = state.copyWith(todaySteps: max(state.todaySteps, steps));
+      // Even a zero-step sync restores today's server count and balance after
+      // reopening; it does not mint points or invent missing sensor readings.
+      await _send(steps: state.todaySteps, source: 'health', date: date);
+    } catch (e) {
+      if (mounted) {
+        state = state.copyWith(
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    } finally {
+      _requestInFlight = false;
+      if (mounted) {
+        state = state.copyWith(
+          isSyncing: false,
+          errorMessage: state.errorMessage,
+        );
+        _scheduleSync(
+          delay: state.errorMessage == null
+              ? const Duration(seconds: 10)
+              : const Duration(seconds: 30),
+        );
+      }
     }
   }
 
@@ -163,82 +223,134 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     required String source,
     required String date,
   }) async {
+    if (_requestInFlight || !mounted) return false;
+    _requestInFlight = true;
+    state = state.copyWith(isSyncing: true);
+    var success = false;
     try {
-      final syncKey = _uuid.v4();
-      final syncResponse = await activityRepository.syncActivity(
+      success = await _send(steps: steps, source: source, date: date);
+    } finally {
+      _requestInFlight = false;
+      if (mounted) {
+        state = state.copyWith(
+          isSyncing: false,
+          errorMessage: state.errorMessage,
+        );
+        _scheduleSync(
+          delay: success
+              ? const Duration(seconds: 10)
+              : const Duration(seconds: 30),
+        );
+      }
+    }
+    return success;
+  }
+
+  Future<bool> _send({
+    required int steps,
+    required String source,
+    required String date,
+  }) async {
+    try {
+      final response = await activityRepository.syncActivity(
         localDate: date,
         eligibleSteps: steps,
         source: source,
-        syncKey: syncKey,
+        syncKey: _uuid.v4(),
       );
-
-      final nowFormatted = DateFormat('hh:mm a').format(DateTime.now());
-      _lastSyncAt = DateTime.now();
-
+      if (!mounted) return false;
+      _checkDay();
+      if (_day != date) return true;
+      _lastSyncAt = now();
       state = state.copyWith(
-        todaySteps: syncResponse.eligibleSteps,
-        serverSteps: syncResponse.eligibleSteps,
-        pointsEarnedToday: syncResponse.pointsAwarded,
-        userBalance: syncResponse.balance,
-        lastSyncTime: nowFormatted,
+        todaySteps: max(state.todaySteps, response.eligibleSteps),
+        serverSteps: response.eligibleSteps,
+        pointsEarnedToday:
+            response.pointsEarnedToday ??
+            max(
+              state.pointsEarnedToday,
+              response.eligibleSteps ~/ response.stepsPerPoint,
+            ),
+        stepsPerPoint: response.stepsPerPoint,
+        dailyCap: response.dailyStepCap,
+        userBalance: response.balance,
+        lastSyncTime: DateFormat('hh:mm a').format(now()),
       );
-
-      if (syncResponse.pointsAwarded > 0) {
-        NotificationService.showPointsEarned(
-          pointsAwarded: syncResponse.pointsAwarded,
-          totalBalance: syncResponse.balance,
+      onPointsChanged?.call();
+      if (response.pointsAwarded > 0) {
+        unawaited(
+          NotificationService.showPointsEarned(
+            pointsAwarded: response.pointsAwarded,
+            totalBalance: response.balance,
+          ),
         );
       }
-
       await loadHistory(state.selectedRange);
-      state = state.copyWith(isSyncing: false);
       return true;
     } catch (e) {
-      final msg = e.toString().replaceAll('Exception: ', '');
-      state = state.copyWith(isSyncing: false, errorMessage: msg);
+      if (mounted && date == _day) {
+        state = state.copyWith(
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
       return false;
     }
   }
 
-  /// Manually sync step count (for testing/sandbox or manual entry)
   Future<bool> syncManualSteps({required int steps}) async {
-    state = state.copyWith(isSyncing: true, todaySteps: steps);
-    return _performSync(
-      steps: steps,
-      source: 'manual_debug',
-      date: _getTodayString(),
-    );
+    if (!kDebugMode) return false;
+    _checkDay();
+    return _performSync(steps: steps, source: 'manual_debug', date: _day);
   }
 
-  /// Load activity history for the selected range ('today', 'week', 'month').
   Future<void> loadHistory(String range) async {
+    final request = ++_historyRequest;
+    state = state.copyWith(
+      selectedRange: range,
+      errorMessage: state.errorMessage,
+    );
     try {
-      final historyData = await activityRepository.getActivityHistory(range: range);
-      int streak = 0;
-      if (historyData.days.isNotEmpty) {
-        for (final day in historyData.days.reversed) {
-          if (day.eligibleSteps >= 1000) {
-            streak++;
-          } else {
-            break;
-          }
-        }
-      }
+      final history = await activityRepository.getActivityHistory(range: range);
+      // Streaks are independent of the visible filter and missing dates break them.
+      final streakHistory = range == 'all'
+          ? history
+          : await activityRepository.getActivityHistory(range: 'all');
+      if (!mounted || request != _historyRequest) return;
       state = state.copyWith(
-        selectedRange: range,
-        history: historyData,
-        currentStreakDays: streak,
+        history: history,
+        currentStreakDays: countStreak(streakHistory.days, now()),
+        errorMessage: state.errorMessage,
       );
-    } catch (_) {}
+    } catch (e) {
+      if (mounted && request == _historyRequest) {
+        state = state.copyWith(
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    }
   }
 
-  String _getTodayString() {
-    return DateFormat('yyyy-MM-dd').format(DateTime.now());
+  static int countStreak(List<ActivityPeriodModel> days, DateTime now) {
+    final totals = {for (final day in days) day.date: day.eligibleSteps};
+    var day = DateTime(now.year, now.month, now.day);
+    final format = DateFormat('yyyy-MM-dd');
+    if ((totals[format.format(day)] ?? 0) < 1000) {
+      day = day.subtract(const Duration(days: 1));
+    }
+    var streak = 0;
+    while ((totals[format.format(day)] ?? 0) >= 1000) {
+      streak++;
+      day = day.subtract(const Duration(days: 1));
+    }
+    return streak;
   }
+
+  String _today() => DateFormat('yyyy-MM-dd').format(now());
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
+    _syncTimer?.cancel();
+    _dayTimer?.cancel();
     _stepStreamSub?.cancel();
     super.dispose();
   }

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -37,7 +39,7 @@ void callbackDispatcher() {
   });
 }
 
-/// Guaranteed periodic background step sync via Android WorkManager.
+/// Best-effort periodic background step sync via Android WorkManager.
 ///
 /// Industry-standard pattern: the OS wakes a short-lived background isolate on
 /// a schedule (Android floor is ~15 min), we read the day's step total from the
@@ -47,6 +49,7 @@ void callbackDispatcher() {
 class BackgroundSyncService {
   /// Register the WorkManager engine + periodic task. Call once from `main()`.
   static Future<void> initialize() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
       await Workmanager().initialize(callbackDispatcher);
 
@@ -97,16 +100,20 @@ class BackgroundSyncService {
         ),
       );
 
-      await dio.post(
-        '/activity/sync',
-        data: {
-          'local_date': todayStr,
-          'eligible_steps': steps,
-          'source': 'background_workmanager',
-          'sync_key': const Uuid().v4(),
-        },
-      );
-      return true;
+      try {
+        await dio.post(
+          '/activity/sync',
+          data: {
+            'local_date': todayStr,
+            'eligible_steps': steps,
+            'source': 'background_workmanager',
+            'sync_key': const Uuid().v4(),
+          },
+        );
+        return true;
+      } finally {
+        dio.close();
+      }
     } on DioException catch (e) {
       // 401 = expired token: nothing we can refresh here, don't hammer retries.
       if (e.response?.statusCode == 401) return true;
@@ -121,30 +128,39 @@ class BackgroundSyncService {
   /// Prefer the OS health store (updates while the app is closed); fall back to
   /// the last pedometer total the foreground app persisted for today.
   static Future<int> _resolveTodaySteps(DateTime now, String todayStr) async {
-    // Health Connect / HealthKit — the reliable background source.
+    var storedSteps = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // The foreground service writes outside this isolate's preference cache.
+      await prefs.reload();
+      final raw = prefs.getString('stepsy_native_steps_v1');
+      if (raw != null) {
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        if (data['date'] == todayStr) storedSteps = data['steps'] as int? ?? 0;
+      } else if (prefs.getString(_kPrefBaselineDate) == todayStr) {
+        storedSteps = prefs.getInt(_kPrefLastStepsToday) ?? 0;
+      }
+    } catch (e) {
+      debugPrint('Background snapshot unavailable: $e');
+    }
     try {
       final health = Health();
       await health.configure();
-      final midnight = DateTime(now.year, now.month, now.day);
-      final hcSteps = await health.getTotalStepsInInterval(midnight, now);
-      if (hcSteps != null && hcSteps > 0) {
-        return hcSteps;
+      if (await health.isHealthDataInBackgroundAuthorized()) {
+        final midnight = DateTime(now.year, now.month, now.day);
+        final healthSteps =
+            await health.getTotalStepsInInterval(
+              midnight,
+              now,
+              includeManualEntry: false,
+            ) ??
+            0;
+        return max(storedSteps, healthSteps);
       }
     } catch (e) {
-      debugPrint('Background Health Connect read failed: $e');
+      debugPrint('Background health read unavailable: $e');
     }
-
-    // Fallback: last value the foreground pedometer stored for today.
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getString(_kPrefBaselineDate) == todayStr) {
-        return prefs.getInt(_kPrefLastStepsToday) ?? 0;
-      }
-    } catch (e) {
-      debugPrint('Background prefs read failed: $e');
-    }
-
-    return 0;
+    return storedSteps;
   }
 
   /// Cancel the periodic job (e.g. on logout).

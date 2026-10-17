@@ -32,28 +32,36 @@ class LeaderboardState {
 
 final leaderboardProvider =
     StateNotifierProvider<LeaderboardNotifier, LeaderboardState>((ref) {
-  final repository = ref.watch(leaderboardRepositoryProvider);
-  return LeaderboardNotifier(repository: repository);
-});
+      final repository = ref.watch(leaderboardRepositoryProvider);
+      return LeaderboardNotifier(repository: repository);
+    });
 
 class LeaderboardNotifier extends StateNotifier<LeaderboardState> {
+  int _request = 0;
   final LeaderboardRepository repository;
 
   LeaderboardNotifier({required this.repository})
-      : super(const LeaderboardState()) {
+    : super(const LeaderboardState()) {
     fetchLeaderboard(state.selectedScope);
   }
 
   Future<void> fetchLeaderboard(String scope) async {
-    state = state.copyWith(isLoading: true, selectedScope: scope, errorMessage: null);
+    final request = ++_request;
+    state = state.copyWith(
+      isLoading: true,
+      selectedScope: scope,
+      errorMessage: null,
+    );
     try {
       final data = await repository.getLeaderboard(scope: scope);
+      if (!mounted || request != _request) return;
       state = state.copyWith(
         isLoading: false,
         selectedScope: scope,
         data: data,
       );
     } catch (e) {
+      if (!mounted || request != _request) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }

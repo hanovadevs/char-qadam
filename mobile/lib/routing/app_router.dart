@@ -29,23 +29,26 @@ final onboardingCompleteProvider = FutureProvider<bool>((ref) async {
 });
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-  final onboardingAsync = ref.watch(onboardingCompleteProvider);
-  final onboardingComplete = onboardingAsync.valueOrNull ?? true;
-
-  return GoRouter(
+  final refresh = _RiverpodRefreshListenable(ref);
+  ref.onDispose(refresh.dispose);
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
-    refreshListenable: _RiverpodRefreshListenable(ref, authStateProvider),
+    refreshListenable: refresh,
     redirect: (context, state) {
+      final authState = ref.read(authStateProvider);
+      final onboardingAsync = ref.read(onboardingCompleteProvider);
+      final onboardingComplete = onboardingAsync.valueOrNull ?? false;
       final status = authState.status;
       final isSplash = state.matchedLocation == '/splash';
-      final isAuthRoute = state.matchedLocation == '/login' ||
+      final isAuthRoute =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/forgot-password';
       final isOnboarding = state.matchedLocation == '/onboarding';
 
-      if (status == AuthStatus.initial) {
+      if (status == AuthStatus.initial ||
+          (status == AuthStatus.authenticated && onboardingAsync.isLoading)) {
         return isSplash ? null : '/splash';
       }
 
@@ -88,10 +91,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
       ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
@@ -176,6 +176,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(router.dispose);
+  return router;
 });
 
 /// Dedicated splash screen shown during app startup and auth token resolution (Swiss Light Style).
@@ -334,7 +336,10 @@ class VoucherDeepLinkScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.surfaceMuted,
                         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -389,7 +394,11 @@ class VoucherDeepLinkScreen extends StatelessWidget {
 
 /// Listenable bridge connecting Riverpod state changes to GoRouter's refreshListenable.
 class _RiverpodRefreshListenable extends ChangeNotifier {
-  _RiverpodRefreshListenable(Ref ref, ProviderBase<dynamic> provider) {
-    ref.listen(provider, (previous, next) => notifyListeners());
+  _RiverpodRefreshListenable(Ref ref) {
+    ref.listen(authStateProvider, (previous, next) => notifyListeners());
+    ref.listen(
+      onboardingCompleteProvider,
+      (previous, next) => notifyListeners(),
+    );
   }
 }

@@ -43,7 +43,11 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) async {
-          if (error.response?.statusCode == 401) {
+          final currentToken = await tokenStorage.getToken();
+          if (error.response?.statusCode == 401 &&
+              currentToken != null &&
+              error.requestOptions.headers['Authorization'] ==
+                  'Bearer $currentToken') {
             // Token expired or invalid — clear token, cached user, and invoke callback
             await tokenStorage.clearAll();
             onUnauthorized?.call();
@@ -62,7 +66,11 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.get<T>(path, queryParameters: queryParameters, options: options);
+    return _dio.get<T>(
+      path,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response<T>> post<T>(
@@ -71,7 +79,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return _dio.post<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response<T>> patch<T>(
@@ -80,7 +93,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.patch<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return _dio.patch<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response<T>> delete<T>(
@@ -89,6 +107,11 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.delete<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return _dio.delete<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 }

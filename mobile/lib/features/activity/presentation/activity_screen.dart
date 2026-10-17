@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/activity_provider.dart';
+import '../../../data/activity/health_service.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -31,7 +32,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(activityProvider.notifier).initAndSync();
+      ref.read(activityProvider.notifier).initAndSync(force: true);
     }
   }
 
@@ -98,7 +99,57 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(CupertinoIcons.chart_bar_alt_fill, size: 20, color: AppTheme.inkPrimary),
+            icon: const Icon(CupertinoIcons.info_circle, size: 20),
+            tooltip: 'Tracking diagnostics',
+            onPressed: () async {
+              final data = await ref.read(healthServiceProvider).diagnostics();
+              if (!context.mounted) return;
+              final activity = ref.read(activityProvider);
+              data['Server eligible steps'] = '${activity.serverSteps}';
+              await showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (context) => SafeArea(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Tracking diagnostics',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          for (final entry in data.entries)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: SelectableText(
+                                '${entry.key}: ${entry.value}',
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Use these readings to compare a counted walk with the phone sensor and synced steps.',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(
+              CupertinoIcons.chart_bar_alt_fill,
+              size: 20,
+              color: AppTheme.inkPrimary,
+            ),
             tooltip: 'Progress & trends',
             onPressed: () {
               HapticsService.light();
@@ -108,11 +159,17 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
           RotationTransition(
             turns: _syncAnimController,
             child: IconButton(
-              icon: const Icon(CupertinoIcons.arrow_2_circlepath, size: 20, color: AppTheme.inkPrimary),
+              icon: const Icon(
+                CupertinoIcons.arrow_2_circlepath,
+                size: 20,
+                color: AppTheme.inkPrimary,
+              ),
               tooltip: 'Sync steps',
               onPressed: activityState.isSyncing
                   ? null
-                  : () => ref.read(activityProvider.notifier).initAndSync(),
+                  : () => ref
+                        .read(activityProvider.notifier)
+                        .initAndSync(force: true),
             ),
           ),
           const SizedBox(width: 8),
@@ -121,7 +178,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
       body: RefreshIndicator(
         color: AppTheme.accentSolid,
         backgroundColor: AppTheme.surface,
-        onRefresh: () => ref.read(activityProvider.notifier).initAndSync(),
+        onRefresh: () =>
+            ref.read(activityProvider.notifier).initAndSync(force: true),
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           children: [
@@ -130,7 +188,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               onTap: () => context.go('/points'),
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -161,7 +222,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                         ),
                       ],
                     ),
-                    const Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkSecondary),
+                    const Icon(
+                      CupertinoIcons.chevron_forward,
+                      size: 14,
+                      color: AppTheme.inkSecondary,
+                    ),
                   ],
                 ),
               ),
@@ -226,7 +291,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: AppTheme.surfaceMuted,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusPill,
+                          ),
                         ),
                       ),
                       LayoutBuilder(
@@ -236,11 +303,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                             width: constraints.maxWidth * progress,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [AppTheme.accentBright, AppTheme.accentDeep],
+                                colors: [
+                                  AppTheme.accentBright,
+                                  AppTheme.accentDeep,
+                                ],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
                               ),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusPill,
+                              ),
                             ),
                           );
                         },
@@ -275,9 +347,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                   // 3-Column Metrics Grid
                   Row(
                     children: [
-                      Expanded(
-                        child: _buildMetricTile('Distance', '$km km'),
-                      ),
+                      Expanded(child: _buildMetricTile('Distance', '$km km')),
                       Container(width: 1, height: 28, color: AppTheme.hairline),
                       Expanded(
                         child: _buildMetricTile('Calories', '$kcal kcal'),
@@ -306,7 +376,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -320,7 +393,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                           ),
                         ),
                         Text(
-                          activityState.currentStreakDays > 0 ? 'Active streak' : '1,000+ steps/day goal',
+                          activityState.currentStreakDays > 0
+                              ? 'Active streak'
+                              : '1,000+ steps/day goal',
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppTheme.inkSecondary,
@@ -336,7 +411,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                       context.push('/leaderboard');
                     },
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -349,7 +427,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                               letterSpacing: -0.2,
                             ),
                           ),
-                          Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkSecondary),
+                          Icon(
+                            CupertinoIcons.chevron_forward,
+                            size: 14,
+                            color: AppTheme.inkSecondary,
+                          ),
                         ],
                       ),
                     ),
@@ -360,15 +442,24 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                       HapticsService.light();
                       context.push('/progress');
                     },
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppTheme.radiusLg)),
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(AppTheme.radiusLg),
+                    ),
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
                             children: [
-                              Icon(CupertinoIcons.chart_bar_alt_fill, size: 16, color: AppTheme.accentSolid),
+                              Icon(
+                                CupertinoIcons.chart_bar_alt_fill,
+                                size: 16,
+                                color: AppTheme.accentSolid,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'Progress & trends',
@@ -391,7 +482,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                                 ),
                               ),
                               SizedBox(width: 6),
-                              Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkSecondary),
+                              Icon(
+                                CupertinoIcons.chevron_forward,
+                                size: 14,
+                                color: AppTheme.inkSecondary,
+                              ),
                             ],
                           ),
                         ],
@@ -411,13 +506,17 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                 border: Border.all(color: AppTheme.hairline),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(CupertinoIcons.info_circle, size: 18, color: AppTheme.accentSolid),
+                  const Icon(
+                    CupertinoIcons.info_circle,
+                    size: 18,
+                    color: AppTheme.accentSolid,
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '100 steps = 1 pt. Steps convert automatically when your activity syncs.',
+                      '${activityState.stepsPerPoint} steps = 1 pt. Steps convert automatically when your activity syncs.',
                       style: TextStyle(
                         fontSize: 13,
                         color: AppTheme.inkSecondary,
@@ -453,9 +552,24 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildRangeTab('today', 'Today', activityState.selectedRange, ref),
-                      _buildRangeTab('week', '7D', activityState.selectedRange, ref),
-                      _buildRangeTab('month', '30D', activityState.selectedRange, ref),
+                      _buildRangeTab(
+                        'today',
+                        'Today',
+                        activityState.selectedRange,
+                        ref,
+                      ),
+                      _buildRangeTab(
+                        'week',
+                        '7D',
+                        activityState.selectedRange,
+                        ref,
+                      ),
+                      _buildRangeTab(
+                        'month',
+                        '30D',
+                        activityState.selectedRange,
+                        ref,
+                      ),
                     ],
                   ),
                 ),
@@ -464,7 +578,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
             const SizedBox(height: 12),
 
             // History List
-            if (activityState.history != null && activityState.history!.days.isNotEmpty)
+            if (activityState.history != null &&
+                activityState.history!.days.isNotEmpty)
               Container(
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
@@ -475,16 +590,25 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: activityState.history!.days.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1, color: AppTheme.hairline),
+                  separatorBuilder: (_, _) =>
+                      const Divider(height: 1, color: AppTheme.hairline),
                   itemBuilder: (context, index) {
                     final day = activityState.history!.days[index];
                     final dateFormatted = _formatDate(day.date);
-                    final stepsFmt = NumberFormat('#,###').format(day.eligibleSteps);
+                    final stepsFmt = NumberFormat(
+                      '#,###',
+                    ).format(day.eligibleSteps);
                     final pts = day.eligibleSteps ~/ 100;
-                    final dayProgress = (day.eligibleSteps / cap).clamp(0.0, 1.0);
+                    final dayProgress = (day.eligibleSteps / cap).clamp(
+                      0.0,
+                      1.0,
+                    );
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -502,12 +626,17 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                                 ),
                                 const SizedBox(height: 6),
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusPill,
+                                  ),
                                   child: LinearProgressIndicator(
                                     value: dayProgress,
                                     minHeight: 4,
                                     backgroundColor: AppTheme.surfaceMuted,
-                                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
+                                    valueColor:
+                                        const AlwaysStoppedAnimation<Color>(
+                                          AppTheme.accentSolid,
+                                        ),
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -523,10 +652,17 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                           ),
                           const SizedBox(width: 14),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppTheme.accentBright.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                              color: AppTheme.accentBright.withValues(
+                                alpha: 0.15,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusPill,
+                              ),
                             ),
                             child: Text(
                               '+$pts pts',
@@ -546,7 +682,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 40,
+                  horizontal: 20,
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
@@ -555,10 +694,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 ),
                 child: const Text(
                   'No step records for this period',
-                  style: TextStyle(
-                    color: AppTheme.inkSecondary,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: AppTheme.inkSecondary, fontSize: 14),
                 ),
               ),
 
@@ -570,7 +706,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Icon(CupertinoIcons.lock_shield, color: AppTheme.inkTertiary, size: 16),
+                  Icon(
+                    CupertinoIcons.lock_shield,
+                    color: AppTheme.inkTertiary,
+                    size: 16,
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -617,7 +757,12 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     );
   }
 
-  Widget _buildRangeTab(String value, String label, String currentRange, WidgetRef ref) {
+  Widget _buildRangeTab(
+    String value,
+    String label,
+    String currentRange,
+    WidgetRef ref,
+  ) {
     final isSelected = currentRange == value;
     return GestureDetector(
       onTap: () {

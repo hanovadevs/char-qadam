@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/activity/health_service.dart';
+import '../../../routing/app_router.dart';
 
 /// Key used to persist onboarding completion state
 const String onboardingCompleteKey = 'qadam_onboarding_complete';
@@ -35,6 +36,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final healthService = ref.read(healthServiceProvider);
     final granted = await healthService.requestPermissions();
 
+    if (!mounted) return;
     setState(() {
       _permissionGranted = granted;
       _requestingPermission = false;
@@ -51,6 +53,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await storage.write(key: onboardingCompleteKey, value: 'true');
 
     if (mounted) {
+      ref.invalidate(onboardingCompleteProvider);
       context.go('/steps');
     }
   }
@@ -131,8 +134,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             onPressed: _permissionGranted
                                 ? _completeOnboarding
                                 : _requestingPermission
-                                    ? null
-                                    : _requestPermissions,
+                                ? null
+                                : _requestPermissions,
                             child: _requestingPermission
                                 ? const SizedBox(
                                     width: 18,
@@ -140,7 +143,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                          AppTheme.white),
+                                        AppTheme.white,
+                                      ),
                                     ),
                                   )
                                 : Text(
@@ -230,11 +234,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const Text(
             'Walk. Earn points. Redeem real rewards.\nYour daily steps create tangible value\nat partner brands.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.grey,
-              height: 1.6,
-            ),
+            style: TextStyle(fontSize: 14, color: AppTheme.grey, height: 1.6),
           ),
           const SizedBox(height: 32),
           Row(
@@ -312,8 +312,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 14),
           _buildPrivacyRow(
             Icons.delete_outline,
-            'FULL DATA CONTROL',
-            'Delete your account anytime. All data is removed.',
+            'ACCOUNT ACCESS',
+            'Deactivate your account from Profile to stop access and tracking.',
           ),
         ],
       ),
@@ -449,10 +449,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.grey,
-                  ),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.grey),
                 ),
               ],
             ),

@@ -30,21 +30,24 @@ class WalletState {
   }
 }
 
-final walletProvider =
-    StateNotifierProvider<WalletNotifier, WalletState>((ref) {
+final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((
+  ref,
+) {
   final walletRepository = ref.watch(walletRepositoryProvider);
   return WalletNotifier(walletRepository: walletRepository);
 });
 
 class WalletNotifier extends StateNotifier<WalletState> {
+  int _request = 0;
   final WalletRepository walletRepository;
 
   WalletNotifier({required this.walletRepository})
-      : super(const WalletState()) {
+    : super(const WalletState()) {
     fetchVouchers(state.selectedStatus);
   }
 
   Future<void> fetchVouchers(String status) async {
+    final request = ++_request;
     state = state.copyWith(
       selectedStatus: status,
       isLoading: true,
@@ -52,8 +55,10 @@ class WalletNotifier extends StateNotifier<WalletState> {
     );
     try {
       final list = await walletRepository.getVouchers(status: status);
+      if (!mounted || request != _request) return;
       state = state.copyWith(vouchers: list, isLoading: false);
     } catch (e) {
+      if (!mounted || request != _request) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }

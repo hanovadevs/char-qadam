@@ -48,8 +48,9 @@ class PointsState {
   }
 }
 
-final pointsProvider =
-    StateNotifierProvider<PointsNotifier, PointsState>((ref) {
+final pointsProvider = StateNotifierProvider<PointsNotifier, PointsState>((
+  ref,
+) {
   final pointsRepository = ref.watch(pointsRepositoryProvider);
   return PointsNotifier(pointsRepository: pointsRepository);
 });
@@ -58,7 +59,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
   final PointsRepository pointsRepository;
 
   PointsNotifier({required this.pointsRepository})
-      : super(const PointsState()) {
+    : super(const PointsState()) {
     refresh();
   }
 
@@ -70,6 +71,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         limit: PointsState.pageSize,
         offset: 0,
       );
+      if (!mounted) return;
       state = PointsState(
         balanceData: balance,
         entries: history.entries,
@@ -79,6 +81,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         hasMore: history.entries.length < history.total,
       );
     } catch (e) {
+      if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }
@@ -93,6 +96,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         limit: PointsState.pageSize,
         offset: state.offset,
       );
+      if (!mounted) return;
       final allEntries = [...state.entries, ...history.entries];
       state = state.copyWith(
         entries: allEntries,
@@ -102,6 +106,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         total: history.total,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoadingMore: false);
     }
   }

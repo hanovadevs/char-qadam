@@ -4,6 +4,9 @@ class SyncResponse {
   final int pointsAwarded;
   final int balance;
   final bool isReplay;
+  final int? pointsEarnedToday;
+  final int stepsPerPoint;
+  final int dailyStepCap;
 
   SyncResponse({
     required this.localDate,
@@ -11,6 +14,9 @@ class SyncResponse {
     required this.pointsAwarded,
     required this.balance,
     required this.isReplay,
+    this.pointsEarnedToday,
+    this.stepsPerPoint = 100,
+    this.dailyStepCap = 20000,
   });
 
   factory SyncResponse.fromJson(Map<String, dynamic> json) {
@@ -20,6 +26,9 @@ class SyncResponse {
       pointsAwarded: json['points_awarded'] as int,
       balance: json['balance'] as int,
       isReplay: json['is_replay'] as bool,
+      pointsEarnedToday: json['points_earned_today'] as int?,
+      stepsPerPoint: json['steps_per_point'] as int? ?? 100,
+      dailyStepCap: json['daily_step_cap'] as int? ?? 20000,
     );
   }
 }
