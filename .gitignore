@@ -34,6 +34,7 @@ mobile/.idea/
 
 # Android
 mobile/android/.gradle/
+mobile/android/.kotlin/
 mobile/android/build/
 mobile/android/local.properties
 mobile/android/key.properties
