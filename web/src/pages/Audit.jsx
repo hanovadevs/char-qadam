@@ -1,27 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React from 'react';
+import { useAdminQuery } from '../hooks/use-admin-query';
 
 export default function Audit() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchAuditLogs = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.getAuditLogs();
-      setLogs(data || []);
-    } catch (err) {
-      setError(err.message || 'Failed to load security audit logs.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAuditLogs();
-  }, []);
+  const { data: logs, loading, error, refresh: fetchAuditLogs } = useAdminQuery('/admin/audit-logs', []);
 
   return (
     <div className="container-main">

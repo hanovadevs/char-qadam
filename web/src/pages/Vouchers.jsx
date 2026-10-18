@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
+import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import Badge from '../components/Badge';
 import { Search, CheckCircle, AlertCircle, Trash2, XCircle } from 'lucide-react';
@@ -13,29 +15,11 @@ export default function Vouchers() {
   const [redeeming, setRedeeming] = useState(false);
 
   // Vouchers Table State
-  const [vouchers, setVouchers] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
-
-  const fetchVouchers = async () => {
-    setLoading(true);
-    try {
-      const data = await api.listVouchers({
-        search: search.trim() || undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-      });
-      setVouchers(data || []);
-    } catch (err) {
-      console.error('Error fetching vouchers:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchVouchers();
-  }, [search, statusFilter]);
+  const searchQuery = useDebouncedValue(search.trim());
+  const { data: vouchers, loading, error, refresh: fetchVouchers } = useAdminQuery(
+    queryPath('/admin/vouchers', { search: searchQuery, status: statusFilter }), []);
 
   const handleCancelVoucher = async (voucher) => {
     if (!window.confirm(`Are you sure you want to cancel voucher "${voucher.short_code}"?`)) return;
@@ -101,6 +85,7 @@ export default function Vouchers() {
 
   return (
     <div className="container-main">
+      {error && <p role="alert" style={{ color: 'var(--status-danger)' }}>{error}</p>}
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: '800', color: 'var(--brand-dark)' }}>

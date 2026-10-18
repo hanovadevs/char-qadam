@@ -1,31 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React, { useState } from 'react';
+import { useAdminQuery } from '../hooks/use-admin-query';
+import { queryPath } from '../services/read-cache';
 import StatCard from '../components/StatCard';
 
 export default function Ledger() {
-  const [entries, setEntries] = useState([]);
   const [reasonFilter, setReasonFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchLedger = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.getGlobalLedger({
-        reason: reasonFilter !== 'ALL' ? reasonFilter : undefined,
-      });
-      setEntries(data || []);
-    } catch (err) {
-      setError(err.message || 'Failed to load global points ledger.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchLedger();
-  }, [reasonFilter]);
+  const { data: entries, loading, error, refresh: fetchLedger } = useAdminQuery(
+    queryPath('/admin/ledger', { reason: reasonFilter }), []);
 
   // Compute totals
   const totalMinted = entries.filter((e) => e.delta > 0).reduce((acc, e) => acc + e.delta, 0);

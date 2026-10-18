@@ -10,6 +10,8 @@ final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
   return ActivityRepository(apiClient: apiClient, cacheService: cacheService);
 });
 
+class ActivitySummaryUnavailable implements Exception {}
+
 class ActivityRepository {
   final ApiClient apiClient;
   final CacheService cacheService;
@@ -24,7 +26,13 @@ class ActivityRepository {
   }
 
   Future<SyncResponse> getTodaySummary() async {
-    final response = await apiClient.get('/activity/today');
+    final Response response;
+    try {
+      response = await apiClient.get('/activity/today');
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) throw ActivitySummaryUnavailable();
+      rethrow;
+    }
     await cacheService.cacheData('activity_today', response.data);
     return SyncResponse.fromJson(response.data as Map<String, dynamic>);
   }

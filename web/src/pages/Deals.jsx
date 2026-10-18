@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
+import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
 import { Search, Plus, Trash2, Edit } from 'lucide-react';
 
 export default function Deals() {
-  const [deals, setDeals] = useState([]);
-  const [partners, setPartners] = useState([]);
   const [search, setSearch] = useState('');
   const [partnerFilter, setPartnerFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Create Deal Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -43,30 +41,14 @@ export default function Deals() {
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [dealsData, partnersData] = await Promise.all([
-        api.listOffers({
-          search: search.trim() || undefined,
-          partner_id: partnerFilter !== 'ALL' ? partnerFilter : undefined,
-          status: statusFilter !== 'ALL' ? statusFilter : undefined,
-        }),
-        api.listPartners(),
-      ]);
-      setDeals(dealsData || []);
-      setPartners(partnersData || []);
-    } catch (err) {
-      setError(err.message || 'Failed to load deals.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [search, partnerFilter, statusFilter]);
+  const searchQuery = useDebouncedValue(search.trim());
+  const dealsQuery = useAdminQuery(queryPath('/admin/offers', {
+    search: searchQuery, partner_id: partnerFilter, status: statusFilter }), []);
+  const partnersQuery = useAdminQuery('/admin/partners', []);
+  const { data: deals, loading } = dealsQuery;
+  const partners = partnersQuery.data;
+  const error = dealsQuery.error || partnersQuery.error;
+  const fetchData = () => Promise.all([dealsQuery.refresh(), partnersQuery.refresh()]);
 
   const handleCreateDeal = async (e) => {
     e.preventDefault();

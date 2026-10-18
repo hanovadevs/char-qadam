@@ -1,43 +1,66 @@
 // Stepsy Admin API Client
-import { apiErrorMessage } from './store-location';
+import { apiErrorMessage } from './store-location.js';
+import { ReadCache } from './read-cache.js';
 
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = import.meta.env?.VITE_API_URL || '';
 
-class ApiClient {
-  constructor() {
-    this.token = localStorage.getItem('stepsy_admin_token') || null;
+export class ApiClient {
+  constructor({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch, onUnauthorized } = {}) {
+    this.storage = storage;
+    this.fetchImpl = fetchImpl;
+    this.onUnauthorized = onUnauthorized || (() => {
+      if (globalThis.window && !window.location.pathname.includes('/login')) window.location.href = '/login';
+    });
+    this.token = storage?.getItem('stepsy_admin_token') || null;
+    this.sessionVersion = 0;
+    this.cache = new ReadCache();
   }
 
   setToken(token) {
+    if (token === this.token) return;
     this.token = token;
+    this.sessionVersion++;
     if (token) {
-      localStorage.setItem('stepsy_admin_token', token);
+      this.storage?.setItem('stepsy_admin_token', token);
     } else {
-      localStorage.removeItem('stepsy_admin_token');
+      this.storage?.removeItem('stepsy_admin_token');
     }
+    this.cache.invalidate();
   }
 
-  getHeaders() {
+  getHeaders(token = this.token) {
     const headers = {
       'Content-Type': 'application/json',
     };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
     return headers;
   }
 
-  async request(path, options = {}) {
+  request(path, options = {}) {
+    const sessionVersion = this.sessionVersion;
+    const token = this.token;
+    const method = (options.method || 'GET').toUpperCase();
+    const load = () => this.send(path, options, token, sessionVersion);
+    if (method === 'GET') return this.cache.fetch(path, load);
+    return load().then((data) => {
+      if (!path.startsWith('/admin/auth/')) this.cache.invalidate();
+      return data;
+    });
+  }
+
+  async send(path, options, token, sessionVersion) {
     const url = `${BASE_URL}${path}`;
-    const headers = { ...this.getHeaders(), ...options.headers };
+    const headers = { ...this.getHeaders(token), ...options.headers };
 
     try {
-      const response = await fetch(url, { ...options, headers });
-      if (response.status === 401) {
+      if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
+      const response = await this.fetchImpl(url, { ...options, headers });
+      if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
+      if (response.status === 401 && token) {
         this.setToken(null);
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
+        this.onUnauthorized();
         throw new Error('Session expired. Please log in again.');
       }
 
@@ -46,7 +69,9 @@ class ApiClient {
         throw new Error(apiErrorMessage(errorData, response.status));
       }
 
-      return await response.json();
+      const data = await response.json();
+      if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
+      return data;
     } catch (err) {
       console.error(`[API Error] ${path}:`, err);
       throw err;

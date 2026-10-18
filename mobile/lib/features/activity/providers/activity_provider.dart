@@ -272,17 +272,11 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     required String date,
   }) async {
     try {
-      final response =
-          source == 'health' &&
-              date == _today() &&
-              min(steps, state.dailyCap) <= state.serverSteps
-          ? await activityRepository.getTodaySummary()
-          : await activityRepository.syncActivity(
-              localDate: date,
-              eligibleSteps: steps,
-              source: source,
-              syncKey: _uuid.v4(),
-            );
+      final response = await _readOrSync(
+        steps: steps,
+        source: source,
+        date: date,
+      );
       if (!mounted) return false;
       _checkDay();
       if (_day != date) return true;
@@ -333,6 +327,28 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       }
       return false;
     }
+  }
+
+  Future<SyncResponse> _readOrSync({
+    required int steps,
+    required String source,
+    required String date,
+  }) async {
+    if (source == 'health' &&
+        date == _today() &&
+        min(steps, state.dailyCap) <= state.serverSteps) {
+      try {
+        return await activityRepository.getTodaySummary();
+      } on ActivitySummaryUnavailable {
+        // Keep the client usable if the API is rolled back to an older build.
+      }
+    }
+    return activityRepository.syncActivity(
+      localDate: date,
+      eligibleSteps: steps,
+      source: source,
+      syncKey: _uuid.v4(),
+    );
   }
 
   Future<bool> syncManualSteps({required int steps}) async {

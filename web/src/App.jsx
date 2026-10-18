@@ -36,8 +36,9 @@ export default function App() {
           const profile = await api.getMe();
           setUser(profile);
         } catch (err) {
-          console.warn('Authentication token invalid:', err);
-          api.setToken(null);
+          // The client clears an invalid session on 401. A transient network
+          // failure must not discard a still-valid admin login.
+          console.warn('Could not refresh admin profile:', err);
         }
       }
       setLoading(false);

@@ -6,6 +6,7 @@ import 'package:qadam/data/auth/auth_state_provider.dart';
 import 'package:qadam/data/auth/token_storage.dart';
 import 'package:qadam/data/auth/device_identity.dart';
 import 'package:qadam/data/api/api_client.dart';
+import 'package:qadam/data/activity/activity_repository.dart';
 import 'package:qadam/data/models/user_model.dart';
 import 'package:qadam/data/models/activity_models.dart';
 import 'package:qadam/data/models/points_models.dart';
@@ -122,6 +123,12 @@ class SavedActivity extends TestActivityRepository {
   }
 }
 
+class LegacyActivity extends TestActivityRepository {
+  @override
+  Future<SyncResponse> getTodaySummary() async =>
+      throw ActivitySummaryUnavailable();
+}
+
 class LocalSession implements TokenStorage {
   String? token;
   UserModel? user;
@@ -161,6 +168,23 @@ class EmbeddedProfileAuth extends AuthRepository {
 }
 
 void main() {
+  testWidgets('a previous API build without the summary endpoint still syncs', (
+    tester,
+  ) async {
+    final health = TestHealth();
+    final repo = LegacyActivity();
+    final notifier = ActivityNotifier(
+      healthService: health,
+      activityRepository: repo,
+      autoStart: false,
+    );
+    await notifier.initAndSync();
+    expect(repo.calls, 1);
+    expect(notifier.state.errorMessage, isNull);
+    expect(notifier.state.isSyncing, isFalse);
+    notifier.dispose();
+    await health.events.close();
+  });
   testWidgets(
     'reopening unchanged steps uses the cached baseline and a read; yesterday cache is ignored',
     (tester) async {

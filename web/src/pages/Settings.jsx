@@ -1,15 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import React from 'react';
+import { useAdminQuery } from '../hooks/use-admin-query';
 
 export default function Settings({ user }) {
-  const [config, setConfig] = useState(null);
-  const [error, setError] = useState(null);
-  useEffect(() => {
-    let active = true;
-    api.getConfig().then((data) => { if (active) setConfig(data); })
-      .catch((err) => { if (active) setError(err.message); });
-    return () => { active = false; };
-  }, []);
+  const { data: config, error } = useAdminQuery('/admin/config');
   return (
     <div className="container-main" style={{ maxWidth: '800px' }}>
       {/* Header */}

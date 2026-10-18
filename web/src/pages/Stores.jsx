@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
+import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import { googleMapsLink } from '../services/store-location';
 import Modal from '../components/Modal';
@@ -6,11 +8,8 @@ import Badge from '../components/Badge';
 import { Search, Plus, Copy, Check, MapPin, Edit, Trash2, ExternalLink } from 'lucide-react';
 
 export default function Stores() {
-  const [stores, setStores] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Modals state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -66,25 +65,9 @@ export default function Stores() {
   });
   const [isSubmittingDeal, setIsSubmittingDeal] = useState(false);
 
-  const fetchStores = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.listPartners({
-        search: search.trim() || undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-      });
-      setStores(data || []);
-    } catch (err) {
-      setError(err.message || 'Error loading partner stores.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStores();
-  }, [search, statusFilter]);
+  const searchQuery = useDebouncedValue(search.trim());
+  const { data: stores, loading, error, refresh: fetchStores } = useAdminQuery(
+    queryPath('/admin/partners', { search: searchQuery, status: statusFilter }), []);
 
   const handleCreateStore = async (e) => {
     e.preventDefault();

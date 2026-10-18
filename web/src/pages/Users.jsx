@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
+import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
 import { Search, Sliders, History, Edit, Trash2, BarChart2 } from 'lucide-react';
 
 export default function Users() {
-  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Edit User Modal
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -38,25 +37,9 @@ export default function Users() {
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [activityRange, setActivityRange] = useState('month');
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.listUsers({
-        search: search.trim() || undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-      });
-      setUsers(data || []);
-    } catch (err) {
-      setError(err.message || 'Error loading users.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, [search, statusFilter]);
+  const searchQuery = useDebouncedValue(search.trim());
+  const { data: users, loading, error, refresh: fetchUsers } = useAdminQuery(
+    queryPath('/admin/users', { search: searchQuery, status: statusFilter }), []);
 
   const handleAdjustPoints = async (e) => {
     e.preventDefault();

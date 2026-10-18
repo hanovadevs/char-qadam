@@ -1,46 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React from 'react';
+import { useAdminQuery } from '../hooks/use-admin-query';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import { Link } from 'react-router-dom';
 
 export default function Overview() {
-  const [metrics, setMetrics] = useState(null);
-  const [charts, setCharts] = useState(null);
-  const [recentRedemptions, setRecentRedemptions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [overviewData, chartData, redemptions] = await Promise.all([
-        api.getAnalyticsOverview(),
-        api.getAnalyticsCharts(),
-        api.listRedemptions(),
-      ]);
-      setMetrics(overviewData);
-      setCharts(chartData);
-      setRecentRedemptions((redemptions || []).slice(0, 8));
-    } catch (err) {
-      setError(err.message || 'Failed to load ecosystem metrics.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const metricsQuery = useAdminQuery('/admin/analytics/overview');
+  const chartsQuery = useAdminQuery('/admin/analytics/charts');
+  const recentQuery = useAdminQuery('/admin/redemptions?limit=8', []);
+  const { data: metrics, loading } = metricsQuery;
+  const charts = chartsQuery.data;
+  const recentRedemptions = recentQuery.data;
+  const error = metricsQuery.error || chartsQuery.error || recentQuery.error;
+  const loadData = () => Promise.all([metricsQuery.refresh(), chartsQuery.refresh(), recentQuery.refresh()]);
 
   const formatNumber = (num) => {
-    if (num == null) return '0';
+    if (num == null) return '—';
     return Number(num).toLocaleString();
   };
 
   const formatCurrency = (num) => {
-    if (num == null) return '$0.00';
+    if (num == null) return '—';
     return `$${Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
@@ -171,7 +151,7 @@ export default function Overview() {
               })
             ) : (
               <div style={{ width: '100%', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '12px', padding: '40px 0' }}>
-                No daily step activity recorded yet.
+                {chartsQuery.loading ? 'Loading daily step activity...' : 'No daily step activity recorded yet.'}
               </div>
             )}
           </div>
@@ -296,7 +276,7 @@ export default function Overview() {
             ) : (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                  No voucher redemptions recorded yet.
+                  {recentQuery.loading ? 'Loading voucher redemptions...' : 'No voucher redemptions recorded yet.'}
                 </td>
               </tr>
             )}

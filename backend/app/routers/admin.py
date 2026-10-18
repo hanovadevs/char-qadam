@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.config import get_settings
 from app.db.models import (
@@ -225,13 +225,17 @@ async def admin_get_me() -> dict[str, Any]:
 
 @router.get("/analytics/overview", summary="Overview Metrics")
 async def get_analytics_overview(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
-    total_users = (await session.execute(select(func.count(User.id)))).scalar_one() or 0
-    total_steps = (await session.execute(select(func.coalesce(func.sum(ActivityDaily.eligible_steps), 0)))).scalar_one() or 0
-    active_partners = (await session.execute(select(func.count(Partner.id)).where(Partner.status == PartnerStatus.ACTIVE))).scalar_one() or 0
-    active_offers = (await session.execute(select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE))).scalar_one() or 0
-    vouchers_issued = (await session.execute(select(func.count(Voucher.id)))).scalar_one() or 0
-    vouchers_redeemed = (await session.execute(select(func.count(Voucher.id)).where(Voucher.status == VoucherStatus.REDEEMED))).scalar_one() or 0
-    total_savings = (await session.execute(select(func.coalesce(func.sum(Redemption.discount_value), 0)))).scalar_one() or 0.0
+    # Scalar subqueries preserve independent totals without a cartesian join.
+    row = (await session.execute(select(
+        select(func.count(User.id)).scalar_subquery(),
+        select(func.coalesce(func.sum(ActivityDaily.eligible_steps), 0)).scalar_subquery(),
+        select(func.count(Partner.id)).where(Partner.status == PartnerStatus.ACTIVE).scalar_subquery(),
+        select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE).scalar_subquery(),
+        select(func.count(Voucher.id)).scalar_subquery(),
+        select(func.count(Voucher.id)).where(Voucher.status == VoucherStatus.REDEEMED).scalar_subquery(),
+        select(func.coalesce(func.sum(Redemption.discount_value), 0)).scalar_subquery(),
+    ))).one()
+    total_users, total_steps, active_partners, active_offers, vouchers_issued, vouchers_redeemed, total_savings = row
 
     return {
         "total_users": total_users,
@@ -315,45 +319,27 @@ async def list_partners(
     status: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    query = select(Partner).order_by(Partner.name)
+    offers = select(Offer.partner_id, func.count(Offer.id).label('count')).group_by(Offer.partner_id).subquery()
+    redemptions = select(Redemption.partner_id, func.count(Redemption.id).label('count'),
+        func.coalesce(func.sum(Redemption.discount_value), 0).label('value')).group_by(Redemption.partner_id).subquery()
+    merchants = select(User.partner_id, func.min(User.email).label('email')).where(
+        User.role == 'MERCHANT', User.partner_id.isnot(None)).group_by(User.partner_id).subquery()
+    query = select(Partner, func.coalesce(offers.c.count, 0),
+        func.coalesce(redemptions.c.count, 0), func.coalesce(redemptions.c.value, 0),
+        merchants.c.email).outerjoin(offers, offers.c.partner_id == Partner.id).outerjoin(
+        redemptions, redemptions.c.partner_id == Partner.id).outerjoin(
+        merchants, merchants.c.partner_id == Partner.id).order_by(Partner.name)
     if status and status != "ALL":
         query = query.where(Partner.status == PartnerStatus(status))
     if search:
         query = query.where(Partner.name.ilike(f"%{search}%"))
 
     result = await session.execute(query)
-    partners = result.scalars().all()
-
-    # Aggregate offer counts per partner
-    offer_counts_res = await session.execute(
-        select(Offer.partner_id, func.count(Offer.id)).group_by(Offer.partner_id)
-    )
-    offer_counts = dict(offer_counts_res.all())
-
-    # Aggregate redemption counts and discount totals per partner
-    redemption_stats_res = await session.execute(
-        select(
-            Redemption.partner_id,
-            func.count(Redemption.id),
-            func.coalesce(func.sum(Redemption.discount_value), 0.0),
-        ).group_by(Redemption.partner_id)
-    )
-    redemption_stats = {
-        row[0]: (int(row[1]), float(row[2]))
-        for row in redemption_stats_res.all()
-    }
-
-    # Fetch merchant users mapping
-    merchant_users_res = await session.execute(
-        select(User.partner_id, User.email).where(User.role == "MERCHANT", User.partner_id.isnot(None))
-    )
-    merchant_emails = dict(merchant_users_res.all())
+    partners = result.all()
 
     items = []
-    for p in partners:
-        off_count = offer_counts.get(p.id, 0)
-        red_count, total_discount = redemption_stats.get(p.id, (0, 0.0))
-        email_val = merchant_emails.get(p.id) or p.email
+    for p, off_count, red_count, total_discount, merchant_email in partners:
+        email_val = merchant_email or p.email
         items.append({
             "id": p.id,
             "name": p.name,
@@ -366,7 +352,7 @@ async def list_partners(
             "has_api_key": bool(p.api_key_hash),
             "offer_count": off_count,
             "redemption_count": red_count,
-            "total_discount_value": total_discount,
+            "total_discount_value": float(total_discount),
             "created_at": p.created_at.isoformat(),
         })
     return items
@@ -705,7 +691,7 @@ async def list_offers(
     search: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    query = select(Offer).options(selectinload(Offer.partner)).order_by(desc(Offer.created_at))
+    query = select(Offer).options(joinedload(Offer.partner)).order_by(desc(Offer.created_at))
     if partner_id and partner_id != "ALL":
         query = query.where(Offer.partner_id == partner_id)
     if status and status != "ALL":
@@ -858,17 +844,26 @@ async def list_vouchers(
     offer_id: str | None = None,
     status: str | None = None,
     short_code: str | None = None,
+    search: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
     query = (
         select(Voucher)
-        .options(selectinload(Voucher.user), selectinload(Voucher.offer).selectinload(Offer.partner))
+        .options(joinedload(Voucher.user), joinedload(Voucher.offer).joinedload(Offer.partner))
         .order_by(desc(Voucher.created_at))
     )
     if status and status != "ALL":
         query = query.where(Voucher.status == VoucherStatus(status))
     if short_code:
         query = query.where(Voucher.short_code.ilike(f"%{short_code}%"))
+    if partner_id:
+        query = query.where(Voucher.offer.has(Offer.partner_id == partner_id))
+    if offer_id:
+        query = query.where(Voucher.offer_id == offer_id)
+    if search:
+        pattern = f'%{search}%'
+        query = query.where(or_(Voucher.short_code.ilike(pattern),
+            Voucher.user.has(User.email.ilike(pattern)), Voucher.offer.has(Offer.title.ilike(pattern))))
 
     result = await session.execute(query)
     vouchers = result.scalars().all()
@@ -1024,18 +1019,21 @@ async def delete_voucher(
 @router.get("/redemptions", summary="List Redemption History")
 async def list_redemptions(
     partner_id: str | None = None,
+    limit: int | None = Query(default=None, ge=1, le=1000),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
     query = (
         select(Redemption)
         .options(
-            selectinload(Redemption.voucher).selectinload(Voucher.user),
-            selectinload(Redemption.voucher).selectinload(Voucher.offer).selectinload(Offer.partner),
+            joinedload(Redemption.voucher).joinedload(Voucher.user),
+            joinedload(Redemption.voucher).joinedload(Voucher.offer).joinedload(Offer.partner),
         )
         .order_by(desc(Redemption.redeemed_at))
     )
     if partner_id:
         query = query.where(Redemption.partner_id == partner_id)
+    if limit is not None:
+        query = query.limit(limit)
 
     result = await session.execute(query)
     redemptions = result.scalars().all()
@@ -1065,13 +1063,15 @@ async def list_users(
     status: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
+    steps = select(ActivityDaily.user_id, func.sum(ActivityDaily.eligible_steps).label('total')).group_by(ActivityDaily.user_id).subquery()
+    points = select(PointsLedger.user_id, func.sum(PointsLedger.delta).label('balance')).group_by(PointsLedger.user_id).subquery()
     query = (
         select(
             User,
-            func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("total_steps"),
+            func.coalesce(steps.c.total, 0), func.coalesce(points.c.balance, 0),
         )
-        .outerjoin(ActivityDaily, User.id == ActivityDaily.user_id)
-        .group_by(User.id)
+        .outerjoin(steps, User.id == steps.c.user_id)
+        .outerjoin(points, User.id == points.c.user_id)
         .order_by(desc(User.created_at))
     )
 
@@ -1084,12 +1084,7 @@ async def list_users(
     rows = result.all()
 
     items = []
-    for u, total_steps in rows:
-        # Calculate points balance
-        pts = (await session.execute(
-            select(func.coalesce(func.sum(PointsLedger.delta), 0)).where(PointsLedger.user_id == u.id)
-        )).scalar_one() or 0
-
+    for u, total_steps, pts in rows:
         items.append({
             "id": u.id,
             "email": u.email,
@@ -1325,7 +1320,7 @@ async def get_global_ledger(
     reason: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    query = select(PointsLedger).options(selectinload(PointsLedger.user)).order_by(desc(PointsLedger.created_at)).limit(100)
+    query = select(PointsLedger).options(joinedload(PointsLedger.user)).order_by(desc(PointsLedger.created_at)).limit(100)
     if reason and reason != "ALL":
         query = query.where(PointsLedger.reason == LedgerReason(reason))
 
