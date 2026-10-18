@@ -5,7 +5,7 @@ import { ReadCache } from './read-cache.js';
 const BASE_URL = import.meta.env?.VITE_API_URL || '';
 
 export class ApiClient {
-  constructor({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch, onUnauthorized } = {}) {
+  constructor({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch.bind(globalThis), onUnauthorized } = {}) {
     this.storage = storage;
     this.fetchImpl = fetchImpl;
     this.onUnauthorized = onUnauthorized || (() => {

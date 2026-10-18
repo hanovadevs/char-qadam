@@ -5,7 +5,7 @@ responsiveness and shared-data consistency. Migration 0008 is unchanged.
 The Stepsy-only Compose build/recreate completed and the replacement is healthy.
 All eight other containers retain their IDs/start times, and Stepsy's private
 environment hash is unchanged. Read-only authenticated admin timings and the
-145 API / 15 web / 72 Flutter regression checks are recorded in
+145 API / 16 web / 72 Flutter regression checks are recorded in
 `../ADMIN_SYNC_VERIFICATION.md` and `../PERFORMANCE.md`.
 Root-only rollout evidence is `/root/stepsy-rollouts/20261018-performance`;
 the pre-performance image is `stepsy-backend:before-performance-20261018`.

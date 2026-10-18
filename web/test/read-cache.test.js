@@ -6,6 +6,20 @@ import { ApiClient } from '../src/services/api.js';
 const deferred = () => Promise.withResolvers();
 const response = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
 
+test('default browser fetch keeps its Window receiver for login and authenticated reads', async (t) => {
+  const requests = [];
+  t.mock.method(globalThis, 'fetch', async function (url, options) {
+    assert.equal(this, globalThis, 'Browser fetch throws Illegal invocation with a different receiver');
+    requests.push({ url, options });
+    return response(url.endsWith('/login') ? { access_token: 'browser-session' } : { role: 'ADMIN' });
+  });
+  const api = new ApiClient({ storage: null });
+  await api.login('admin@example.com', 'test-only');
+  assert.equal((await api.getMe()).role, 'ADMIN');
+  assert.equal(requests[0].options.method, 'POST');
+  assert.equal(requests[1].options.headers.Authorization, 'Bearer browser-session');
+});
+
 test('concurrent readers share a request while distinct filters stay independent', async () => {
   const cache = new ReadCache();
   const pending = deferred();

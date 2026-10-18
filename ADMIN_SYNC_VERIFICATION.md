@@ -85,9 +85,15 @@ clear. Owner verification of the final account totals remains separate evidence.
     summary. Overview totals change by the expected steps/redemption.
   - Seven key admin reads execute exactly one SELECT each, including the user
     directory; this assertion guards against reintroducing per-record queries.
-- **15 web tests passed**, including real React hook rendering with delayed and
+- **16 web tests passed**, including real React hook rendering with delayed and
   reordered responses, cached re-entry, shared reads, mutation refresh and visible
   versus hidden polling. Production Vite build passed.
+  The owner's browser screenshot exposed an `Illegal invocation` on login:
+  storing native `fetch` as a client method changed its receiver. The default
+  implementation now binds to `globalThis` (Window in the browser). A receiver-
+  enforcing regression reproduced the failure before the fix and passes for
+  login plus an authenticated read afterward; injected test transports alone
+  had not exercised this browser contract.
 - **72 Flutter tests passed**; analysis passed. New coverage includes compatibility
   with an API that lacks the read-only summary endpoint. The owner accepted the
   earlier optimized build's page speed, syncing and preserved steps on the Redmi.

@@ -94,7 +94,7 @@ are fast; cached rendering and removing chained requests are separate gains.
 - All four infrastructure tests passed after pool warmup, including actual
   PostgreSQL verification of five checked-in connections, no leaked checkouts,
   and no changed user count.
-- 15 admin web tests and the production build passed. Admin responsiveness and
+- 16 admin web tests and the production build passed. Admin responsiveness and
   the shared reward lifecycle are documented in ADMIN_SYNC_VERIFICATION.md.
 - An optimized profile APK is the on-device test candidate; it is not a Play
   release. Its certificate must match the installed debug-signed app before an
