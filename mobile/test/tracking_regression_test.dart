@@ -22,6 +22,10 @@ class TestHealth implements HealthService {
 class TestActivityRepository implements ActivityRepository {
   int calls = 0;
   final List<String> dates = [];
+  int summaries = 0;
+  int lastSteps = 0;
+  @override
+  Future<SyncResponse?> getCachedTodaySummary() async => null;
   Future<SyncResponse> Function(int steps, String date)? respond;
   @override
   Future<SyncResponse> syncActivity({
@@ -31,11 +35,26 @@ class TestActivityRepository implements ActivityRepository {
     required String syncKey,
   }) async {
     calls++;
+    lastSteps = eligibleSteps;
     dates.add(localDate);
     if (respond != null) return respond!(eligibleSteps, localDate);
     return SyncResponse(
       localDate: localDate,
       eligibleSteps: eligibleSteps.clamp(0, 20000),
+      pointsAwarded: 0,
+      balance: 0,
+      isReplay: false,
+    );
+  }
+
+  @override
+  Future<SyncResponse> getTodaySummary() async {
+    summaries++;
+    return SyncResponse(
+      localDate: dates.isEmpty
+          ? DateTime.now().toIso8601String().split('T').first
+          : dates.last,
+      eligibleSteps: lastSteps,
       pointsAwarded: 0,
       balance: 0,
       isReplay: false,

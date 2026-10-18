@@ -25,6 +25,32 @@ from app.services.device_binding import require_device_key
 router = APIRouter(prefix="/activity", tags=["activity"])
 
 
+@router.get('/today', response_model=SyncOut, summary='Read today without writing reward records')
+async def today_summary(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SyncOut:
+    today = local_today(current_user.timezone).isoformat()
+    day = select(ActivityDaily.eligible_steps).where(
+        ActivityDaily.user_id == current_user.id, ActivityDaily.local_date == today
+    ).scalar_subquery()
+    balance = select(func.sum(PointsLedger.delta)).where(
+        PointsLedger.user_id == current_user.id).scalar_subquery()
+    earned = select(func.sum(PointsLedger.delta)).join(
+        ActivityDaily, PointsLedger.ref_id == ActivityDaily.id
+    ).where(ActivityDaily.user_id == current_user.id,
+            ActivityDaily.local_date == today,
+            PointsLedger.user_id == current_user.id,
+            PointsLedger.reason == LedgerReason.STEP_EARN).scalar_subquery()
+    steps, balance, earned = (await session.execute(select(
+        func.coalesce(day, 0), func.coalesce(balance, 0), func.coalesce(earned, 0)
+    ))).one()
+    settings = get_settings()
+    return SyncOut(local_date=today, eligible_steps=int(steps), balance=int(balance),
+                   points_awarded=0, points_earned_today=int(earned), is_replay=False,
+                   steps_per_point=settings.steps_per_point, daily_step_cap=settings.daily_step_cap)
+
+
 @router.post(
     "/sync",
     response_model=SyncOut,

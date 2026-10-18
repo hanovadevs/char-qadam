@@ -14,6 +14,11 @@ The reported delays were sign-in, step syncing, and opening another page.
   after its own server response; history loads in the background, in parallel,
   at most once a minute during automatic syncing. Points refreshes only after a
   changed balance/award and retains its visible data.
+- Unchanged steps now use a read-only `/activity/today` summary instead of the
+  reward-writing sync transaction. An account-scoped, same-day cached baseline
+  permits this shortcut after reopening too. A previous day's cache is ignored;
+  mismatched phone/account dates are not applied to today's total. New steps
+  still pass through the full transactional reward/device-consumption checks.
 - Forced refresh no longer repeats already-granted tracking permission requests.
   The saved native counter is emitted before waiting for optional Health Connect.
   Successful health-store reads are throttled to once per 30 seconds, without
@@ -63,13 +68,16 @@ on uncached network operations. No database migration or relocation is included.
 
 ## Verification
 
-- 70 Flutter tests passed, including six added performance regressions for
+- 71 Flutter tests passed, including seven added performance regressions for
   response-profile sign-in, parallel reads, cached balance display, coalesced
   catalog/wallet requests, out-of-order filters, mutation freshness and a slow
-  history request that does not keep sync busy.
+  history request that does not keep sync busy, and reopening with an unchanged
+  step baseline without a write transaction.
 - Flutter analysis passed.
 - 143 API tests passed against isolated local PostgreSQL. After the final login
   worker-thread/profile assertions, all 20 auth/device tests passed again.
+  The read-only summary also passed the 12 tracking/device tests; its values
+  match a real sync and repeated reads do not change activity versions.
 - An optimized profile APK is the on-device test candidate; it is not a Play
   release. Its certificate must match the installed debug-signed app before an
   in-place installation. Google Play upload remains paused at the owner's request.

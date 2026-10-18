@@ -98,6 +98,30 @@ class SlowHistory extends TestActivityRepository {
   }
 }
 
+class SavedActivity extends TestActivityRepository {
+  final String cachedDate;
+  SavedActivity(this.cachedDate);
+  @override
+  Future<SyncResponse?> getCachedTodaySummary() async => SyncResponse(
+    localDate: cachedDate,
+    eligibleSteps: 50,
+    pointsAwarded: 0,
+    balance: 0,
+    isReplay: false,
+  );
+  @override
+  Future<SyncResponse> getTodaySummary() async {
+    summaries++;
+    return SyncResponse(
+      localDate: DateTime.now().toIso8601String().split('T').first,
+      eligibleSteps: 50,
+      pointsAwarded: 0,
+      balance: 0,
+      isReplay: false,
+    );
+  }
+}
+
 class LocalSession implements TokenStorage {
   String? token;
   UserModel? user;
@@ -137,6 +161,27 @@ class EmbeddedProfileAuth extends AuthRepository {
 }
 
 void main() {
+  testWidgets(
+    'reopening unchanged steps uses the cached baseline and a read; yesterday cache is ignored',
+    (tester) async {
+      final today = DateTime.now().toIso8601String().split('T').first;
+      for (final cachedDate in [today, '2020-01-01']) {
+        final health = TestHealth()..steps = 50;
+        final repo = SavedActivity(cachedDate);
+        final notifier = ActivityNotifier(
+          healthService: health,
+          activityRepository: repo,
+          autoStart: false,
+        );
+        await notifier.initAndSync();
+        expect(notifier.state.todaySteps, 50);
+        expect(repo.calls, cachedDate == today ? 0 : 1);
+        expect(repo.summaries, cachedDate == today ? 1 : 0);
+        notifier.dispose();
+        await health.events.close();
+      }
+    },
+  );
   test(
     'sign-in completes using the verified response profile without another request',
     () async {
@@ -270,7 +315,8 @@ void main() {
       expect(notifier.state.isSyncing, isFalse);
       expect(notifier.state.serverSteps, 100);
       await notifier.initAndSync(force: true);
-      expect(repo.calls, 2);
+      expect(repo.calls, 1);
+      expect(repo.summaries, 1); // No write transaction for unchanged steps.
       expect(repo.histories, 2); // The still-pending history is reused.
       expect(pointRefreshes, 0);
       repo.history.complete(

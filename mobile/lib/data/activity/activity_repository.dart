@@ -16,6 +16,19 @@ class ActivityRepository {
 
   ActivityRepository({required this.apiClient, required this.cacheService});
 
+  Future<SyncResponse?> getCachedTodaySummary() async {
+    final cached = await cacheService.getCachedData('activity_today');
+    return cached is Map<String, dynamic>
+        ? SyncResponse.fromJson(cached)
+        : null;
+  }
+
+  Future<SyncResponse> getTodaySummary() async {
+    final response = await apiClient.get('/activity/today');
+    await cacheService.cacheData('activity_today', response.data);
+    return SyncResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
   /// Post a daily step count to the backend server.
   /// Idempotent via [syncKey].
   Future<SyncResponse> syncActivity({
@@ -34,9 +47,11 @@ class ActivityRepository {
           'sync_key': syncKey,
         },
       );
+      await cacheService.cacheData('activity_today', response.data);
       return SyncResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      final detail = e.response?.data?['detail']?.toString() ?? 'Failed to sync steps';
+      final detail =
+          e.response?.data?['detail']?.toString() ?? 'Failed to sync steps';
       throw Exception(detail);
     } catch (e) {
       throw Exception('Unexpected sync error: $e');
@@ -44,7 +59,9 @@ class ActivityRepository {
   }
 
   /// Get aggregated step history for range: 'today' | 'week' | 'month' (with offline cache fallback).
-  Future<ActivityRangeModel> getActivityHistory({String range = 'today'}) async {
+  Future<ActivityRangeModel> getActivityHistory({
+    String range = 'today',
+  }) async {
     final cacheKey = 'activity_history_$range';
     try {
       final response = await apiClient.get(
@@ -60,7 +77,9 @@ class ActivityRepository {
         return ActivityRangeModel.fromJson(cached);
       }
       if (e is DioException) {
-        final detail = e.response?.data?['detail']?.toString() ?? 'Failed to load activity history';
+        final detail =
+            e.response?.data?['detail']?.toString() ??
+            'Failed to load activity history';
         throw Exception(detail);
       }
       throw Exception('Unexpected error loading activity: $e');

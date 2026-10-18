@@ -113,6 +113,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   bool _requestInFlight = false;
   DateTime? _lastHistoryAt;
   Future<void>? _historyInFlight;
+  bool _restored = false;
 
   ActivityNotifier({
     required this.healthService,
@@ -186,6 +187,22 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     state = state.copyWith(isSyncing: true);
     final date = _day;
     try {
+      if (!_restored) {
+        _restored = true;
+        try {
+          final cached = await activityRepository.getCachedTodaySummary();
+          if (!mounted) return;
+          if (cached != null && cached.localDate == date && _day == date) {
+            state = state.copyWith(
+              serverSteps: cached.eligibleSteps,
+              pointsEarnedToday: cached.pointsEarnedToday,
+              userBalance: cached.balance,
+              dailyCap: cached.dailyStepCap,
+              stepsPerPoint: cached.stepsPerPoint,
+            );
+          }
+        } catch (_) {}
+      }
       if (!_permissionsRequested || (force && !state.hasPermission)) {
         _permissionsRequested = true;
         final permitted = await healthService.requestPermissions();
@@ -255,15 +272,25 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     required String date,
   }) async {
     try {
-      final response = await activityRepository.syncActivity(
-        localDate: date,
-        eligibleSteps: steps,
-        source: source,
-        syncKey: _uuid.v4(),
-      );
+      final response =
+          source == 'health' &&
+              date == _today() &&
+              min(steps, state.dailyCap) <= state.serverSteps
+          ? await activityRepository.getTodaySummary()
+          : await activityRepository.syncActivity(
+              localDate: date,
+              eligibleSteps: steps,
+              source: source,
+              syncKey: _uuid.v4(),
+            );
       if (!mounted) return false;
       _checkDay();
       if (_day != date) return true;
+      if (response.localDate != date) {
+        throw Exception(
+          'Phone date and account timezone differ. Check your date and time settings.',
+        );
+      }
       _lastSyncAt = now();
       final balanceChanged = response.balance != state.userBalance;
       state = state.copyWith(

@@ -37,6 +37,25 @@ async def test_simultaneous_first_day_syncs_do_not_duplicate_awards(client):
     })
     assert replay.json()['points_awarded'] == 0
     assert replay.json()['points_earned_today'] == 30
+    # Refresh is read-only: the snapshot agrees, and repeated reads neither
+    # change the day's version nor append ledger entries.
+    from app.db.models import ActivityDaily
+    from sqlalchemy import select
+    from app.db.postgres import get_session_factory
+    user_id = registered.json()['user']['id']
+    async with get_session_factory()() as session:
+        version_before = await session.scalar(select(ActivityDaily.sync_version).where(
+            ActivityDaily.user_id == user_id, ActivityDaily.local_date == date))
+    for _ in range(2):
+        snapshot = await client.get('/activity/today', headers=headers)
+        assert snapshot.status_code == 200
+        assert snapshot.json()['eligible_steps'] == 3000
+        assert snapshot.json()['balance'] == 30
+        assert snapshot.json()['points_earned_today'] == 30
+        assert snapshot.json()['points_awarded'] == 0
+    async with get_session_factory()() as session:
+        assert await session.scalar(select(ActivityDaily.sync_version).where(
+            ActivityDaily.user_id == user_id, ActivityDaily.local_date == date)) == version_before
     # Delete only the isolated test user's rows.
     from app.db.postgres import get_session_factory
     from app.db.models import ActivityDaily, PointsLedger, User
