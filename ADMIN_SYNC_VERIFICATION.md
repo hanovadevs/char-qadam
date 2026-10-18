@@ -41,18 +41,36 @@ ownership and voucher use; cached display data cannot authorize transactions.
 
 Single samples from inside the API container, before these admin query changes:
 
-| Read | Time |
-| --- | ---: |
-| Overview | 4,746 ms |
-| Users, 36 records | 10,931 ms |
-| Stores | 3,226 ms |
-| Offers | 2,236 ms |
-| Vouchers | 3,234 ms |
-| Redemptions | 3,454 ms |
-| Charts | 2,489 ms |
+| Read | Before | After deployment |
+| --- | ---: | ---: |
+| Overview | 4,746 ms | 1,494 ms |
+| Users, 36 records | 10,931 ms | 1,499 ms |
+| Stores | 3,226 ms | 1,501 ms |
+| Offers | 2,236 ms | 1,494 ms |
+| Vouchers | 3,234 ms | 1,507 ms |
+| Redemptions | 3,454 ms | 1,507 ms |
+| Charts | 2,489 ms | 2,491 ms |
 
 These exclude browser/proxy latency and are not load-test percentiles. The API's
 Sydney database region still adds network latency, as recorded in PERFORMANCE.md.
+The charts query was not rewritten; its timing remained effectively unchanged.
+
+## Rollout
+
+Implementation commit `9c9e3adcf2cd935259dfd991ca8d648958a1f245` is pushed to
+main and deployed to the healthy `qadam_backend` container. All eight other
+containers retain their original IDs/start times; Stepsy's environment hash is
+unchanged. No schema migration or production lifecycle mutation was needed.
+The SSH client timed out after the successful rollout; a new connection verified
+the source commit, completed build and healthy replacement before timing reads.
+
+Vercel production deployment `dpl_8j52MMYtKskYjfiZ7kTLBfuQAJGG` is READY for that
+exact commit and aliases `admin.stepsyapp.com`. Its hosted JavaScript contains
+the session race guard, background revalidation and recent-redemption limit.
+The public API health probe passed. The final profile APK was installed in place
+on the Redmi, launched successfully and has a running foreground tracking service.
+The signing certificate matches the existing app; there was no uninstall/data
+clear. Owner verification of the final account totals remains separate evidence.
 
 ## Regression evidence
 

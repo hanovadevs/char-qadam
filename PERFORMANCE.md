@@ -80,19 +80,22 @@ are fast; cached rendering and removing chained requests are separate gains.
 
 ## Verification
 
-- 71 Flutter tests passed, including seven added performance regressions for
+- 72 Flutter tests passed, including performance regressions for
   response-profile sign-in, parallel reads, cached balance display, coalesced
   catalog/wallet requests, out-of-order filters, mutation freshness and a slow
   history request that does not keep sync busy, and reopening with an unchanged
-  step baseline without a write transaction.
+  step baseline without a write transaction, plus fallback when an older API
+  lacks the summary endpoint.
 - Flutter analysis passed.
-- 143 API tests passed against isolated local PostgreSQL. After the final login
-  worker-thread/profile assertions, all 20 auth/device tests passed again.
+- 145 API tests passed against isolated local PostgreSQL after the admin
+  consistency and query-count checks. All 20 auth/device tests passed too.
   The read-only summary also passed the 12 tracking/device tests; its values
   match a real sync and repeated reads do not change activity versions.
 - All four infrastructure tests passed after pool warmup, including actual
   PostgreSQL verification of five checked-in connections, no leaked checkouts,
   and no changed user count.
+- 15 admin web tests and the production build passed. Admin responsiveness and
+  the shared reward lifecycle are documented in ADMIN_SYNC_VERIFICATION.md.
 - An optimized profile APK is the on-device test candidate; it is not a Play
   release. Its certificate must match the installed debug-signed app before an
   in-place installation. Google Play upload remains paused at the owner's request.

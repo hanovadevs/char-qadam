@@ -1,6 +1,19 @@
 # Docker rollout for the audited API
 
-Latest API source: `4a183d4`, deployed for the native UI/admin Maps refresh on
+Latest API source: `9c9e3ad`, deployed on 2026-10-18 for mobile/API/admin
+responsiveness and shared-data consistency. Migration 0008 is unchanged.
+The Stepsy-only Compose build/recreate completed and the replacement is healthy.
+All eight other containers retain their IDs/start times, and Stepsy's private
+environment hash is unchanged. Read-only authenticated admin timings and the
+145 API / 15 web / 72 Flutter regression checks are recorded in
+`../ADMIN_SYNC_VERIFICATION.md` and `../PERFORMANCE.md`.
+Root-only rollout evidence is `/root/stepsy-rollouts/20261018-performance`;
+the pre-performance image is `stepsy-backend:before-performance-20261018`.
+No schema or customer-data migration was needed. Vercel production deployment
+`dpl_8j52MMYtKskYjfiZ7kTLBfuQAJGG` is READY for the matching implementation
+commit and aliases `https://admin.stepsyapp.com`.
+
+Previous API source: `4a183d4`, deployed for the native UI/admin Maps refresh on
 2026-10-17. Migration 0008 is unchanged. The Stepsy-only Compose build/recreate
 completed successfully and the container is healthy. HTTPS readiness and
 non-mutating authenticated Maps validation probes passed. Private environment
