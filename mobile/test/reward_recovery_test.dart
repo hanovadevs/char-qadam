@@ -17,6 +17,7 @@ import 'package:qadam/data/rewards/rewards_repository.dart';
 import 'package:qadam/features/points/providers/points_provider.dart';
 import 'package:qadam/features/rewards/providers/rewards_provider.dart';
 import 'package:qadam/features/rewards/presentation/rewards_screen.dart';
+import 'package:qadam/features/rewards/presentation/reward_fireworks.dart';
 
 class NoToken implements TokenStorage {
   @override
@@ -290,6 +291,11 @@ void main() {
       expect(find.text('My rewards'), findsOneWidget);
       expect(rewards.recovered, 1);
       expect(rewards.acknowledged, 1);
+      expect(
+        find.byType(RewardFireworks),
+        findsNothing,
+        reason: 'An old recovered purchase is not a new win',
+      );
       expect(
         router.routeInformationProvider.value.uri.queryParameters['highlight'],
         'existing-voucher',

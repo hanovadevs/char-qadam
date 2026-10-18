@@ -137,18 +137,19 @@ async def test_short_code_collision_keeps_transaction_usable(client, monkeypatch
     from app.services import offers
     email = _email()
     offer = await _create_offer(points_cost=50)
+    other_offer = await _create_offer(points_cost=50)
     try:
         token = await _register(client, email)
         await _sync_steps(client, token, 10000)
         first = (await client.post(f'/offers/{offer}/redeem', headers=_auth(token))).json()
         codes = iter([first['short_code'], 'SR-'+uuid.uuid4().hex[:12].upper()])
         monkeypatch.setattr(offers, '_generate_short_code', lambda: next(codes))
-        second = await client.post(f'/offers/{offer}/redeem', headers={**_auth(token), 'Idempotency-Key': str(uuid.uuid4())})
+        second = await client.post(f'/offers/{other_offer}/redeem', headers={**_auth(token), 'Idempotency-Key': str(uuid.uuid4())})
         assert second.status_code == 201, second.text
         assert second.json()['balance'] == 0
         assert second.json()['voucher_id'] != first['voucher_id']
     finally:
-        await _cleanup(email, offer)
+        await _cleanup(email, offer, other_offer)
 
 
 @pytest.mark.asyncio

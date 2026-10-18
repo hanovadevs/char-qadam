@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,6 +83,21 @@ def _receipt_cipher(settings: Settings) -> MultiFernet:
         raise HTTPException(status_code=503, detail='Reward purchase recovery is not configured') from None
 
 
+def offer_claimed_by(user_id: str, offer_id):
+    """Historical claims survive voucher expiry, cancellation and admin deletion."""
+    return or_(
+        select(PointsLedger.id).where(
+            PointsLedger.user_id == user_id,
+            PointsLedger.reason == LedgerReason.OFFER_SPEND,
+            PointsLedger.ref_type == 'offer',
+            PointsLedger.ref_id == offer_id,
+        ).exists(),
+        select(Voucher.id).where(
+            Voucher.user_id == user_id, Voucher.offer_id == offer_id,
+        ).exists(),
+    )
+
+
 async def redeem_offer(
     *,
     offer_id: str,
@@ -134,13 +149,19 @@ async def redeem_offer(
                 raise HTTPException(status_code=503, detail='Purchase already completed. Open Wallet while recovery is unavailable.') from None
 
     # 2. Fetch & validate offer
-    offer_result = await session.execute(
-        select(Offer).where(Offer.id == offer_id).with_for_update()
-    )
-    offer: Offer | None = offer_result.scalar_one_or_none()
+    offer_row = (await session.execute(
+        select(Offer, offer_claimed_by(user.id, Offer.id))
+        .where(Offer.id == offer_id).with_for_update(of=Offer)
+    )).one_or_none()
 
-    if offer is None:
+    if offer_row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
+    offer, already_claimed = offer_row
+
+    # The user lock serialises distinct purchase IDs too. Retry recovery above
+    # still returns the original receipt without creating another claim.
+    if already_claimed:
+        raise HTTPException(status_code=409, detail='You already claimed this reward. Each account can claim it once. Check My rewards for your voucher.')
 
     if offer.status != OfferStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offer is not active")

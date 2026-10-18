@@ -122,7 +122,13 @@ class RewardsNotifier extends StateNotifier<RewardsState> {
             ?.pointsCost,
       );
       if (!mounted) return result;
-      state = state.copyWith(isRedeeming: false, lastRedeemedResult: result);
+      state = state.copyWith(
+        isRedeeming: false,
+        lastRedeemedResult: result,
+        offers: state.offers
+            .map((offer) => offer.id == offerId ? offer.asClaimed() : offer)
+            .toList(),
+      );
       onRedeemed?.call();
       // Trigger instant notification
       if (!result.isReplay) {

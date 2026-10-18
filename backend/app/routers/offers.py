@@ -12,14 +12,14 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from app.config import get_settings
 from app.db.models import Offer, OfferStatus, Partner, PartnerStatus, User
 from app.db.postgres import get_session
 from app.deps import get_current_user
 from app.schemas.offers import OfferOut, RedeemIn, RedeemOut
-from app.services.offers import redeem_offer
+from app.services.offers import offer_claimed_by, redeem_offer
 
 router = APIRouter(prefix="/offers", tags=["offers"])
 
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/offers", tags=["offers"])
 )
 async def list_offers(
     session: AsyncSession = Depends(get_session),
-    _: User = Depends(get_current_user),   # auth required, user not used in query
+    current_user: User = Depends(get_current_user),
 ) -> list[OfferOut]:
     """Return all currently active, in-date, in-stock offers.
 
@@ -44,9 +44,9 @@ async def list_offers(
     now = datetime.now(timezone.utc)
 
     result = await session.execute(
-        select(Offer)
+        select(Offer, offer_claimed_by(current_user.id, Offer.id))
         .join(Partner, Offer.partner_id == Partner.id)
-        .options(selectinload(Offer.partner))
+        .options(joinedload(Offer.partner))
         .where(
             Offer.status == OfferStatus.ACTIVE,
             Partner.status == PartnerStatus.ACTIVE,
@@ -56,10 +56,11 @@ async def list_offers(
         )
         .order_by(Offer.points_cost)
     )
-    offers = result.scalars().all()
+    offers = result.all()
     items = []
-    for o in offers:
+    for o, already_redeemed in offers:
         out = OfferOut.model_validate(o)
+        out.already_redeemed = already_redeemed
         if o.partner:
             out.partner_name = o.partner.name
             out.partner_location = o.partner.location

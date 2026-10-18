@@ -27,6 +27,7 @@ class OfferOut(BaseModel):
     partner_name: str | None = None
     partner_location: str | None = None
     partner_google_maps_url: str | None = None
+    already_redeemed: bool = False
 
     model_config = {"from_attributes": True}
 

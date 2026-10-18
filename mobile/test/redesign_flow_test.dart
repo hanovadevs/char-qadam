@@ -19,6 +19,7 @@ import 'package:qadam/features/activity/providers/activity_provider.dart';
 import 'package:qadam/features/points/providers/points_provider.dart';
 import 'package:qadam/features/rewards/providers/rewards_provider.dart';
 import 'package:qadam/features/rewards/presentation/reward_card.dart';
+import 'package:qadam/features/rewards/presentation/reward_fireworks.dart';
 import 'package:qadam/features/wallet/providers/wallet_provider.dart';
 import 'package:qadam/routing/app_router.dart';
 
@@ -210,6 +211,8 @@ Future<ProviderContainer> mountPreview(
   double textScale = 1,
   PreviewRewards? rewards,
   bool used = false,
+  bool disableAnimations = true,
+  String? initialPath,
 }) async {
   tester.view.physicalSize = Size(width, 980);
   tester.view.devicePixelRatio = 1;
@@ -235,7 +238,7 @@ Future<ProviderContainer> mountPreview(
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
               textScaler: TextScaler.linear(textScale),
-              disableAnimations: true,
+              disableAnimations: disableAnimations,
             ),
             child: RepaintBoundary(key: captureKey, child: child!),
           ),
@@ -243,8 +246,15 @@ Future<ProviderContainer> mountPreview(
       ),
     ),
   );
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(MaterialApp)),
+  );
+  if (initialPath != null) {
+    await tester.pump();
+    container.read(routerProvider).go(initialPath);
+  }
   await tester.pumpAndSettle();
-  return ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+  return container;
 }
 
 Future<void> reveal(WidgetTester tester, Finder finder) async {
@@ -350,6 +360,36 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets(
+    'Fresh purchase celebrates over Wallet without blocking its QR button',
+    (tester) async {
+      await mountPreview(
+        tester,
+        disableAnimations: false,
+        initialPath: '/rewards',
+      );
+      await tester.pumpAndSettle();
+      await reveal(tester, find.byKey(const ValueKey('redeem-preview-offer')));
+      await tester.tap(find.byKey(const ValueKey('redeem-preview-offer')));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('Confirm & redeem'));
+      await tester.tap(find.text('Confirm & redeem'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+      expect(find.text('My rewards'), findsOneWidget);
+      expect(find.byType(RewardFireworks), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 450));
+      await capture(tester, 'reward-fireworks');
+      await tester.tap(find.text('Show QR'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Your little win.'), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.byType(RewardFireworks), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets(
     'Confirmed reward goes directly to highlighted wallet and opens QR',
     (tester) async {
       final rewards = PreviewRewards();
@@ -366,6 +406,11 @@ void main() {
       expect(find.text('Reward unlocked. It’s right here.'), findsOneWidget);
       expect(rewards.purchases, 1);
       expect(rewards.acknowledgements, 1);
+      expect(
+        find.byType(RewardFireworks),
+        findsNothing,
+        reason: 'Reduced motion keeps the success notice without fireworks',
+      );
       expect(
         container
             .read(routerProvider)

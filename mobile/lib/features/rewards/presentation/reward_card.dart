@@ -176,7 +176,9 @@ class RewardCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          !available
+                          offer.alreadyRedeemed
+                              ? 'Already in My rewards · one per account'
+                              : !available
                               ? 'Currently unavailable'
                               : balance == null
                               ? 'Checking your balance'
@@ -189,12 +191,17 @@ class RewardCard extends StatelessWidget {
                     ),
                     ElevatedButton(
                       key: ValueKey('redeem-${offer.id}'),
-                      onPressed: ready && available && !busy ? onRedeem : null,
+                      onPressed:
+                          ready && available && !busy && !offer.alreadyRedeemed
+                          ? onRedeem
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accentDeep,
                       ),
                       child: Text(
-                        busy
+                        offer.alreadyRedeemed
+                            ? 'Claimed'
+                            : busy
                             ? 'Working…'
                             : !available
                             ? 'Unavailable'
@@ -205,7 +212,8 @@ class RewardCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (!ready &&
+                if (!offer.alreadyRedeemed &&
+                    !ready &&
                     balance != null &&
                     available &&
                     offer.pointsCost > 0) ...[

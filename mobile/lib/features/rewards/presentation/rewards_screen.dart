@@ -11,6 +11,7 @@ import '../../points/providers/points_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../providers/rewards_provider.dart';
 import 'reward_card.dart';
+import 'reward_fireworks.dart';
 
 class RewardsScreen extends ConsumerStatefulWidget {
   const RewardsScreen({super.key});
@@ -55,6 +56,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
       ).toString(),
     );
     await WidgetsBinding.instance.endOfFrame;
+    if (mounted && !result.isReplay) showRewardFireworks(context);
     await notifier.acknowledgePurchase(offerId, result.requestKey);
   }
 
@@ -100,7 +102,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Your voucher will be saved in My rewards. Show its QR code at the store to use it.',
+                'One per account. Your voucher will be saved in My rewards. Show its QR code at the store to use it.',
                 style: AppTheme.captionStyle,
               ),
               const SizedBox(height: 24),
@@ -147,7 +149,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               .toLowerCase();
       return text.contains(_search.toLowerCase()) &&
           (_filter != 'ready' ||
-              (balance != null &&
+              (!o.alreadyRedeemed &&
+                  balance != null &&
                   balance >= o.pointsCost &&
                   (o.inventory == null || o.inventory! > 0)));
     }).toList();

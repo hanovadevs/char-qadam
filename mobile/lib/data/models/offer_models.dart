@@ -14,6 +14,7 @@ class OfferModel {
   final DateTime? startsAt;
   final DateTime? endsAt;
   final String status;
+  final bool alreadyRedeemed;
 
   OfferModel({
     required this.id,
@@ -31,6 +32,7 @@ class OfferModel {
     this.startsAt,
     this.endsAt,
     required this.status,
+    this.alreadyRedeemed = false,
   });
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
@@ -54,8 +56,28 @@ class OfferModel {
           ? DateTime.parse(json['ends_at'] as String)
           : null,
       status: json['status'] as String,
+      alreadyRedeemed: json['already_redeemed'] as bool? ?? false,
     );
   }
+
+  OfferModel asClaimed() => OfferModel(
+    id: id,
+    partnerId: partnerId,
+    partnerName: partnerName,
+    partnerLocation: partnerLocation,
+    partnerGoogleMapsUrl: partnerGoogleMapsUrl,
+    title: title,
+    description: description,
+    discountType: discountType,
+    discountValue: discountValue,
+    pointsCost: pointsCost,
+    minBasket: minBasket,
+    inventory: inventory,
+    startsAt: startsAt,
+    endsAt: endsAt,
+    status: status,
+    alreadyRedeemed: true,
+  );
 }
 
 class RedeemResultModel {
