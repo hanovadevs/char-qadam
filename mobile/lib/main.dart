@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/services/background_sync_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'routing/app_router.dart';
@@ -17,10 +17,10 @@ void main() async {
       yield LicenseEntryWithLineBreaks([family], license);
     }
   });
-  await NotificationService.initialize();
-  await BackgroundSyncService.initialize();
-
   runApp(const ProviderScope(child: StepsyApp()));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(NotificationService.initialize());
+  });
 }
 
 class StepsyApp extends ConsumerWidget {

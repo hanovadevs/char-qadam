@@ -40,6 +40,8 @@ final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((
 class WalletNotifier extends StateNotifier<WalletState> {
   int _request = 0;
   final WalletRepository walletRepository;
+  final _inFlight = <String, Future<List<VoucherModel>>>{};
+  final _pages = <String, List<VoucherModel>>{};
 
   WalletNotifier({required this.walletRepository})
     : super(const WalletState()) {
@@ -50,12 +52,31 @@ class WalletNotifier extends StateNotifier<WalletState> {
     final request = ++_request;
     state = state.copyWith(
       selectedStatus: status,
-      vouchers: status == state.selectedStatus ? state.vouchers : const [],
+      vouchers: status == state.selectedStatus
+          ? state.vouchers
+          : (_pages[status] ?? const []),
       isLoading: true,
       errorMessage: null,
     );
     try {
-      final list = await walletRepository.getVouchers(status: status);
+      if (!_pages.containsKey(status)) {
+        try {
+          final cached = await walletRepository.getCachedVouchers(status);
+          if (!mounted || request != _request) return;
+          if (cached != null) {
+            _pages[status] = cached;
+            state = state.copyWith(vouchers: cached);
+          }
+        } catch (_) {}
+      }
+      final future = _inFlight.putIfAbsent(
+        status,
+        () => walletRepository.getVouchers(status: status).whenComplete(() {
+          _inFlight.remove(status);
+        }),
+      );
+      final list = await future;
+      _pages[status] = list;
       if (!mounted || request != _request) return;
       state = state.copyWith(vouchers: list, isLoading: false);
     } catch (e) {
@@ -67,5 +88,15 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
   Future<void> refresh() async {
     await fetchVouchers(state.selectedStatus);
+  }
+
+  Future<void> refreshAfterMutation() async {
+    final pending = _inFlight[state.selectedStatus];
+    if (pending != null) {
+      try {
+        await pending;
+      } catch (_) {}
+    }
+    if (mounted) await refresh();
   }
 }

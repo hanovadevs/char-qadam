@@ -65,6 +65,7 @@ async def _token(user: User, session: AsyncSession, key: str) -> TokenOut:
             'did': binding.id, 'dgen': binding.generation,
         }), role=user.role, partner_id=user.partner_id,
         partner_name=partner.name if partner else None,
+        user=_user_out(user, partner.name if partner else None),
     )
 
 
@@ -133,7 +134,7 @@ async def login(
     )
     user = result.scalar_one_or_none()
 
-    if user is None or not verify_password(body.password, user.password_hash):
+    if user is None or not await asyncio.to_thread(verify_password, body.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -387,6 +388,10 @@ async def me(
         if partner:
             partner_name = partner.name
 
+    return _user_out(current_user, partner_name)
+
+
+def _user_out(current_user: User, partner_name: str | None) -> UserOut:
     status_val = current_user.status.value if hasattr(current_user.status, "value") else str(current_user.status)
     return UserOut(
         id=current_user.id,

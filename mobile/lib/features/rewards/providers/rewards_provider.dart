@@ -49,8 +49,8 @@ final rewardsProvider = StateNotifierProvider<RewardsNotifier, RewardsState>((
   return RewardsNotifier(
     rewardsRepository: rewardsRepository,
     onRedeemed: () {
-      ref.invalidate(walletProvider);
-      ref.invalidate(pointsProvider);
+      ref.read(walletProvider.notifier).refreshAfterMutation();
+      ref.read(pointsProvider.notifier).refreshAfterMutation();
     },
   );
 });
@@ -58,17 +58,39 @@ final rewardsProvider = StateNotifierProvider<RewardsNotifier, RewardsState>((
 class RewardsNotifier extends StateNotifier<RewardsState> {
   final RewardsRepository rewardsRepository;
   final void Function()? onRedeemed;
+  Future<void>? _fetching;
+  bool _restored = false;
 
   RewardsNotifier({required this.rewardsRepository, this.onRedeemed})
     : super(const RewardsState()) {
     fetchOffers();
   }
 
-  Future<void> fetchOffers() async {
+  Future<void> fetchOffers() => _fetching ??= _fetchOffers().whenComplete(() {
+    _fetching = null;
+  });
+
+  Future<void> _refreshAfterMutation() async {
+    final pending = _fetching;
+    if (pending != null) await pending;
+    if (mounted) await fetchOffers();
+  }
+
+  Future<void> _fetchOffers() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
+    if (!_restored) {
+      _restored = true;
+      try {
+        final catalog = await rewardsRepository.getCachedOffers();
+        if (!mounted) return;
+        if (catalog != null) state = state.copyWith(offers: catalog);
+      } catch (_) {}
+    }
     try {
-      final catalog = await rewardsRepository.getOffers();
-      final pending = await rewardsRepository.pendingPurchases();
+      final (catalog, pending) = await (
+        rewardsRepository.getOffers(),
+        rewardsRepository.pendingPurchases(),
+      ).wait;
       if (!mounted) return;
       state = state.copyWith(
         offers: catalog,
@@ -110,7 +132,7 @@ class RewardsNotifier extends StateNotifier<RewardsState> {
         );
       }
       // Refresh catalog after redeem (inventory count might change)
-      fetchOffers();
+      _refreshAfterMutation();
       return result;
     } catch (e) {
       if (!mounted) return null;
@@ -133,7 +155,7 @@ class RewardsNotifier extends StateNotifier<RewardsState> {
     if (requestKey == null) return;
     try {
       await rewardsRepository.acknowledgePurchase(offerId, requestKey);
-      if (mounted) await fetchOffers();
+      if (mounted) await _refreshAfterMutation();
     } catch (_) {
       if (mounted) {
         state = state.copyWith(

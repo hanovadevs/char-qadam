@@ -53,6 +53,7 @@ class TokenOut(BaseModel):
     role: str = "USER"
     partner_id: str | None = None
     partner_name: str | None = None
+    user: UserOut | None = None
 
 
 class VerificationOut(BaseModel):

@@ -1,12 +1,36 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../points/providers/points_provider.dart';
+import '../../rewards/providers/rewards_provider.dart';
+import '../../wallet/providers/wallet_provider.dart';
 
-class MainScaffold extends StatelessWidget {
+class MainScaffold extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
   const MainScaffold({super.key, required this.navigationShell});
+  @override
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
+}
+
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Warm the small primary pages after the first frame, without gating
+      // navigation on requests or constructing the offscreen widget trees.
+      ref.read(pointsProvider);
+      ref.read(rewardsProvider);
+      ref.read(walletProvider);
+    });
+  }
+
+  StatefulNavigationShell get navigationShell => widget.navigationShell;
+
   @override
   Widget build(BuildContext context) => Scaffold(
     body: navigationShell,

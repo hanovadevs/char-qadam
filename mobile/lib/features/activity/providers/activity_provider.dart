@@ -90,7 +90,8 @@ final activityProvider = StateNotifierProvider<ActivityNotifier, ActivityState>(
     return ActivityNotifier(
       healthService: healthService,
       activityRepository: activityRepository,
-      onPointsChanged: () => ref.invalidate(pointsProvider),
+      onPointsChanged: () =>
+          unawaited(ref.read(pointsProvider.notifier).refreshAfterMutation()),
       autoStart: authenticated,
     );
   },
@@ -110,6 +111,8 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   late String _day;
   int _historyRequest = 0;
   bool _requestInFlight = false;
+  DateTime? _lastHistoryAt;
+  Future<void>? _historyInFlight;
 
   ActivityNotifier({
     required this.healthService,
@@ -183,7 +186,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     state = state.copyWith(isSyncing: true);
     final date = _day;
     try {
-      if (!_permissionsRequested || force) {
+      if (!_permissionsRequested || (force && !state.hasPermission)) {
         _permissionsRequested = true;
         final permitted = await healthService.requestPermissions();
         if (!mounted) return;
@@ -262,6 +265,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       _checkDay();
       if (_day != date) return true;
       _lastSyncAt = now();
+      final balanceChanged = response.balance != state.userBalance;
       state = state.copyWith(
         todaySteps: max(state.todaySteps, response.eligibleSteps),
         serverSteps: response.eligibleSteps,
@@ -276,7 +280,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
         userBalance: response.balance,
         lastSyncTime: DateFormat('hh:mm a').format(now()),
       );
-      onPointsChanged?.call();
+      if (balanceChanged || response.pointsAwarded > 0) onPointsChanged?.call();
       if (response.pointsAwarded > 0) {
         unawaited(
           NotificationService.showPointsEarned(
@@ -285,7 +289,14 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
           ),
         );
       }
-      await loadHistory(state.selectedRange);
+      // History is supplementary: it must not hold the sync lock/spinner or
+      // download lifetime history again for every sensor sync.
+      if (_lastHistoryAt == null ||
+          now().difference(_lastHistoryAt!) >= const Duration(minutes: 1)) {
+        _historyInFlight ??= loadHistory(state.selectedRange).whenComplete(() {
+          _historyInFlight = null;
+        });
+      }
       return true;
     } catch (e) {
       if (mounted && date == _day) {
@@ -310,15 +321,18 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       errorMessage: state.errorMessage,
     );
     try {
-      final history = await activityRepository.getActivityHistory(range: range);
+      final (history, streakHistory) = await (
+        activityRepository.getActivityHistory(range: range),
+        range == 'all'
+            ? Future<ActivityRangeModel?>.value(null)
+            : activityRepository.getActivityHistory(range: 'all'),
+      ).wait;
       // Streaks are independent of the visible filter and missing dates break them.
-      final streakHistory = range == 'all'
-          ? history
-          : await activityRepository.getActivityHistory(range: 'all');
       if (!mounted || request != _historyRequest) return;
+      _lastHistoryAt = now();
       state = state.copyWith(
         history: history,
-        currentStreakDays: countStreak(streakHistory.days, now()),
+        currentStreakDays: countStreak((streakHistory ?? history).days, now()),
         errorMessage: state.errorMessage,
       );
     } catch (e) {

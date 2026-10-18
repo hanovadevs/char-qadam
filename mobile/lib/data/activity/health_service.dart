@@ -38,6 +38,7 @@ class HealthService {
   String _currentDate = '';
   int? _lastHealthSteps;
   DateTime? _lastHealthRead;
+  DateTime? _lastHealthCheck;
 
   Stream<int> get stepStream => _controller.stream;
   bool get _android =>
@@ -183,6 +184,16 @@ class HealthService {
     } else if (_counter.date == day) {
       hardware = _counter.steps;
     }
+    // Restore the native counter before waiting on optional Health Connect.
+    // Never reuse an old health total with a newer hardware baseline.
+    _emit(hardware);
+    if (_lastHealthCheck != null &&
+        _lastHealthCheck!.year == now.year &&
+        _lastHealthCheck!.month == now.month &&
+        _lastHealthCheck!.day == now.day &&
+        now.difference(_lastHealthCheck!) < const Duration(seconds: 30)) {
+      return _currentSteps;
+    }
     var health = 0;
     try {
       health =
@@ -194,6 +205,7 @@ class HealthService {
           0;
       _lastHealthSteps = health;
       _lastHealthRead = healthEnd;
+      _lastHealthCheck = now;
     } catch (e) {
       debugPrint('Health read unavailable: $e');
     }

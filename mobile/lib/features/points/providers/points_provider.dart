@@ -57,20 +57,54 @@ final pointsProvider = StateNotifierProvider<PointsNotifier, PointsState>((
 
 class PointsNotifier extends StateNotifier<PointsState> {
   final PointsRepository pointsRepository;
+  Future<void>? _refreshing;
+  int _generation = 0;
+  bool _restored = false;
 
   PointsNotifier({required this.pointsRepository})
     : super(const PointsState()) {
     refresh();
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh() => _refreshing ??= _refresh().whenComplete(() {
+    _refreshing = null;
+  });
+
+  Future<void> refreshAfterMutation() async {
+    final pending = _refreshing;
+    if (pending != null) await pending;
+    if (mounted) await refresh();
+  }
+
+  Future<void> _refresh() async {
+    ++_generation;
     state = state.copyWith(isLoading: true, errorMessage: null);
+    if (!_restored) {
+      _restored = true;
+      try {
+        final (balance, history) = await (
+          pointsRepository.getCachedBalance(),
+          pointsRepository.getCachedHistory(),
+        ).wait;
+        if (!mounted) return;
+        state = state.copyWith(
+          balanceData: balance,
+          entries: history?.entries,
+          total: history?.total,
+          offset: history?.entries.length,
+          hasMore: history == null
+              ? null
+              : history.entries.length < history.total,
+        );
+      } catch (_) {
+        /* A missing cache must never prevent a network refresh. */
+      }
+    }
     try {
-      final balance = await pointsRepository.getBalance();
-      final history = await pointsRepository.getHistory(
-        limit: PointsState.pageSize,
-        offset: 0,
-      );
+      final (balance, history) = await (
+        pointsRepository.getBalance(),
+        pointsRepository.getHistory(limit: PointsState.pageSize, offset: 0),
+      ).wait;
       if (!mounted) return;
       state = PointsState(
         balanceData: balance,
@@ -88,7 +122,8 @@ class PointsNotifier extends StateNotifier<PointsState> {
   }
 
   Future<void> loadMore() async {
-    if (state.isLoadingMore || !state.hasMore) return;
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+    final generation = _generation;
 
     state = state.copyWith(isLoadingMore: true);
     try {
@@ -96,7 +131,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         limit: PointsState.pageSize,
         offset: state.offset,
       );
-      if (!mounted) return;
+      if (!mounted || generation != _generation) return;
       final allEntries = [...state.entries, ...history.entries];
       state = state.copyWith(
         entries: allEntries,
@@ -106,7 +141,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         total: history.total,
       );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _generation) return;
       state = state.copyWith(isLoadingMore: false);
     }
   }

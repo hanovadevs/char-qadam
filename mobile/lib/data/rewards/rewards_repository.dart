@@ -24,6 +24,15 @@ class RewardsRepository {
 
   Future<Map<String, PendingPurchase>> pendingPurchases() => journal.pending();
 
+  Future<List<OfferModel>?> getCachedOffers() async {
+    final data = await cacheService.getCachedData('offers_catalog');
+    return data is List
+        ? data
+              .map((item) => OfferModel.fromJson(item as Map<String, dynamic>))
+              .toList()
+        : null;
+  }
+
   Future<void> acknowledgePurchase(String offerId, String requestKey) =>
       journal.acknowledge(offerId, requestKey);
 

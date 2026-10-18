@@ -11,6 +11,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 class AuthRepository {
   final ApiClient apiClient;
+  UserModel? authenticatedUser;
 
   AuthRepository({required this.apiClient});
 
@@ -86,8 +87,13 @@ class AuthRepository {
   }
 
   String _accessToken(Map<String, dynamic> data) {
+    authenticatedUser = null;
     if (data['verification_required'] == true) {
       throw EmailVerificationRequired.fromJson(data);
+    }
+    final user = data['user'];
+    if (user is Map<String, dynamic>) {
+      authenticatedUser = UserModel.fromJson(user);
     }
     return data['access_token'] as String;
   }

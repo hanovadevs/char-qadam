@@ -97,9 +97,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> checkAuthStatus() async {
     state = state.copyWith(isLoading: true);
-    final token = await tokenStorage.getToken();
-    final cachedUser = await tokenStorage.getUser();
-    final (googleName, googlePhoto) = await _loadGoogleProfile();
+    final (token, cachedUser, profile) = await (
+      tokenStorage.getToken(),
+      tokenStorage.getUser(),
+      _loadGoogleProfile(),
+    ).wait;
+    final (googleName, googlePhoto) = profile;
 
     if (token != null && token.isNotEmpty) {
       // Immediately restore authenticated state from local storage so the user stays
@@ -139,7 +142,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
       );
       await tokenStorage.saveToken(token);
-      final user = await authRepository.getMe();
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
       await tokenStorage.saveUser(user);
       state = AuthState(
         status: AuthStatus.authenticated,
@@ -173,7 +177,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         timezone: timezone,
       );
       await tokenStorage.saveToken(token);
-      final user = await authRepository.getMe();
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
       await tokenStorage.saveUser(user);
       state = AuthState(
         status: AuthStatus.authenticated,
@@ -207,7 +212,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         timezone: timezone,
       );
       await tokenStorage.saveToken(token);
-      final user = await authRepository.getMe();
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
       await tokenStorage.saveUser(user);
       // Cache the Google name/photo locally so the profile screen can show them
       // (the backend does not store these).
@@ -278,7 +284,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         code: code,
       );
       await tokenStorage.saveToken(token);
-      final user = await authRepository.getMe();
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
       await tokenStorage.saveUser(user);
       if (!mounted) return false;
       state = AuthState(

@@ -16,6 +16,16 @@ class PointsRepository {
 
   PointsRepository({required this.apiClient, required this.cacheService});
 
+  Future<BalanceModel?> getCachedBalance() async {
+    final data = await cacheService.getCachedData('points_balance');
+    return data is Map<String, dynamic> ? BalanceModel.fromJson(data) : null;
+  }
+
+  Future<LedgerPageModel?> getCachedHistory() async {
+    final data = await cacheService.getCachedData('points_history_offset_0');
+    return data is Map<String, dynamic> ? LedgerPageModel.fromJson(data) : null;
+  }
+
   /// Fetch current balance and lifetime earned/spent stats (with offline cache fallback).
   Future<BalanceModel> getBalance() async {
     const cacheKey = 'points_balance';
@@ -30,7 +40,9 @@ class PointsRepository {
         return BalanceModel.fromJson(cached);
       }
       if (e is DioException) {
-        throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load balance');
+        throw Exception(
+          e.response?.data?['detail']?.toString() ?? 'Failed to load balance',
+        );
       }
       throw Exception('Unexpected error loading balance: $e');
     }
@@ -57,7 +69,9 @@ class PointsRepository {
         }
       }
       if (e is DioException) {
-        throw Exception(e.response?.data?['detail']?.toString() ?? 'Failed to load history');
+        throw Exception(
+          e.response?.data?['detail']?.toString() ?? 'Failed to load history',
+        );
       }
       throw Exception('Unexpected error loading history: $e');
     }

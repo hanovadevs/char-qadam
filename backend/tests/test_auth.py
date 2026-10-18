@@ -89,6 +89,11 @@ async def test_login_success(client: AsyncClient) -> None:
         resp = await client.post("/auth/login", json={"email": email, "password": password})
         assert resp.status_code == 200, resp.text
         assert "access_token" in resp.json()
+        profile = await client.get('/auth/me', headers={
+            'Authorization': f"Bearer {resp.json()['access_token']}"})
+        assert profile.status_code == 200
+        assert resp.json()['user'] == profile.json()
+        assert 'password_hash' not in resp.json()['user']
     finally:
         await _delete_user_by_email(email)
 

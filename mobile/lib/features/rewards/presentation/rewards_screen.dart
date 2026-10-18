@@ -22,14 +22,6 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   String _filter = 'all';
   String _search = '';
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _refreshAll();
-    });
-  }
-
   Future<void> _refreshAll() => Future.wait([
     ref.read(rewardsProvider.notifier).fetchOffers(),
     ref.read(pointsProvider.notifier).refresh(),

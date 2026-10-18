@@ -13,11 +13,11 @@ from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Partner, PartnerStatus, User, UserStatus
+from app.db.models import DeviceBinding, Partner, PartnerStatus, User, UserStatus
 from app.db.postgres import get_session
 from app.services.partner_auth import hash_api_key
 from app.services.security import decode_access_claims
-from app.services.device_binding import validate_device
+from app.services.device_binding import validate_binding, validate_device
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -64,8 +64,13 @@ async def get_current_user(
     except JWTError:
         raise _401
 
-    result = await session.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # Read both revocable authorization records in one database round trip.
+    # Do not cache these: deactivation/device transfer must apply immediately.
+    result = await session.execute(select(User, DeviceBinding).outerjoin(
+        DeviceBinding, DeviceBinding.id == (x_device_id or '').lower()
+    ).where(User.id == user_id))
+    row = result.one_or_none()
+    user, binding = row if row is not None else (None, None)
 
     if user is None:
         raise _401
@@ -79,7 +84,7 @@ async def get_current_user(
             detail="Account is suspended or deleted",
         )
 
-    await validate_device(x_device_id, user, claims, session)
+    validate_binding(x_device_id, user, claims, binding)
     return user
 
 

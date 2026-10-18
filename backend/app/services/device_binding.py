@@ -61,6 +61,13 @@ async def validate_device(key: str | None, user: User, claims: dict, session: As
     if claims.get('did') != key:
         raise HTTPException(401, 'Please sign in again on this phone.')
     binding = await session.get(DeviceBinding, key)
+    return validate_binding(key, user, claims, binding)
+
+
+def validate_binding(key: str | None, user: User, claims: dict, binding: DeviceBinding | None) -> str:
+    key = device_key(key)
+    if claims.get('did') != key:
+        raise HTTPException(401, 'Please sign in again on this phone.')
     if binding is None or binding.user_id != user.id or binding.generation != claims.get('dgen'):
         raise HTTPException(401, 'Device access has changed. Please sign in again.')
     return key
