@@ -53,5 +53,21 @@ Reduced-motion users retain the textual success notice without the fireworks.
 - The captured fixture preview is `artifacts/redesign/reward-fireworks.png`.
   It contains fictional customer/reward data, not production account details.
 
+## Rollout on 2026-10-18
+
+Implementation `c600f48ce863cb7d27a8f1332d17b0b0575a80b0` is pushed to main
+and deployed to the healthy Stepsy API container. A read-only production catalog
+probe confirms historical claims receive `already_redeemed=true`. No live
+purchase or customer-data mutation was used for this probe.
+All eight other containers retain their IDs/start times; the API environment
+hash is unchanged. Root-only evidence is
+`/root/stepsy-rollouts/20261018-one-claim`, with rollback image
+`stepsy-backend:before-one-claim-20261018`.
+
+The matching arm64 profile APK built successfully and was installed with
+`adb install -r` on the Redmi, preserving the installed app's data. This is a
+test build; Google Play uploading remains paused. The owner has been asked to
+check their totals and perform the final on-device reward/celebration flow.
+
 References: [PostgreSQL row locks](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-ROWS),
 [Flutter repaint-driven CustomPainter](https://api.flutter.dev/flutter/rendering/CustomPainter-class.html).

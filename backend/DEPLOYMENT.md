@@ -1,6 +1,15 @@
 # Docker rollout for the audited API
 
-Latest API source: `9c9e3ad`, deployed on 2026-10-18 for mobile/API/admin
+Latest API source: `c600f48`, deployed on 2026-10-18 for one claim per offer per
+account. The check uses existing purchase/voucher history and row locks; migration
+0008 is unchanged and existing data is preserved. A read-only live catalog probe
+verified historical claims are marked. The container is healthy, the private
+environment hash is unchanged, and all eight other app containers retain their
+IDs/start times. Evidence: `/root/stepsy-rollouts/20261018-one-claim`; rollback
+image: `stepsy-backend:before-one-claim-20261018`. See
+`../REWARD_CLAIM_POLICY.md` for the 153 API / 75 Flutter checks and mobile flow.
+
+Performance rollout source: `9c9e3ad`, deployed on 2026-10-18 for mobile/API/admin
 responsiveness and shared-data consistency. Migration 0008 is unchanged.
 The Stepsy-only Compose build/recreate completed and the replacement is healthy.
 All eight other containers retain their IDs/start times, and Stepsy's private
