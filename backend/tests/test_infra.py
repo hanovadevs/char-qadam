@@ -18,6 +18,25 @@ from app.db.postgres import get_session_factory
 
 
 @pytest.mark.asyncio
+async def test_database_warmup_returns_bounded_connections_for_reuse():
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy import func, select
+    from app.config import get_settings
+    from app.db.postgres import POOL_SIZE, warm_pool
+    engine = create_async_engine(get_settings().database_url, pool_size=POOL_SIZE, max_overflow=0)
+    try:
+        async with engine.connect() as connection:
+            before = await connection.scalar(select(func.count()).select_from(User))
+        await warm_pool(engine)
+        assert engine.pool.checkedin() == POOL_SIZE
+        assert engine.pool.checkedout() == 0
+        async with engine.connect() as connection:
+            assert await connection.scalar(select(func.count()).select_from(User)) == before
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_health_liveness_and_readiness(client: AsyncClient) -> None:
     # 1. Basic liveness
     resp = await client.get("/health")

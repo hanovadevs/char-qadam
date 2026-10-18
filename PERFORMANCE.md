@@ -38,6 +38,10 @@ The reported delays were sign-in, step syncing, and opening another page.
   calculates the three balance aggregates in one SQL statement. These checks
   still consult the database on every authenticated request: account status,
   verification, token version, device ownership and generation are not cached.
+- API startup now opens and initializes its existing five-connection pool with
+  zero-row typed queries before accepting traffic. Constructing an engine had
+  previously left connection and enum-codec setup to the first real requests.
+  The pool limit, transaction handling and stale-connection checks are unchanged.
 
 Cached values only render the UI. Spending points, issuing vouchers and merchant
 validation still require server authorization. Cache keys remain account-scoped;
@@ -66,6 +70,14 @@ measured 5,715 ms in one probe. The geography/connection overhead remains a limi
 on uncached network operations. No database migration or relocation is included.
 [Supabase region reference](https://supabase.com/docs/guides/platform/regions).
 
+After the first deployment, samples included 4,270 ms for login (with its
+embedded profile), 1,242 ms for `/auth/me`, and 1,741 ms for balance. Later cold
+samples varied substantially: login reached 10,268 ms and a write sync 7,205 ms.
+The new read-only refresh measured 5,878 ms on its first request and 1,739/1,740 ms
+on two following requests. This variance motivated the additional startup pool
+warmup. These samples do not support a blanket claim that all network operations
+are fast; cached rendering and removing chained requests are separate gains.
+
 ## Verification
 
 - 71 Flutter tests passed, including seven added performance regressions for
@@ -78,6 +90,9 @@ on uncached network operations. No database migration or relocation is included.
   worker-thread/profile assertions, all 20 auth/device tests passed again.
   The read-only summary also passed the 12 tracking/device tests; its values
   match a real sync and repeated reads do not change activity versions.
+- All four infrastructure tests passed after pool warmup, including actual
+  PostgreSQL verification of five checked-in connections, no leaked checkouts,
+  and no changed user count.
 - An optimized profile APK is the on-device test candidate; it is not a Play
   release. Its certificate must match the installed debug-signed app before an
   in-place installation. Google Play upload remains paused at the owner's request.

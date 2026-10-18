@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.db.postgres import dispose_engine, get_engine
+from app.db.postgres import dispose_engine, warm_pool
 from app.middleware.logging_middleware import StructuredLoggingMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware
 from app.routers import (
@@ -31,10 +31,11 @@ from app.routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage startup/shutdown: warm-up and dispose the PostgreSQL engine."""
-    # Touch the engine on startup so misconfigured DATABASE_URL fails fast.
-    get_engine()
-    yield
-    await dispose_engine()
+    try:
+        await warm_pool()
+        yield
+    finally:
+        await dispose_engine()
 
 
 def create_app() -> FastAPI:

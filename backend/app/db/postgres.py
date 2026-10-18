@@ -10,6 +10,8 @@ Usage in routers:
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+import asyncio
+from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -22,6 +24,7 @@ from app.config import get_settings
 # Module-level engine (created once at import time; disposed in lifespan).
 _engine = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
+POOL_SIZE = 5
 
 
 def get_engine():
@@ -33,10 +36,29 @@ def get_engine():
             settings.database_url,
             echo=settings.debug,        # SQL logging in dev
             pool_pre_ping=True,         # detect stale connections
-            pool_size=5,
+            pool_size=POOL_SIZE,
             max_overflow=10,
         )
     return _engine
+
+
+async def warm_pool(engine=None) -> None:
+    """Initialize the bounded pool and enum codecs before accepting traffic.
+
+    Engine construction alone does not establish connections. These zero-row
+    reads incur connection/type setup at startup, without accessing user rows.
+    """
+    from app.db.models import Offer, Partner, PointsLedger, User, Voucher
+    engine = engine if engine is not None else get_engine()
+
+    async def warm_connection():
+        async with engine.connect() as connection:
+            for model in (User, Partner, Offer, Voucher, PointsLedger):
+                await connection.execute(select(model).limit(0))
+
+    async with asyncio.TaskGroup() as tasks:
+        for _ in range(POOL_SIZE):
+            tasks.create_task(warm_connection())
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
