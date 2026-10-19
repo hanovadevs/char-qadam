@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../companion/companion.dart';
+import '../../companion/companion_buddy.dart';
 import '../../companion/experience_sheet.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../data/auth/auth_state_provider.dart';
@@ -298,7 +298,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           const Row(
             children: [
-              Companion(size: 64),
+              CompanionBuddy(size: 64),
               SizedBox(width: 12),
               Expanded(
                 child: Text(

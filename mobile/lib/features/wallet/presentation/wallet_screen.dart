@@ -11,7 +11,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../../../data/models/voucher_models.dart';
 import '../../rewards/presentation/reward_card.dart';
-import '../../companion/companion.dart';
+import '../../companion/companion_buddy.dart';
 import '../providers/wallet_provider.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
@@ -118,6 +118,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Your little win.', style: AppTheme.largeTitleStyle),
+              const CompanionGuide(
+                clip: 'point',
+                message:
+                    'At the store? Let the team scan this code or enter it below.',
+              ),
               const SizedBox(height: 8),
               Text(
                 voucher.offerTitle,
@@ -218,9 +223,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
           children: [
             Row(
               children: [
-                Companion(
+                CompanionBuddy(
                   size: 56,
-                  clip: highlighted && !widget.recovered ? 'cheer' : 'rest',
+                  clip: highlighted && !widget.recovered ? 'gift' : 'rest',
                   event: widget.highlightId.hashCode,
                 ),
                 const SizedBox(width: 12),
@@ -265,6 +270,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                 widget.recovered
                     ? 'Purchase recovered. No extra points spent.'
                     : 'Reward unlocked. It’s right here.',
+              ),
+            if (highlighted && state.selectedStatus == 'active')
+              const CompanionGuide(
+                clip: 'point',
+                message:
+                    'Your reward is right here! Tap Show QR when you’re at the store.',
               ),
             if (state.errorMessage != null)
               StatusNotice(

@@ -11,7 +11,7 @@ import '../../points/providers/points_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../providers/rewards_provider.dart';
 import 'reward_card.dart';
-import '../../companion/companion.dart';
+import '../../companion/companion_buddy.dart';
 import '../../companion/experience_provider.dart';
 import '../reward_goal.dart';
 import 'reward_fireworks.dart';
@@ -26,6 +26,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   String _filter = 'all';
   String _search = '';
   String? _openedOffer;
+  bool _redemptionIssue = false;
+  int _redemptionEvent = 0;
 
   Future<void> _refreshAll() => Future.wait([
     ref.read(rewardsProvider.notifier).fetchOffers(),
@@ -33,10 +35,18 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   ]);
 
   Future<void> _redeem(String offerId) async {
+    setState(() {
+      _redemptionIssue = false;
+      _redemptionEvent++;
+    });
     final notifier = ref.read(rewardsProvider.notifier);
     final result = await notifier.redeem(offerId);
     if (!mounted) return;
     if (result == null) {
+      setState(() {
+        _redemptionIssue = true;
+        _redemptionEvent++;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -77,13 +87,18 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                CupertinoIcons.ticket,
-                size: 32,
-                color: AppTheme.accentDeep,
+              const Row(
+                children: [
+                  CompanionBuddy(clip: 'gift', size: 76),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Make it yours.',
+                      style: AppTheme.largeTitleStyle,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              const Text('Make it yours.', style: AppTheme.largeTitleStyle),
               const SizedBox(height: 10),
               Text(offer.title, style: AppTheme.headlineStyle),
               if (offer.partnerName != null)
@@ -120,6 +135,11 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 style: AppTheme.captionStyle,
               ),
               const SizedBox(height: 24),
+              const CompanionGuide(
+                clip: 'point',
+                message:
+                    'Happy with the terms? Confirm below. I’ll meet you in Wallet.',
+              ),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -156,7 +176,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             children: [
               Row(
                 children: [
-                  const Companion(size: 64, clip: 'point'),
+                  const CompanionBuddy(size: 64, clip: 'point'),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -195,6 +215,11 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     ? offer.description!
                     : 'Show your issued voucher at the participating store. Check the branch and minimum spend before redeeming.',
                 style: AppTheme.bodyStyle,
+              ),
+              const CompanionGuide(
+                message:
+                    'Check the branch and minimum spend. Your little treat should fit your plans.',
+                clip: 'peek',
               ),
               const SizedBox(height: 16),
               if (eligibleReward(offer))
@@ -291,8 +316,14 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   balance >= o.pointsCost &&
                   (o.inventory == null || o.inventory! > 0)));
     }).toList();
+    final candidates = offers.where((o) => eligibleReward(o)).toList();
+    final affordable = candidates
+        .where((o) => balance != null && o.pointsCost <= balance)
+        .toList();
+    final guided = affordable.firstOrNull ?? candidates.firstOrNull;
     final requested = GoRouterState.of(context).uri.queryParameters['offer'];
-    final requestKey='$requested:${GoRouterState.of(context).uri.queryParameters['view']}';
+    final requestKey =
+        '$requested:${GoRouterState.of(context).uri.queryParameters['view']}';
     final target = state.offers.where((o) => o.id == requested).firstOrNull;
     if (target != null && requestKey != _openedOffer) {
       _openedOffer = requestKey;
@@ -325,7 +356,15 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           children: [
             Row(
               children: [
-                const Companion(size: 52),
+                CompanionBuddy(
+                  size: 52,
+                  clip: state.isRedeeming
+                      ? 'wait'
+                      : _redemptionIssue
+                      ? 'reassure'
+                      : 'rest',
+                  event: _redemptionEvent,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -355,6 +394,31 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               selected: _filter,
               onSelected: (value) => setState(() => _filter = value),
             ),
+            if (state.isRedeeming)
+              CompanionGuide(
+                clip: 'gift',
+                event: _redemptionEvent,
+                message: 'Saving your voucher. Just a little moment…',
+              )
+            else if (_redemptionIssue)
+              CompanionGuide(
+                clip: 'reassure',
+                event: _redemptionEvent,
+                message:
+                    'Let’s check the message below. I’m here when you’re ready to try again.',
+              )
+            else if (guided != null)
+              CompanionGuide(
+                clip: affordable.isNotEmpty ? 'gift' : 'point',
+                event: guided.id.hashCode,
+                message: affordable.isNotEmpty
+                    ? 'A little treat is within reach. Let’s check its terms!'
+                    : 'Found something you love? We can make it your walking goal.',
+                actionLabel: affordable.isNotEmpty
+                    ? 'Help me choose'
+                    : 'Find my next goal',
+                onAction: () => _details(guided),
+              ),
             const SizedBox(height: 20),
             if (points.errorMessage != null)
               StatusNotice(points.errorMessage!, onRetry: _refreshAll),

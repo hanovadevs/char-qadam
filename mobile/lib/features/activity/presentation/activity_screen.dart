@@ -14,7 +14,7 @@ import '../../rewards/providers/rewards_provider.dart';
 import '../../rewards/reward_goal.dart';
 import '../../companion/experience_provider.dart';
 import '../../companion/experience_sheet.dart';
-import '../../companion/companion.dart';
+import '../../companion/companion_buddy.dart';
 import 'companion_goal_meter.dart';
 import 'weekly_preview.dart';
 
@@ -243,8 +243,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                             style: AppTheme.captionStyle,
                           ),
                         ),
-                        Companion(
-                          size: 44,
+                        CompanionBuddy(
+                          size: 48,
                           clip: balance != null && balance >= reward.pointsCost
                               ? 'ready'
                               : 'rest',

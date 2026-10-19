@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PALETTE = {'ink':'07565A', 'body':'B8EBD9', 'shade':'92D5C5', 'light':'D9F5E9',
            'shoe':'FFFDF2', 'sole':'087F72', 'eye':'102B32', 'cheek':'FFBE9B', 'tongue':'F8A790'}
-CLIPS = ['rest', 'walk', 'wave', 'point', 'cheer', 'ready', 'wait', 'reassure', 'idle']
+CLIPS = ['rest', 'walk', 'wave', 'point', 'cheer', 'ready', 'wait', 'reassure', 'idle', 'wiggle', 'love', 'gift', 'peek']
 
 def material(key):
     value = PALETTE.get(key, key)
@@ -88,6 +88,19 @@ def build():
     mouth=empty('CTRL Mouth',body,z=.2)
     shape('Happy mouth',[(-.12,.05),(.07,.0),(.24,.08),(.15,-.16),(.01,-.18)],'eye',0,mouth,False)
     shape('Tongue',[(-.005,-.1),(.075,-.08),(.15,-.1),(.09,-.16),(.025,-.16)],'tongue',.01,mouth,False)
+    hearts=empty('CTRL Hearts',root,z=.4)
+    for n,(x,y,s) in enumerate([(-1.13,.85,.17),(1.06,1.1,.16),(.66,1.53,.12)]):
+        shape('Floating heart '+str(n),[(x,y-s),(x-s,y),(x-s*.7,y+s*.65),(x,y+s*.25),(x+s*.7,y+s*.65),(x+s,y)],'tongue',.01,hearts,False)
+    gift=empty('CTRL Voucher',body,y=-.38,z=.4)
+    shape('Mint voucher',[(-.56,-.22),(-.56,.22),(.56,.22),(.56,-.22)],'light',0,gift,smooth=False)
+    stroke('Voucher perforation',[(.25,-.16),(.25,.16)],'sole',.012,.02,gift)
+    star=[]
+    for i in range(10):
+        radius=.13 if i%2==0 else .06
+        star.append((-.15+radius*math.sin(i*math.pi/5),radius*math.cos(i*math.pi/5)))
+    shape('Voucher star',star,'sole',.03,gift,False,False)
+    for side,x in [('L',-.56),('R',.56)]:
+        oval('Voucher hug '+side,x,0,.12,.13,'body',.04,gift,True)
     cam_data=bpy.data.cameras.new('Orthographic export camera'); cam=bpy.data.objects.new('Orthographic export camera',cam_data)
     scene.collection.objects.link(cam); cam.location=(0,.04,10); cam_data.type='ORTHO'; cam_data.ortho_scale=4.0; scene.camera=cam
     engines={e.identifier for e in scene.render.bl_rna.properties['engine'].enum_items}
@@ -102,6 +115,8 @@ def pose(rig,clip,index):
     root.scale=(1,1,1); body.location.y=0; body.rotation_euler.z=0
     for eye in eyes: eye.scale.y=.12 if index in (18,19) and clip in ('idle','wait') else 1
     mouth=bpy.data.objects['CTRL Mouth']; mouth.scale=(1,1,1)
+    hearts=bpy.data.objects['CTRL Hearts']; hearts.scale=(0,0,0); hearts.location.y=0
+    gift=bpy.data.objects['CTRL Voucher']; gift.scale=(0,0,0); gift.rotation_euler.z=0
     if clip in ('cheer','ready'): mouth.scale=(1.16,1.2,1)
     if clip in ('reassure','rest'): mouth.scale=(.85,.75,1)
     if clip=='wait': mouth.scale=(.6,.5,1)
@@ -130,6 +145,28 @@ def pose(rig,clip,index):
     if clip=='cheer': arms[0].rotation_euler.z=-1.9*envelope; arms[1].rotation_euler.z=1.9*envelope
     if clip=='reassure': body.rotation_euler.z=.045*math.sin(t); arms[1].rotation_euler.z=.5*envelope
     if clip=='wait': body.rotation_euler.z=.025*math.sin(t); eyes[1].scale.y=.8
+    if clip=='wiggle':
+        body.rotation_euler.z=.10*math.sin(t*2)*envelope
+        body.location.y=.12*math.sin(t*2)**2*envelope
+        body.scale=(1+.05*math.sin(t*2)*envelope,1-.04*math.sin(t*2)*envelope,1)
+        arms[0].rotation_euler.z=-1.4*envelope; arms[1].rotation_euler.z=1.4*envelope
+        for eye in eyes: eye.scale.y=.32 if 5<=index<=18 else 1
+        mouth.scale=(1.2,1.1,1)
+    else: body.scale=(1,1,1)
+    if clip=='love':
+        hearts.scale=(envelope,envelope,1); hearts.location.y=.12*phase
+        body.rotation_euler.z=.06*math.sin(t)*envelope
+        arms[0].rotation_euler.z=-.65*envelope; arms[1].rotation_euler.z=.65*envelope
+        eyes[1].scale.y=1-.88*envelope; mouth.scale=(.9,.85,1)
+    if clip=='gift':
+        gift.scale=(envelope,envelope,1); gift.rotation_euler.z=.05*math.sin(t*2)*envelope
+        arms[0].rotation_euler.z=.32*envelope; arms[1].rotation_euler.z=-.32*envelope
+        body.location.y=.065*envelope; mouth.scale=(1.15,1.1,1)
+    if clip=='peek':
+        body.rotation_euler.z=.10*envelope
+        arms[0].rotation_euler.z=-2.6*envelope; arms[1].rotation_euler.z=2.6*envelope
+        eyes[0].scale.y=1-.65*envelope; eyes[1].scale.y=1-.88*envelope
+        mouth.scale=(.72,.65,1)
 
 def bake(rig):
     scene=rig[0]

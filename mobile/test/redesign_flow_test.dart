@@ -313,6 +313,50 @@ Future<void> capture(WidgetTester tester, String name) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets(
+    'Pip guides a real offer through explicit confirmation to its QR',
+    (tester) async {
+      final rewards = PreviewRewards();
+      await mountPreview(tester, initialPath: '/rewards', rewards: rewards);
+      await reveal(tester, find.text('Help me choose'));
+      await tester.tap(find.text('Help me choose'));
+      await tester.pumpAndSettle();
+      expect(find.text(previewOffer.description!), findsOneWidget);
+      expect(rewards.purchases, 0);
+      await reveal(tester, find.text('Redeem for 200 points'));
+      await tester.tap(find.text('Redeem for 200 points'));
+      await tester.pumpAndSettle();
+      expect(find.text('Make it yours.'), findsOneWidget);
+      expect(
+        rewards.purchases,
+        0,
+        reason: 'The character cannot purchase without explicit confirmation',
+      );
+      await reveal(tester, find.text('Confirm & redeem'));
+      await tester.tap(find.text('Confirm & redeem'));
+      await tester.pumpAndSettle();
+      expect(rewards.purchases, 1);
+      expect(find.text('My rewards'), findsOneWidget);
+      expect(
+        find.text(
+          'Your reward is right here! Tap Show QR when you’re at the store.',
+        ),
+        findsOneWidget,
+      );
+      await reveal(tester, find.text('Show QR'));
+      await tester.tap(find.text('Show QR'));
+      await tester.pumpAndSettle();
+      expect(find.text(previewVoucher.shortCode), findsWidgets);
+      expect(
+        find.text(
+          'At the store? Let the team scan this code or enter it below.',
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
   testWidgets('Live steps and walking continue while points sync is delayed', (
     tester,
   ) async {

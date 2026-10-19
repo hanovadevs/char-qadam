@@ -67,6 +67,55 @@
       "fallback": "assets/companion/static/rest.png",
       "decodedBytes": 1572864
     },
+    "gift": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/gift/00.png",
+        "design/stepsy-companion/renders/gift/01.png",
+        "design/stepsy-companion/renders/gift/02.png",
+        "design/stepsy-companion/renders/gift/03.png",
+        "design/stepsy-companion/renders/gift/04.png",
+        "design/stepsy-companion/renders/gift/05.png",
+        "design/stepsy-companion/renders/gift/06.png",
+        "design/stepsy-companion/renders/gift/07.png",
+        "design/stepsy-companion/renders/gift/08.png",
+        "design/stepsy-companion/renders/gift/09.png",
+        "design/stepsy-companion/renders/gift/10.png",
+        "design/stepsy-companion/renders/gift/11.png",
+        "design/stepsy-companion/renders/gift/12.png",
+        "design/stepsy-companion/renders/gift/13.png",
+        "design/stepsy-companion/renders/gift/14.png",
+        "design/stepsy-companion/renders/gift/15.png",
+        "design/stepsy-companion/renders/gift/16.png",
+        "design/stepsy-companion/renders/gift/17.png",
+        "design/stepsy-companion/renders/gift/18.png",
+        "design/stepsy-companion/renders/gift/19.png",
+        "design/stepsy-companion/renders/gift/20.png",
+        "design/stepsy-companion/renders/gift/21.png",
+        "design/stepsy-companion/renders/gift/22.png",
+        "design/stepsy-companion/renders/gift/23.png"
+      ],
+      "atlas": "assets/companion/animations/gift.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        56,
+        18,
+        201,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
     "idle": {
       "frames": 24,
       "fps": 24,
@@ -107,6 +156,104 @@
         48,
         22,
         210,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "love": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/love/00.png",
+        "design/stepsy-companion/renders/love/01.png",
+        "design/stepsy-companion/renders/love/02.png",
+        "design/stepsy-companion/renders/love/03.png",
+        "design/stepsy-companion/renders/love/04.png",
+        "design/stepsy-companion/renders/love/05.png",
+        "design/stepsy-companion/renders/love/06.png",
+        "design/stepsy-companion/renders/love/07.png",
+        "design/stepsy-companion/renders/love/08.png",
+        "design/stepsy-companion/renders/love/09.png",
+        "design/stepsy-companion/renders/love/10.png",
+        "design/stepsy-companion/renders/love/11.png",
+        "design/stepsy-companion/renders/love/12.png",
+        "design/stepsy-companion/renders/love/13.png",
+        "design/stepsy-companion/renders/love/14.png",
+        "design/stepsy-companion/renders/love/15.png",
+        "design/stepsy-companion/renders/love/16.png",
+        "design/stepsy-companion/renders/love/17.png",
+        "design/stepsy-companion/renders/love/18.png",
+        "design/stepsy-companion/renders/love/19.png",
+        "design/stepsy-companion/renders/love/20.png",
+        "design/stepsy-companion/renders/love/21.png",
+        "design/stepsy-companion/renders/love/22.png",
+        "design/stepsy-companion/renders/love/23.png"
+      ],
+      "atlas": "assets/companion/animations/love.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        40,
+        22,
+        218,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "peek": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/peek/00.png",
+        "design/stepsy-companion/renders/peek/01.png",
+        "design/stepsy-companion/renders/peek/02.png",
+        "design/stepsy-companion/renders/peek/03.png",
+        "design/stepsy-companion/renders/peek/04.png",
+        "design/stepsy-companion/renders/peek/05.png",
+        "design/stepsy-companion/renders/peek/06.png",
+        "design/stepsy-companion/renders/peek/07.png",
+        "design/stepsy-companion/renders/peek/08.png",
+        "design/stepsy-companion/renders/peek/09.png",
+        "design/stepsy-companion/renders/peek/10.png",
+        "design/stepsy-companion/renders/peek/11.png",
+        "design/stepsy-companion/renders/peek/12.png",
+        "design/stepsy-companion/renders/peek/13.png",
+        "design/stepsy-companion/renders/peek/14.png",
+        "design/stepsy-companion/renders/peek/15.png",
+        "design/stepsy-companion/renders/peek/16.png",
+        "design/stepsy-companion/renders/peek/17.png",
+        "design/stepsy-companion/renders/peek/18.png",
+        "design/stepsy-companion/renders/peek/19.png",
+        "design/stepsy-companion/renders/peek/20.png",
+        "design/stepsy-companion/renders/peek/21.png",
+        "design/stepsy-companion/renders/peek/22.png",
+        "design/stepsy-companion/renders/peek/23.png"
+      ],
+      "atlas": "assets/companion/animations/peek.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        65,
+        27,
+        192,
         226
       ],
       "anchor": [
@@ -427,6 +574,55 @@
         48,
         22,
         204,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "wiggle": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/wiggle/00.png",
+        "design/stepsy-companion/renders/wiggle/01.png",
+        "design/stepsy-companion/renders/wiggle/02.png",
+        "design/stepsy-companion/renders/wiggle/03.png",
+        "design/stepsy-companion/renders/wiggle/04.png",
+        "design/stepsy-companion/renders/wiggle/05.png",
+        "design/stepsy-companion/renders/wiggle/06.png",
+        "design/stepsy-companion/renders/wiggle/07.png",
+        "design/stepsy-companion/renders/wiggle/08.png",
+        "design/stepsy-companion/renders/wiggle/09.png",
+        "design/stepsy-companion/renders/wiggle/10.png",
+        "design/stepsy-companion/renders/wiggle/11.png",
+        "design/stepsy-companion/renders/wiggle/12.png",
+        "design/stepsy-companion/renders/wiggle/13.png",
+        "design/stepsy-companion/renders/wiggle/14.png",
+        "design/stepsy-companion/renders/wiggle/15.png",
+        "design/stepsy-companion/renders/wiggle/16.png",
+        "design/stepsy-companion/renders/wiggle/17.png",
+        "design/stepsy-companion/renders/wiggle/18.png",
+        "design/stepsy-companion/renders/wiggle/19.png",
+        "design/stepsy-companion/renders/wiggle/20.png",
+        "design/stepsy-companion/renders/wiggle/21.png",
+        "design/stepsy-companion/renders/wiggle/22.png",
+        "design/stepsy-companion/renders/wiggle/23.png"
+      ],
+      "atlas": "assets/companion/animations/wiggle.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        209,
         226
       ],
       "anchor": [

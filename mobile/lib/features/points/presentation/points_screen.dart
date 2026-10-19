@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../companion/companion.dart';
+import '../../companion/companion_buddy.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../providers/points_provider.dart';
 
@@ -79,7 +79,7 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                           color: AppTheme.surface,
                           shape: BoxShape.circle,
                         ),
-                        child: const Companion(size: 48),
+                        child: const CompanionBuddy(size: 48),
                       ),
                     ],
                   ),

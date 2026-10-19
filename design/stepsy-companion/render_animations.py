@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
-CLIPS=['rest','walk','wave','point','cheer','ready','wait','reassure','idle']
+CLIPS=['rest','walk','wave','point','cheer','ready','wait','reassure','idle','wiggle','love','gift','peek']
 selected=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else CLIPS
 bpy.ops.wm.open_mainfile(filepath=str(ROOT/'design/stepsy-companion/stepsy-companion.blend'))
 scene=bpy.data.scenes['Stepsy companion / editable 2D rig']; bpy.context.window.scene=scene

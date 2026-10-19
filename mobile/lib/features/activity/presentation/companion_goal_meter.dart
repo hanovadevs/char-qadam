@@ -29,6 +29,7 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
   String _clip = 'rest';
   int _event = 0;
   bool _tip = false;
+  int _taps = 0;
   Timer? _motionTimer;
 
   void _play(String clip, Duration duration) {
@@ -98,7 +99,12 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
                 child: Text(
                   widget.syncing
                       ? 'Steps update live. Points update after sync.'
-                      : 'Ready whenever you are.',
+                      : const [
+                          'Ready whenever you are.',
+                          'A little love for every little step.',
+                          'Your pace. I’m right here with you.',
+                          'Small steps deserve a happy dance.',
+                        ][math.max(0, _taps - 1) % 4],
                   style: AppTheme.captionStyle,
                 ),
               ),
@@ -162,7 +168,11 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
                           : 'Walking companion. Wave',
                       child: GestureDetector(
                         onTap: () => setState(() {
-                          _play('wave', const Duration(milliseconds: 1600));
+                          _play(
+                            const ['wave', 'love', 'peek', 'wiggle'][_taps++ %
+                                4],
+                            const Duration(milliseconds: 1600),
+                          );
                           _tip = prefs.tips;
                         }),
                         child: Companion(

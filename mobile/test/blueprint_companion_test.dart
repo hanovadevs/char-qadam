@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qadam/core/theme/app_theme.dart';
 import 'package:qadam/features/companion/experience_provider.dart';
 import 'package:qadam/features/companion/companion.dart';
+import 'package:qadam/features/companion/companion_buddy.dart';
 import 'package:qadam/features/activity/presentation/companion_goal_meter.dart';
 import 'package:qadam/features/rewards/reward_goal.dart';
 import 'package:qadam/data/models/offer_models.dart';
@@ -12,6 +15,52 @@ import 'package:qadam/data/models/offer_models.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets(
+    'Pip has accessible tap reactions and honours disabled animations',
+    (tester) async {
+      final prefs = ExperienceNotifier('buddy-user');
+      await prefs.ready;
+      await prefs.update(animations: false);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [experienceProvider.overrideWith((ref) => prefs)],
+          child: const MaterialApp(home: Scaffold(body: CompanionBuddy())),
+        ),
+      );
+      for (final clip in ['love', 'peek', 'wiggle', 'wave']) {
+        await tester.tap(find.byType(CompanionBuddy));
+        await tester.pump();
+        expect(tester.widget<Companion>(find.byType(Companion)).clip, clip);
+        expect(
+          find.descendant(
+            of: find.byType(Companion),
+            matching: find.byType(AnimatedBuilder),
+          ),
+          findsNothing,
+        );
+      }
+      expect(
+        tester.getSize(find.byType(CompanionBuddy)).width,
+        greaterThanOrEqualTo(48),
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(tester.takeException(), isNull);
+    },
+  );
+  test('All expressive clips are bundled with their runtime atlases', () async {
+    final manifest =
+        jsonDecode(
+              await rootBundle.loadString('assets/companion/manifest.json'),
+            )
+            as Map<String, dynamic>;
+    for (final clip in ['love', 'peek', 'wiggle', 'gift']) {
+      expect(manifest['clips'][clip]['frames'], 24);
+      final data = await rootBundle.load(
+        manifest['clips'][clip]['atlas'] as String,
+      );
+      expect(data.lengthInBytes, greaterThan(1000));
+    }
+  });
   testWidgets(
     'Walking playback survives rebuilds and stops when its slot is hidden',
     (tester) async {

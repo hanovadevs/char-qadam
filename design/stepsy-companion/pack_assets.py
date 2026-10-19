@@ -9,8 +9,9 @@ assets=ROOT/'mobile/assets/companion'
 (assets/'animations').mkdir(parents=True,exist_ok=True); (assets/'static').mkdir(exist_ok=True)
 manifest={'version':1,'authoring':'Blender 5.2.1 cutouts','runtimeFrameSize':[128,128],
           'masterFrameSize':[256,256],'footAnchor':[128,223],'cropOffset':[0,0],'clips':{}}
-sheet=Image.new('RGB',(768,768),'#FAFBF8'); draw=ImageDraw.Draw(sheet)
-for ci,folder in enumerate(source.iterdir()):
+folders=sorted(p for p in source.iterdir() if p.is_dir())
+sheet=Image.new('RGB',(768,((len(folders)+2)//3)*256),'#FAFBF8'); draw=ImageDraw.Draw(sheet)
+for ci,folder in enumerate(folders):
     paths=sorted(folder.glob('*.png')); clip=folder.name
     atlas=Image.new('RGBA',(768,512))
     for index,path in enumerate(paths):

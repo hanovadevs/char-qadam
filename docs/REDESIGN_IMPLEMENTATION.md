@@ -14,7 +14,7 @@ This is the first native implementation of `Stepsy_Redesign_Blueprint.md`, with 
 
 ## Companion and runtime
 
-`design/stepsy-companion/stepsy-companion.blend` is the editable source. Build/render/packing scripts, transparent 256px masters, contact sheet and rig/palette guide are included. Nine clips: rest, idle, walk, wave, point, cheer, ready, wait and reassure. Eight runtime atlases contain 24 frames each at 128px; rest is a small static image.
+`design/stepsy-companion/stepsy-companion.blend` is the editable source. Build/render/packing scripts, transparent 256px masters, contact sheet and rig/palette guide are included. Thirteen clips: rest, idle, walk, wave, point, cheer, ready, wait, reassure, wiggle, love, gift and peek. Twelve runtime atlases contain 24 frames each at 128px; rest is a small static image.
 
 Playback is event driven, with static fallback. Home walks after a live positive change on the same day and goal; opening an existing count or receiving a downward correction does not animate a day's progress. Walking cycles continue while step events arrive and stop three seconds after the last event. Goal celebrations use an account/day/goal marker. System reduced motion and the user's animation preference take priority. There is no unattended animation loop or additional service/network request.
 
@@ -31,7 +31,7 @@ Home reward links open the actual catalog detail, including repeated visits. Cla
 ## Validation
 
 - Flutter analyzer: no issues.
-- Full mobile regression suite after the live-step correction: **116 passing**, including delayed-sync live updates, animation continuity, claimed-offer navigation and walking beyond the daily earning cap without additional earning requests.
+- Full mobile regression suite after the expressive companion update: **119 passing**, including guided redemption, accessible reactions, bundled assets, delayed-sync live updates, animation continuity, claimed-offer navigation and walking beyond the daily earning cap without additional earning requests.
 - Layout/meter coverage: 320, 360, 390 and 430 widths; progress at 0/1/50/99/100/120 percent; up to 200% text. Five destinations, progress, confirmation and QR are exercised. Initial loading, zero activity, denied permission, offline and failed redemption have explicit fixture previews.
 - Redemption tests cover success, reduced motion, fireworks without blocking QR, failure, recovered used vouchers, claimed-offer navigation without a second purchase and admin-configured Maps links.
 - Preference tests cover account isolation, persisted selection, concurrent writes, invalid goals and celebration guards.
@@ -67,3 +67,15 @@ Walking now uses a three-second recent-movement window, extending the same cycle
 New regression checks exercise live count updates during delayed sync without awarding points, continuous movement without restarting the cycle, resting after inactivity, and real atlas playback across inherited-widget changes and hidden tabs. Physical-phone confirmation of the corrected build is tracked separately from automated checks.
 
 Corrected source commit: `cbd10e8`. Flutter analyzer is clean; all 116 mobile tests pass. The profile arm64 APK built successfully (135.6-second Gradle build), SHA-256 `9D7988276C2FF7CCB04B5D583C5A1F9A4B198D5DA2DA946C7F3137DC8B45AE1E`. Replacement installation succeeded on the Redmi at 2026-10-19 16:38:38, with motion permission still granted and no storage reset. The phone subsequently disconnected; owner confirmation and physical playback timings remain pending.
+
+The owner subsequently confirmed that live counting and movement-driven walking work correctly on the Redmi.
+
+## Expressive companion and guided rewards
+
+Added four original Blender clips: a squash-and-stretch wiggle, a shy peek, a wink with floating hearts, and a voucher hug. Editable prop controls, baked animation, transparent masters and runtime atlases are included. The contact sheet now accommodates all 13 clips. Runtime assets total 2,281,334 bytes; decoded atlas size remains 1.5 MiB per playing widget, with lazy loading and release when hidden.
+
+Pip responds to intentional taps on all five tabs. The Home progress companion rotates through playful reactions and short tips while preserving movement-driven walking. Points, You, Rewards and Wallet use an accessible tap target of at least 48dp. Reactions are brief and obey system/in-app motion preferences.
+
+Rewards guidance selects from actual currently eligible inventory and the current balance. Help me choose opens terms, then the existing explicit cost confirmation. A voucher-holding pose accompanies confirmation and pending saving; errors use reassurance without claiming success. Only successful redemption navigates to the real voucher, with existing fireworks, and QR guidance appears in Wallet and voucher detail. Turning off tips removes optional guidance while keeping terms, confirmation and normal reward controls available.
+
+Validation: analyzer clean; all 119 mobile tests pass. New checks cover tap reactions with animation disabled, all four runtime assets, and the complete guide → terms → explicit confirmation → Wallet → QR flow. Existing 200% text, 320px layout, live-step, failed purchase, recovery and single-claim regressions remain passing. Fixture previews were refreshed; they are not physical-phone captures.
