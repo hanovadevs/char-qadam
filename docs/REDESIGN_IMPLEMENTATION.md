@@ -43,7 +43,7 @@ Physical Redmi installation and runtime measurements are recorded below when com
 
 Profile arm64 APK built successfully from the final source (126.2-second Gradle build). Artifact: `mobile/build/app/outputs/flutter-apk/app-profile.apk`, 83,711,111 bytes, SHA-256 `BD8EBBD84DEF6189F8CFE78637C62C09174D9D305D239831C9B6CA96DD2F08BF`.
 
-The Redmi was initially connected with motion permission granted. It disconnected during the first replacement-install attempt; subsequent ADB inventory was empty. **Installation and physical-device frame measurements are not yet confirmed.** Owner reconnection was requested. No app storage was cleared.
+The Redmi initially disconnected during replacement installation. After owner reconnection, `adb install -r` completed with **Success**; package update time is 2026-10-19 16:26:58 and motion permission remains granted. No app storage was cleared. Owner walkthrough and physical-device frame measurements are pending; successful installation alone does not confirm saved values or smooth playback.
 
 ## Remaining blueprint work
 
