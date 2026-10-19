@@ -5,7 +5,10 @@ import { api } from '../services/api';
 import { googleMapsLink } from '../services/store-location';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
-import { Search, Plus, Copy, Check, MapPin, Edit, Trash2, ExternalLink } from 'lucide-react';
+import ArchiveActions from '../components/ArchiveActions';
+import StoreCover from '../components/StoreCover';
+import StoreCoverEditor from '../components/StoreCoverEditor';
+import { Search, Plus, Copy, Check, MapPin, Edit, ExternalLink } from 'lucide-react';
 
 export default function Stores() {
   const [search, setSearch] = useState('');
@@ -29,7 +32,6 @@ export default function Stores() {
     status: 'ACTIVE',
   });
   const [isUpdatingStore, setIsUpdatingStore] = useState(false);
-  const [isDeletingStore, setIsDeletingStore] = useState(false);
 
   // New Store Form
   const [formData, setFormData] = useState({
@@ -123,7 +125,7 @@ export default function Stores() {
       await api.updatePartner(editingStore.id, {
         name: editFormData.name.trim(),
         email: editFormData.email.trim() || undefined,
-        category: editFormData.category.trim() || undefined,
+        category: editFormData.category.trim(),
         location: editFormData.location.trim(),
         google_maps_url: editFormData.google_maps_url.trim(),
         status: editFormData.status,
@@ -140,26 +142,12 @@ export default function Stores() {
     }
   };
 
-  const handleDeleteStore = async (storeId, storeName, e) => {
-    if (e) e.stopPropagation();
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${storeName}"?\n\nThis will permanently delete the store, its merchant login account, all active deals, and vouchers.`
-    );
-    if (!confirmed) return;
-
-    setIsDeletingStore(true);
-    try {
-      await api.deletePartner(storeId);
-      if (selectedStore === storeId) {
-        setSelectedStore(null);
-        setStoreDetails(null);
-      }
-      fetchStores();
-    } catch (err) {
-      alert(err.message || 'Failed to delete partner store.');
-    } finally {
-      setIsDeletingStore(false);
+  const onLifecycleChanged = (storeId, action) => {
+    if (selectedStore === storeId) {
+      if (action === 'delete') { setSelectedStore(null); setStoreDetails(null); }
+      else openStoreDetails(storeId);
     }
+    fetchStores();
   };
 
   const handleResetPassword = async (e) => {
@@ -322,7 +310,7 @@ export default function Stores() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginRight: '6px' }}>Status:</span>
-          {['ALL', 'ACTIVE', 'INACTIVE'].map((status) => (
+          {['ALL', 'ACTIVE', 'INACTIVE', 'ARCHIVED'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -377,6 +365,7 @@ export default function Stores() {
               }}
             >
               <div>
+                <StoreCover src={s.cover_image_url} name={s.name} />
                 {/* Header: Initial Avatar & Name */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -434,7 +423,7 @@ export default function Stores() {
                     </div>
                   </div>
 
-                  <Badge status={s.status} />
+                  <Badge status={s.archived_at ? 'ARCHIVED' : s.status} />
                 </div>
 
                 {/* Metrics 3-Col Bar */}
@@ -490,16 +479,7 @@ export default function Stores() {
                     <Edit size={11} />
                     <span>Edit</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleDeleteStore(s.id, s.name, e)}
-                    className="btn btn-danger btn-sm"
-                    style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
-                    title="Delete Store"
-                  >
-                    <Trash2 size={11} />
-                    <span>Delete</span>
-                  </button>
+                  <ArchiveActions kind="partners" record={s} onChanged={(action) => onLifecycleChanged(s.id, action)} />
                 </div>
                 <span style={{ color: 'var(--brand-teal)', fontWeight: '600' }}>
                   Manage &rarr;
@@ -523,6 +503,9 @@ export default function Stores() {
       >
         {createdPartner ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <StoreCoverEditor store={createdPartner} onSaved={(url) => {
+              setCreatedPartner((previous) => ({ ...previous, cover_image_url: url })); fetchStores();
+            }} />
             <div style={{ padding: '16px', background: 'var(--tint-mint)', border: '1px solid rgba(0, 210, 160, 0.4)', borderRadius: 'var(--radius-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--brand-teal)' }}>
@@ -714,6 +697,7 @@ export default function Stores() {
           </div>
         ) : storeDetails ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <StoreCover src={storeDetails.cover_image_url} name={storeDetails.name} />
             {/* Header info */}
             <div style={{ padding: '16px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
@@ -753,7 +737,7 @@ export default function Stores() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Badge status={storeDetails.status} />
+                  <Badge status={storeDetails.archived_at ? 'ARCHIVED' : storeDetails.status} />
                   <button
                     type="button"
                     onClick={() => openEditStore(storeDetails)}
@@ -763,15 +747,7 @@ export default function Stores() {
                     <Edit size={13} />
                     <span>Edit</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteStore(storeDetails.id, storeDetails.name)}
-                    className="btn btn-danger btn-sm"
-                    title="Delete Store"
-                  >
-                    <Trash2 size={13} />
-                    <span>Delete</span>
-                  </button>
+                  <ArchiveActions kind="partners" record={storeDetails} onChanged={(action) => onLifecycleChanged(storeDetails.id, action)} />
                 </div>
               </div>
 
@@ -833,6 +809,7 @@ export default function Stores() {
                 <button
                   type="button"
                   onClick={() => setIsAddDealOpen(true)}
+                  disabled={Boolean(storeDetails.archived_at)}
                   className="btn btn-secondary btn-sm"
                 >
                   <Plus size={14} />
@@ -1052,6 +1029,11 @@ export default function Stores() {
         subtitle="Update store metadata, merchant login email, location, or Google Maps link."
       >
         <form onSubmit={handleUpdateStore} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {editingStore && <StoreCoverEditor key={editingStore.id} store={editingStore} onSaved={(url) => {
+            setEditingStore((previous) => ({ ...previous, cover_image_url: url }));
+            setStoreDetails((previous) => previous?.id === editingStore.id ? { ...previous, cover_image_url: url } : previous);
+            fetchStores();
+          }} />}
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
               Store / Brand Name *

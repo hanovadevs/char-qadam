@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAdminQuery } from '../hooks/use-admin-query';
+import { api } from '../services/api';
 
 export default function Settings({ user }) {
   const { data: config, error } = useAdminQuery('/admin/config');

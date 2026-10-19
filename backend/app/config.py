@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     app_name: str = "Stepsy API"
     environment: str = "development"
     debug: bool = True
+    public_api_url: str = 'https://api.stepsyapp.com'
+    media_directory: str = 'uploads'
 
     # CORS Configuration
     # Accepts comma-separated string (e.g. "https://stepsy.app,https://admin.stepsy.app") or list

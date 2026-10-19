@@ -49,7 +49,9 @@ async def list_offers(
         .options(joinedload(Offer.partner))
         .where(
             Offer.status == OfferStatus.ACTIVE,
+            Offer.archived_at.is_(None),
             Partner.status == PartnerStatus.ACTIVE,
+            Partner.archived_at.is_(None),
             or_(Offer.starts_at.is_(None), Offer.starts_at <= now),
             or_(Offer.ends_at.is_(None), Offer.ends_at >= now),
             or_(Offer.inventory.is_(None), Offer.inventory > 0),
@@ -65,6 +67,7 @@ async def list_offers(
             out.partner_name = o.partner.name
             out.partner_location = o.partner.location
             out.partner_google_maps_url = getattr(o.partner, "google_maps_url", None)
+            out.partner_cover_image_url = o.partner.cover_image_url
         items.append(out)
     return items
 

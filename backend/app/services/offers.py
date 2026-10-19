@@ -163,10 +163,10 @@ async def redeem_offer(
     if already_claimed:
         raise HTTPException(status_code=409, detail='You already claimed this reward. Each account can claim it once. Check My rewards for your voucher.')
 
-    if offer.status != OfferStatus.ACTIVE:
+    if offer.archived_at is not None or offer.status != OfferStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offer is not active")
     partner = await session.get(Partner, offer.partner_id)
-    if partner is None or partner.status != PartnerStatus.ACTIVE:
+    if partner is None or partner.archived_at is not None or partner.status != PartnerStatus.ACTIVE:
         raise HTTPException(status_code=409, detail='Partner store is inactive')
 
     if offer.starts_at and offer.starts_at > now:

@@ -10,7 +10,7 @@ export default function Badge({ status, label }) {
     className = 'badge badge-active';
   } else if (['PENDING', 'WARNING', 'ISSUED', 'EXPIRING'].includes(norm)) {
     className = 'badge badge-pending';
-  } else if (['INACTIVE', 'EXPIRED', 'SUSPENDED', 'FAILED', 'FLAGGED'].includes(norm)) {
+  } else if (['INACTIVE', 'ARCHIVED', 'STORE ARCHIVED', 'EXPIRED', 'SUSPENDED', 'DELETED', 'CANCELLED', 'FAILED', 'FLAGGED'].includes(norm)) {
     className = 'badge badge-inactive';
   }
 

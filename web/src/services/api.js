@@ -53,6 +53,7 @@ export class ApiClient {
   async send(path, options, token, sessionVersion) {
     const url = `${BASE_URL}${path}`;
     const headers = { ...this.getHeaders(token), ...options.headers };
+    if (options.body instanceof FormData) delete headers['Content-Type'];
 
     try {
       if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
@@ -137,6 +138,16 @@ export class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
+  }
+
+  async uploadPartnerCover(partnerId, file) {
+    const body = new FormData();
+    body.append('file', file);
+    return this.request(`/admin/partners/${partnerId}/cover`, { method: 'POST', body });
+  }
+
+  async removePartnerCover(partnerId) {
+    return this.request(`/admin/partners/${partnerId}/cover`, { method: 'DELETE' });
   }
 
   async regeneratePartnerKey(partnerId) {

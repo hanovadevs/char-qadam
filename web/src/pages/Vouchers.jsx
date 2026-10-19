@@ -3,7 +3,7 @@ import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
 import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import Badge from '../components/Badge';
-import { Search, CheckCircle, AlertCircle, Trash2, XCircle } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 
 export default function Vouchers() {
   // POS Simulator State
@@ -22,22 +22,12 @@ export default function Vouchers() {
     queryPath('/admin/vouchers', { search: searchQuery, status: statusFilter }), []);
 
   const handleCancelVoucher = async (voucher) => {
-    if (!window.confirm(`Are you sure you want to cancel voucher "${voucher.short_code}"?`)) return;
+    if (!window.confirm(`Cancel voucher "${voucher.short_code}"? It will remain in history. Points are not refunded automatically.`)) return;
     try {
       await api.updateVoucher(voucher.id, { status: 'CANCELLED' });
       fetchVouchers();
     } catch (err) {
       alert(err.message || 'Failed to cancel voucher.');
-    }
-  };
-
-  const handleDeleteVoucher = async (voucher) => {
-    if (!window.confirm(`Are you sure you want to permanently delete voucher "${voucher.short_code}"?`)) return;
-    try {
-      await api.deleteVoucher(voucher.id);
-      fetchVouchers();
-    } catch (err) {
-      alert(err.message || 'Failed to delete voucher.');
     }
   };
 
@@ -340,16 +330,6 @@ export default function Vouchers() {
                           <span>Cancel</span>
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteVoucher(v)}
-                        className="btn btn-danger btn-sm"
-                        style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
-                        title="Delete Voucher"
-                      >
-                        <Trash2 size={12} />
-                        <span>Delete</span>
-                      </button>
                     </div>
                   </td>
                 </tr>

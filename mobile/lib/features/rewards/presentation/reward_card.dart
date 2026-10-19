@@ -56,6 +56,32 @@ class RewardCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (offer.partnerCoverImageUrl != null)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.network(
+                offer.partnerCoverImageUrl!,
+                fit: BoxFit.cover,
+                cacheWidth:
+                    (MediaQuery.sizeOf(context).width *
+                            MediaQuery.devicePixelRatioOf(context))
+                        .clamp(320, 1280)
+                        .round(),
+                semanticLabel: '$brand cover',
+                errorBuilder: (_, _, _) => const ColoredBox(
+                  color: AppTheme.mintWash,
+                  child: Center(
+                    child: Icon(
+                      Icons.storefront_outlined,
+                      color: AppTheme.accentDeep,
+                    ),
+                  ),
+                ),
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const ColoredBox(color: AppTheme.mintWash),
+              ),
+            ),
           Container(
             padding: const EdgeInsets.all(20),
             color: AppTheme.mintWash,
@@ -177,7 +203,7 @@ class RewardCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           offer.alreadyRedeemed
-                              ? 'Already in My rewards · one per account'
+                              ? 'Already claimed · one per account'
                               : !available
                               ? 'Currently unavailable'
                               : balance == null

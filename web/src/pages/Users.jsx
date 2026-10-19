@@ -132,18 +132,24 @@ export default function Users() {
     }
   };
 
-  const handleDeleteUser = async (user) => {
+  const handleDeactivateUser = async (user) => {
     const confirmed = window.confirm(
-      `Are you sure you want to permanently delete user "${user.email}"?\n\nThis will remove their account, device registrations, step activity records, points ledger, and claimed vouchers.`
+      `Deactivate "${user.email}"? This signs them out and releases their device while retaining points, vouchers and history.`
     );
     if (!confirmed) return;
 
     try {
-      await api.deleteUser(user.id);
+      await api.updateUserStatus(user.id, 'DELETED');
       fetchUsers();
     } catch (err) {
-      alert(err.message || 'Failed to delete user.');
+      alert(err.message || 'Failed to deactivate user.');
     }
+  };
+
+  const handlePermanentDeleteUser = async (user) => {
+    if (!window.confirm(`Permanently delete the unused account "${user.email}"? This cannot be undone. Accounts with history cannot be deleted.`)) return;
+    try { await api.deleteUser(user.id); fetchUsers(); }
+    catch (err) { alert(err.message || 'Failed to delete account.'); }
   };
 
   const handleToggleStatus = async (user) => {
@@ -200,7 +206,7 @@ export default function Users() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginRight: '6px' }}>Status:</span>
-          {['ALL', 'ACTIVE', 'SUSPENDED'].map((status) => (
+          {['ALL', 'ACTIVE', 'SUSPENDED', 'DELETED'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -212,7 +218,7 @@ export default function Users() {
                 padding: '4px 12px',
               }}
             >
-              {status}
+              {status === 'DELETED' ? 'DEACTIVATED' : status}
             </button>
           ))}
         </div>
@@ -270,7 +276,7 @@ export default function Users() {
                     </span>
                   </td>
                   <td>
-                    <Badge status={u.status} />
+                    <Badge status={u.status} label={u.status === 'DELETED' ? 'DEACTIVATED' : undefined} />
                   </td>
                   <td style={{ fontWeight: '800', color: 'var(--brand-teal)', fontFamily: 'monospace', fontSize: '14px' }}>
                     {(u.points_balance || 0).toLocaleString()} PTS
@@ -324,15 +330,19 @@ export default function Users() {
                         <span>Edit</span>
                       </button>
 
-                      <button
-                        onClick={() => handleDeleteUser(u)}
+                      {u.status !== 'DELETED' && <button
+                        onClick={() => handleDeactivateUser(u)}
                         className="btn btn-danger btn-sm"
                         style={{ padding: '4px 8px', fontSize: '11px', height: '26px' }}
-                        title="Delete User"
+                        title="Deactivate User"
                       >
                         <Trash2 size={12} />
-                        <span>Delete</span>
-                      </button>
+                        <span>Deactivate</span>
+                      </button>}
+                      {u.status === 'DELETED' && u.can_delete === true && <button
+                        onClick={() => handlePermanentDeleteUser(u)} className="btn btn-danger btn-sm">
+                        <Trash2 size={12} />Delete permanently
+                      </button>}
                     </div>
                   </td>
                 </tr>
@@ -509,6 +519,7 @@ export default function Users() {
               >
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="SUSPENDED">SUSPENDED</option>
+                <option value="DELETED">DEACTIVATED</option>
               </select>
             </div>
           </div>

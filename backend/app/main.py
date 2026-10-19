@@ -5,7 +5,7 @@ Wires up config, PostgreSQL lifespan, CORS, Middlewares, and all Feature routers
 from contextlib import asynccontextmanager
 
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.db.postgres import dispose_engine, warm_pool
 from app.middleware.logging_middleware import StructuredLoggingMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware
+from app.services.store_cover import cover_path
 from app.routers import (
     activity,
     admin,
@@ -70,6 +71,16 @@ def create_app() -> FastAPI:
     app.include_router(leaderboard.router)
     app.include_router(admin.public_router)
     app.include_router(admin.router)
+
+    @app.get('/media/store-covers/{filename}', include_in_schema=False)
+    async def store_cover(filename: str):
+        image = cover_path(filename, get_settings())
+        if not image.is_file():
+            raise HTTPException(404, 'Cover not found')
+        return FileResponse(image, media_type='image/webp', headers={
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'X-Content-Type-Options': 'nosniff',
+        })
 
 
     # Mount Static Web Admin Portal

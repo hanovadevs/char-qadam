@@ -4,7 +4,8 @@ import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
-import { Search, Plus, Trash2, Edit } from 'lucide-react';
+import ArchiveActions from '../components/ArchiveActions';
+import { Search, Plus, Edit } from 'lucide-react';
 
 export default function Deals() {
   const [search, setSearch] = useState('');
@@ -100,10 +101,12 @@ export default function Deals() {
       await api.updateOffer(editingDeal.id, {
         title: editDealForm.title.trim(),
         description: editDealForm.description.trim() || undefined,
-        discount_type: editDealForm.discount_type,
-        discount_value: Number(editDealForm.discount_value),
+        ...(!editingDeal.has_history ? {
+          discount_type: editDealForm.discount_type,
+          discount_value: Number(editDealForm.discount_value),
+          min_basket: editDealForm.min_basket ? Number(editDealForm.min_basket) : null,
+        } : {}),
         points_cost: Number(editDealForm.points_cost),
-        min_basket: editDealForm.min_basket ? Number(editDealForm.min_basket) : undefined,
         inventory: editDealForm.inventory === '' ? null : Number(editDealForm.inventory),
         status: editDealForm.status,
       });
@@ -113,16 +116,6 @@ export default function Deals() {
       alert(err.message || 'Failed to update deal.');
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  const handleDeleteDeal = async (dealId, dealTitle) => {
-    if (!window.confirm(`Are you sure you want to remove deal "${dealTitle || 'this deal'}"?`)) return;
-    try {
-      await api.deleteOffer(dealId);
-      fetchData();
-    } catch (err) {
-      alert(err.message || 'Failed to delete deal.');
     }
   };
 
@@ -207,7 +200,7 @@ export default function Deals() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginRight: '6px' }}>Status:</span>
-          {['ALL', 'ACTIVE', 'INACTIVE'].map((status) => (
+          {['ALL', 'ACTIVE', 'INACTIVE', 'ARCHIVED'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -273,7 +266,7 @@ export default function Deals() {
                   >
                     {d.partner_name || 'Partner Store'}
                   </span>
-                  <Badge status={d.status} />
+                  <Badge status={d.archived_at ? 'ARCHIVED' : d.partner_archived ? 'STORE ARCHIVED' : d.status} />
                 </div>
 
                 <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '6px' }}>
@@ -316,16 +309,7 @@ export default function Deals() {
                     <Edit size={12} />
                     <span>Edit</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteDeal(d.id, d.title)}
-                    className="btn btn-danger btn-sm"
-                    style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
-                    title="Remove Deal"
-                  >
-                    <Trash2 size={12} />
-                    <span>Delete</span>
-                  </button>
+                  <ArchiveActions kind="offers" record={d} onChanged={fetchData} />
                 </div>
               </div>
             </div>
@@ -352,7 +336,7 @@ export default function Deals() {
               onChange={(e) => setDealForm({ ...dealForm, partner_id: e.target.value })}
             >
               <option value="" disabled>Select a partner store...</option>
-              {partners.map((p) => (
+              {partners.filter((p) => !p.archived_at).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -477,6 +461,7 @@ export default function Deals() {
         subtitle="Update discount configuration, point redemption cost, or inventory limits."
       >
         <form onSubmit={handleUpdateDeal} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {editingDeal?.has_history && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Customers have already claimed this deal. Its discount and minimum spend are preserved for their vouchers. Create a new deal for a different benefit.</p>}
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
               Deal Campaign Title *
@@ -511,6 +496,7 @@ export default function Deals() {
               <select
                 className="input-control"
                 value={editDealForm.discount_type}
+                disabled={editingDeal?.has_history}
                 onChange={(e) => setEditDealForm({ ...editDealForm, discount_type: e.target.value })}
               >
                 <option value="PERCENT">Percentage (%)</option>
@@ -528,6 +514,7 @@ export default function Deals() {
                 min="1"
                 className="input-control"
                 value={editDealForm.discount_value}
+                disabled={editingDeal?.has_history}
                 onChange={(e) => setEditDealForm({ ...editDealForm, discount_value: e.target.value })}
               />
             </div>
@@ -574,6 +561,7 @@ export default function Deals() {
                 className="input-control"
                 placeholder="0"
                 value={editDealForm.min_basket}
+                disabled={editingDeal?.has_history}
                 onChange={(e) => setEditDealForm({ ...editDealForm, min_basket: e.target.value })}
               />
             </div>

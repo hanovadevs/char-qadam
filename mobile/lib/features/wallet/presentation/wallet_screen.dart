@@ -61,7 +61,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
     if (id == null) return;
     final request = ++_locateRequest;
     // A recovered purchase might already have been used or expired.
-    for (final status in ['active', 'redeemed', 'expired']) {
+    for (final status in ['active', 'redeemed', 'expired', 'cancelled']) {
       await ref.read(walletProvider.notifier).fetchVouchers(status);
       if (!mounted || request != _locateRequest) return;
       final state = ref.read(walletProvider);
@@ -215,6 +215,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                 'active': 'Ready to use',
                 'redeemed': 'Used',
                 'expired': 'Expired',
+                'cancelled': 'Cancelled',
               },
               selected: state.selectedStatus,
               onSelected: (status) {
@@ -244,6 +245,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
               final ready =
                   v.status == 'ISSUED' && v.expiresAt.isAfter(DateTime.now());
               final used = v.status == 'REDEEMED';
+              final cancelled = v.status == 'CANCELLED';
               final selected = v.id == widget.highlightId;
               return Container(
                 key: ValueKey('voucher-${v.id}'),
@@ -289,6 +291,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                                       ? 'Ready to use'
                                       : used
                                       ? 'Used'
+                                      : cancelled
+                                      ? 'Cancelled'
                                       : 'Expired',
                                 ),
                                 backgroundColor: ready
@@ -305,7 +309,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                           Text(v.offerTitle, style: AppTheme.headlineStyle),
                           const SizedBox(height: 8),
                           Text(
-                            used
+                            cancelled
+                                ? 'Cancelled. Contact support if you need help with this reward.'
+                                : used
                                 ? v.redeemedAt == null
                                       ? 'Used in store'
                                       : 'Used ${DateFormat('d MMM yyyy').format(v.redeemedAt!.toLocal())}'
@@ -372,6 +378,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                     ? 'Turn your points into something you’ll enjoy. Your vouchers will be waiting here.'
                     : state.selectedStatus == 'redeemed'
                     ? 'Rewards you use in store will appear here.'
+                    : state.selectedStatus == 'cancelled'
+                    ? 'Cancelled rewards stay here for your records.'
                     : 'Expired rewards will appear here.',
                 action: 'Explore rewards',
                 onAction: () => context.go('/rewards'),

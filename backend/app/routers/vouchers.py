@@ -42,8 +42,8 @@ async def _expire_stale(vouchers: list[Voucher], session: AsyncSession) -> None:
 async def list_vouchers(
     status: str = Query(
         default="active",
-        pattern="^(active|redeemed|expired)$",
-        description="Filter: 'active' = ISSUED & not expired, 'redeemed', 'expired'",
+        pattern="^(active|redeemed|expired|cancelled)$",
+        description="Filter: 'active' = ISSUED & not expired, 'redeemed', 'expired', 'cancelled'",
     ),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -76,6 +76,8 @@ async def list_vouchers(
         ]
     elif status == "redeemed":
         filtered = [v for v in vouchers if v.status == VoucherStatus.REDEEMED]
+    elif status == 'cancelled':
+        filtered = [v for v in vouchers if v.status == VoucherStatus.CANCELLED]
     else:  # expired
         filtered = [v for v in vouchers if v.status == VoucherStatus.EXPIRED]
 

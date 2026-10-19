@@ -220,6 +220,8 @@ class Partner(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     google_maps_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cover_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     api_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     status: Mapped[PartnerStatus] = mapped_column(
         Enum(PartnerStatus, name="partner_status", values_callable=lambda x: [e.value for e in x]),
@@ -241,6 +243,7 @@ class Offer(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     partner_id: Mapped[str] = mapped_column(ForeignKey("partners.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(256), nullable=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     discount_type: Mapped[DiscountType] = mapped_column(
         Enum(DiscountType, name="discount_type", values_callable=lambda x: [e.value for e in x]),

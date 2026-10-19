@@ -11,6 +11,7 @@ web/dist/
 
 # ---------- Python / FastAPI (backend/) ----------
 backend/.venv/
+backend/uploads/
 **/__pycache__/
 *.py[cod]
 *$py.class

@@ -4,6 +4,7 @@ class OfferModel {
   final String? partnerName;
   final String? partnerLocation;
   final String? partnerGoogleMapsUrl;
+  final String? partnerCoverImageUrl;
   final String title;
   final String? description;
   final String discountType;
@@ -22,6 +23,7 @@ class OfferModel {
     this.partnerName,
     this.partnerLocation,
     this.partnerGoogleMapsUrl,
+    this.partnerCoverImageUrl,
     required this.title,
     this.description,
     required this.discountType,
@@ -42,6 +44,7 @@ class OfferModel {
       partnerName: json['partner_name'] as String?,
       partnerLocation: json['partner_location'] as String?,
       partnerGoogleMapsUrl: json['partner_google_maps_url'] as String?,
+      partnerCoverImageUrl: json['partner_cover_image_url'] as String?,
       title: json['title'] as String,
       description: json['description'] as String?,
       discountType: json['discount_type'] as String,
@@ -66,6 +69,7 @@ class OfferModel {
     partnerName: partnerName,
     partnerLocation: partnerLocation,
     partnerGoogleMapsUrl: partnerGoogleMapsUrl,
+    partnerCoverImageUrl: partnerCoverImageUrl,
     title: title,
     description: description,
     discountType: discountType,

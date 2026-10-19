@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import secrets
+import asyncio
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,6 +40,8 @@ from app.services.device_binding import release_devices
 from app.services.voucher_sweep import sweep_expired_vouchers
 from app.services.local_date import local_today
 from app.services.store_location import normalize_maps_url
+from app.services.store_cover import MAX_COVER_BYTES, save_cover
+from app.services.admin_lifecycle import offer_has_history, partner_has_history, user_has_history
 
 public_router = APIRouter(prefix="/admin", tags=["admin"])
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
@@ -165,7 +168,7 @@ class AdminUserPatchIn(BaseModel):
 
 
 class AdminVoucherPatchIn(BaseModel):
-    status: str | None = None
+    status: VoucherStatus | None = None
 
 
 class AdminVoucherLookupIn(BaseModel):
@@ -229,8 +232,9 @@ async def get_analytics_overview(session: AsyncSession = Depends(get_session)) -
     row = (await session.execute(select(
         select(func.count(User.id)).scalar_subquery(),
         select(func.coalesce(func.sum(ActivityDaily.eligible_steps), 0)).scalar_subquery(),
-        select(func.count(Partner.id)).where(Partner.status == PartnerStatus.ACTIVE).scalar_subquery(),
-        select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE).scalar_subquery(),
+        select(func.count(Partner.id)).where(Partner.status == PartnerStatus.ACTIVE, Partner.archived_at.is_(None)).scalar_subquery(),
+        select(func.count(Offer.id)).join(Partner).where(Offer.status == OfferStatus.ACTIVE,
+            Offer.archived_at.is_(None), Partner.status == PartnerStatus.ACTIVE, Partner.archived_at.is_(None)).scalar_subquery(),
         select(func.count(Voucher.id)).scalar_subquery(),
         select(func.count(Voucher.id)).where(Voucher.status == VoucherStatus.REDEEMED).scalar_subquery(),
         select(func.coalesce(func.sum(Redemption.discount_value), 0)).scalar_subquery(),
@@ -326,11 +330,13 @@ async def list_partners(
         User.role == 'MERCHANT', User.partner_id.isnot(None)).group_by(User.partner_id).subquery()
     query = select(Partner, func.coalesce(offers.c.count, 0),
         func.coalesce(redemptions.c.count, 0), func.coalesce(redemptions.c.value, 0),
-        merchants.c.email).outerjoin(offers, offers.c.partner_id == Partner.id).outerjoin(
+        merchants.c.email, ~partner_has_history(Partner.id)).outerjoin(offers, offers.c.partner_id == Partner.id).outerjoin(
         redemptions, redemptions.c.partner_id == Partner.id).outerjoin(
         merchants, merchants.c.partner_id == Partner.id).order_by(Partner.name)
-    if status and status != "ALL":
-        query = query.where(Partner.status == PartnerStatus(status))
+    if status == 'ARCHIVED':
+        query = query.where(Partner.archived_at.is_not(None))
+    elif status and status != "ALL":
+        query = query.where(Partner.status == PartnerStatus(status), Partner.archived_at.is_(None))
     if search:
         query = query.where(Partner.name.ilike(f"%{search}%"))
 
@@ -338,7 +344,7 @@ async def list_partners(
     partners = result.all()
 
     items = []
-    for p, off_count, red_count, total_discount, merchant_email in partners:
+    for p, off_count, red_count, total_discount, merchant_email, can_delete in partners:
         email_val = merchant_email or p.email
         items.append({
             "id": p.id,
@@ -348,6 +354,9 @@ async def list_partners(
             "description": getattr(p, "description", None),
             "location": getattr(p, "location", None),
             "google_maps_url": getattr(p, "google_maps_url", None),
+            "cover_image_url": p.cover_image_url,
+            "archived_at": p.archived_at.isoformat() if p.archived_at else None,
+            "can_delete": can_delete,
             "status": p.status.value,
             "has_api_key": bool(p.api_key_hash),
             "offer_count": off_count,
@@ -494,7 +503,59 @@ async def update_partner(
     }
 
 
-@router.delete("/partners/{partner_id}", summary="Delete Partner Store")
+async def _set_archived(model, record_id: str, archived: bool, session: AsyncSession, kind: str):
+    record = await session.get(model, record_id, with_for_update=True)
+    if record is None:
+        raise HTTPException(404, f'{kind.title()} not found')
+    if bool(record.archived_at) != archived:
+        record.archived_at = datetime.now(timezone.utc) if archived else None
+        session.add(AuditLog(actor='admin', action=f'{"ARCHIVE" if archived else "RESTORE"}_{kind}',
+            object_type=kind, object_id=record_id))
+        await session.commit()
+    return {'id': record_id, 'archived_at': record.archived_at.isoformat() if record.archived_at else None}
+
+
+@router.post('/partners/{partner_id}/archive', summary='Archive a store; retain issued vouchers')
+async def archive_partner(partner_id: str, session: AsyncSession = Depends(get_session)):
+    return await _set_archived(Partner, partner_id, True, session, 'PARTNER')
+
+
+@router.post('/partners/{partner_id}/restore', summary='Restore an archived store')
+async def restore_partner(partner_id: str, session: AsyncSession = Depends(get_session)):
+    return await _set_archived(Partner, partner_id, False, session, 'PARTNER')
+
+
+@router.post('/partners/{partner_id}/cover', summary='Upload a public store cover')
+async def upload_partner_cover(partner_id: str, file: UploadFile, session: AsyncSession = Depends(get_session)):
+    settings = get_settings()
+    data = await file.read(MAX_COVER_BYTES + 1)
+    url, image = await asyncio.to_thread(save_cover, data, settings)
+    try:
+        partner = await session.get(Partner, partner_id, with_for_update=True)
+        if partner is None:
+            raise HTTPException(404, 'Partner not found')
+        partner.cover_image_url = url
+        session.add(AuditLog(actor='admin', action='UPDATE_PARTNER_COVER', object_type='PARTNER', object_id=partner_id))
+        await session.commit()
+    except BaseException:
+        await asyncio.to_thread(image.unlink, missing_ok=True)
+        raise
+    return {'id': partner_id, 'cover_image_url': url}
+
+
+@router.delete('/partners/{partner_id}/cover', summary='Remove the current cover')
+async def remove_partner_cover(partner_id: str, session: AsyncSession = Depends(get_session)):
+    partner = await session.get(Partner, partner_id, with_for_update=True)
+    if partner is None:
+        raise HTTPException(404, 'Partner not found')
+    partner.cover_image_url = None
+    session.add(AuditLog(actor='admin', action='REMOVE_PARTNER_COVER', object_type='PARTNER', object_id=partner_id))
+    await session.commit()
+    # Versioned public files remain available to already-cached screens.
+    return {'id': partner_id, 'cover_image_url': None}
+
+
+@router.delete("/partners/{partner_id}", summary="Permanently delete an archived unused store")
 async def delete_partner(
     partner_id: str,
     session: AsyncSession = Depends(get_session),
@@ -502,6 +563,19 @@ async def delete_partner(
     partner = await session.get(Partner, partner_id)
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
+
+    # Match purchase lock order: account, offers, then the partner. History is
+    # checked only after in-flight purchases can finish, before any deletion.
+    await session.execute(select(User).where(User.partner_id == partner_id).order_by(User.id).with_for_update())
+    await session.execute(select(Offer).where(Offer.partner_id == partner_id).order_by(Offer.id).with_for_update())
+    partner = (await session.execute(select(Partner).where(Partner.id == partner_id)
+        .with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
+    if not partner:
+        raise HTTPException(404, 'Partner not found')
+    if partner.archived_at is None:
+        raise HTTPException(409, 'Archive this store before permanently deleting it.')
+    if await session.scalar(select(partner_has_history(partner_id))):
+        raise HTTPException(409, 'This store has customer or merchant history. Keep it archived to preserve points and vouchers.')
 
     # Find all offers for this partner
     offer_ids = (await session.execute(
@@ -617,15 +691,14 @@ async def get_partner(
     partner_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    partner = await session.get(Partner, partner_id)
-    if not partner:
+    merchant_email = select(func.min(User.email)).where(
+        User.partner_id == partner_id, User.role == 'MERCHANT').scalar_subquery()
+    row = (await session.execute(select(Partner, ~partner_has_history(Partner.id), merchant_email)
+        .where(Partner.id == partner_id))).one_or_none()
+    if row is None:
         raise HTTPException(status_code=404, detail="Partner not found")
-
-    # Fetch merchant user email if any
-    merchant_user = (await session.execute(
-        select(User).where(User.partner_id == partner_id)
-    )).scalar_one_or_none()
-    email_val = merchant_user.email if merchant_user else partner.email
+    partner, can_delete, email = row
+    email_val = email or partner.email
 
     # Fetch offers
     offers_res = await session.execute(
@@ -636,7 +709,7 @@ async def get_partner(
     # Fetch recent redemptions
     redemptions_res = await session.execute(
         select(Redemption)
-        .options(selectinload(Redemption.voucher).selectinload(Voucher.offer))
+        .options(joinedload(Redemption.voucher).joinedload(Voucher.offer))
         .where(Redemption.partner_id == partner_id)
         .order_by(desc(Redemption.redeemed_at))
         .limit(10)
@@ -651,6 +724,9 @@ async def get_partner(
         "description": getattr(partner, "description", None),
         "location": getattr(partner, "location", None),
         "google_maps_url": getattr(partner, "google_maps_url", None),
+        "cover_image_url": partner.cover_image_url,
+        "archived_at": partner.archived_at.isoformat() if partner.archived_at else None,
+        "can_delete": can_delete,
         "status": partner.status.value,
         "has_api_key": bool(partner.api_key_hash),
         "raw_api_key": None,
@@ -663,6 +739,7 @@ async def get_partner(
                 "discount_value": float(o.discount_value),
                 "points_cost": o.points_cost,
                 "status": o.status.value,
+                "archived_at": o.archived_at.isoformat() if o.archived_at else None,
             }
             for o in offers
         ],
@@ -691,23 +768,30 @@ async def list_offers(
     search: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    query = select(Offer).options(joinedload(Offer.partner)).order_by(desc(Offer.created_at))
+    query = select(Offer, offer_has_history(Offer.id)).options(joinedload(Offer.partner)).order_by(desc(Offer.created_at))
     if partner_id and partner_id != "ALL":
         query = query.where(Offer.partner_id == partner_id)
-    if status and status != "ALL":
-        query = query.where(Offer.status == OfferStatus(status))
+    if status == 'ARCHIVED':
+        query = query.where(Offer.archived_at.is_not(None))
+    elif status and status != "ALL":
+        query = query.where(Offer.status == OfferStatus(status), Offer.archived_at.is_(None))
     if search:
         query = query.where(Offer.title.ilike(f"%{search}%"))
 
     result = await session.execute(query)
-    offers = result.scalars().all()
+    offers = result.all()
 
     items = []
-    for o in offers:
+    for o, has_history in offers:
         items.append({
             "id": o.id,
             "partner_id": o.partner_id,
             "partner_name": o.partner.name if o.partner else "Unknown",
+            "partner_cover_image_url": o.partner.cover_image_url if o.partner else None,
+            "partner_archived": bool(o.partner and o.partner.archived_at),
+            "archived_at": o.archived_at.isoformat() if o.archived_at else None,
+            "has_history": has_history,
+            "can_delete": not has_history,
             "title": o.title,
             "description": o.description,
             "discount_type": o.discount_type.value,
@@ -731,6 +815,8 @@ async def create_offer(
     partner = await session.get(Partner, body.partner_id)
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
+    if partner.archived_at is not None:
+        raise HTTPException(409, 'Restore this store before creating a new deal.')
 
     offer = Offer(
         id=str(uuid.uuid4()),
@@ -765,9 +851,17 @@ async def update_offer(
     body: AdminOfferPatchIn,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    offer = await session.get(Offer, offer_id)
+    offer = await session.get(Offer, offer_id, with_for_update=True)
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
+
+    changed_terms = (
+        (body.discount_type is not None and body.discount_type != offer.discount_type)
+        or (body.discount_value is not None and body.discount_value != float(offer.discount_value))
+        or ('min_basket' in body.model_fields_set and body.min_basket != (float(offer.min_basket) if offer.min_basket is not None else None))
+    )
+    if changed_terms and await session.scalar(select(offer_has_history(offer_id))):
+        raise HTTPException(409, 'Customers have already claimed this deal. Create a new deal to change its discount or minimum spend; existing vouchers must keep their benefit.')
 
     discount_type = body.discount_type or offer.discount_type
     discount_value = body.discount_value if body.discount_value is not None else float(offer.discount_value)
@@ -801,14 +895,28 @@ async def update_offer(
     return {"id": offer.id, "title": offer.title, "status": offer.status.value}
 
 
-@router.delete("/offers/{offer_id}", summary="Delete Offer")
+@router.post('/offers/{offer_id}/archive', summary='Archive a deal; retain issued vouchers')
+async def archive_offer(offer_id: str, session: AsyncSession = Depends(get_session)):
+    return await _set_archived(Offer, offer_id, True, session, 'OFFER')
+
+
+@router.post('/offers/{offer_id}/restore', summary='Restore an archived deal')
+async def restore_offer(offer_id: str, session: AsyncSession = Depends(get_session)):
+    return await _set_archived(Offer, offer_id, False, session, 'OFFER')
+
+
+@router.delete("/offers/{offer_id}", summary="Permanently delete an archived unused deal")
 async def delete_offer(
     offer_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    offer = await session.get(Offer, offer_id)
+    offer = await session.get(Offer, offer_id, with_for_update=True)
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
+    if offer.archived_at is None:
+        raise HTTPException(409, 'Archive this deal before permanently deleting it.')
+    if await session.scalar(select(offer_has_history(offer_id))):
+        raise HTTPException(409, 'This deal has purchase history. Keep it archived to preserve points and vouchers.')
 
     # Clean up associated vouchers and redemptions
     voucher_ids = (await session.execute(
@@ -973,12 +1081,16 @@ async def update_voucher(
     body: AdminVoucherPatchIn,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    voucher = await session.get(Voucher, voucher_id)
+    voucher = await session.get(Voucher, voucher_id, with_for_update=True)
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
 
     if body.status is not None:
-        voucher.status = VoucherStatus(body.status.strip().upper())
+        target = VoucherStatus(body.status.strip().upper())
+        if target != voucher.status:
+            if target != VoucherStatus.CANCELLED or voucher.status != VoucherStatus.ISSUED:
+                raise HTTPException(409, 'Only an unused issued voucher can be cancelled. Use the checkout flow for redemption; used vouchers cannot be reactivated.')
+            voucher.status = target
 
     session.add(AuditLog(
         id=str(uuid.uuid4()),
@@ -1000,21 +1112,7 @@ async def delete_voucher(
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
 
-    # Delete linked redemption if exists
-    await session.execute(
-        delete(Redemption).where(Redemption.voucher_id == voucher_id)
-    )
-    await session.delete(voucher)
-    session.add(AuditLog(
-        id=str(uuid.uuid4()),
-        actor="admin",
-        action="DELETE_VOUCHER",
-        object_type="VOUCHER",
-        object_id=voucher_id,
-    ))
-    await session.commit()
-    return {"message": "Voucher deleted successfully"}
-
+    raise HTTPException(409, 'Vouchers are purchase history and cannot be permanently deleted. Cancel an unused voucher instead.')
 
 @router.get("/redemptions", summary="List Redemption History")
 async def list_redemptions(
@@ -1068,7 +1166,7 @@ async def list_users(
     query = (
         select(
             User,
-            func.coalesce(steps.c.total, 0), func.coalesce(points.c.balance, 0),
+            func.coalesce(steps.c.total, 0), func.coalesce(points.c.balance, 0), ~user_has_history(User.id),
         )
         .outerjoin(steps, User.id == steps.c.user_id)
         .outerjoin(points, User.id == points.c.user_id)
@@ -1084,10 +1182,11 @@ async def list_users(
     rows = result.all()
 
     items = []
-    for u, total_steps, pts in rows:
+    for u, total_steps, pts, can_delete in rows:
         items.append({
             "id": u.id,
             "email": u.email,
+            "can_delete": can_delete,
             "role": u.role,
             "status": u.status.value,
             "total_steps": int(total_steps),
@@ -1104,11 +1203,16 @@ async def update_user_status_patch(
     body: AdminUserStatusIn,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    user = await session.get(User, user_id)
+    user = await session.get(User, user_id, with_for_update=True)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.status = UserStatus(body.status)
+    next_status = UserStatus(body.status)
+    if next_status != user.status:
+        user.status = next_status
+        user.auth_version += 1
+        if next_status == UserStatus.DELETED:
+            await release_devices(user, session)
     session.add(AuditLog(
         id=str(uuid.uuid4()),
         actor="admin",
@@ -1171,9 +1275,13 @@ async def delete_user(
     user_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    user = await session.get(User, user_id)
+    user = await session.get(User, user_id, with_for_update=True)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if user.status != UserStatus.DELETED:
+        raise HTTPException(409, 'Deactivate this account before permanently deleting it.')
+    if await session.scalar(select(user_has_history(user_id))):
+        raise HTTPException(409, 'This account has activity or purchase history. Keep it deactivated to preserve the records.')
 
     # Delete user's vouchers and associated redemptions
     v_ids = (await session.execute(

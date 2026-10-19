@@ -119,3 +119,21 @@ test('filtered cache keys normalize empty values and encode search text', () => 
   assert.equal(queryPath('/users', { status: 'ALL', search: '', limit: undefined }), '/users');
   assert.equal(queryPath('/users', { status: 'ACTIVE', search: 'ali+a@example.com' }), '/users?search=ali%2Ba%40example.com&status=ACTIVE');
 });
+
+test('cover upload sends an authenticated multipart body with a browser-generated boundary', async () => {
+  let sent;
+  const api = new ApiClient({ storage: null, fetchImpl: async (_url, options) => {
+    sent = options;
+    return response({ cover_image_url: 'https://api.stepsyapp.com/media/store-covers/cover.webp' });
+  } });
+  api.setToken('admin-session');
+  await api.cache.fetch('/admin/partners', () => []);
+  const file = new File(['fixture bytes'], 'cover.png', { type: 'image/png' });
+  await api.uploadPartnerCover('store', file);
+  assert.equal(sent.method, 'POST');
+  assert.equal(sent.headers.Authorization, 'Bearer admin-session');
+  assert.equal(sent.headers['Content-Type'], undefined);
+  assert.ok(sent.body instanceof FormData);
+  assert.equal(sent.body.get('file').name, 'cover.png');
+  assert.equal(api.cache.peek('/admin/partners'), undefined);
+});
