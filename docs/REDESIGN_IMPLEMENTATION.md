@@ -39,6 +39,12 @@ Home reward links open the actual catalog detail, including repeated visits. Cla
 
 Physical Redmi installation and runtime measurements are recorded below when completed. Existing app data must be preserved using `adb install -r`; never uninstall or clear storage for this review.
 
+### Android build evidence
+
+Profile arm64 APK built successfully from the final source (126.2-second Gradle build). Artifact: `mobile/build/app/outputs/flutter-apk/app-profile.apk`, 83,711,111 bytes, SHA-256 `BD8EBBD84DEF6189F8CFE78637C62C09174D9D305D239831C9B6CA96DD2F08BF`.
+
+The Redmi was initially connected with motion permission granted. It disconnected during the first replacement-install attempt; subsequent ADB inventory was empty. **Installation and physical-device frame measurements are not yet confirmed.** Owner reconnection was requested. No app storage was cleared.
+
 ## Remaining blueprint work
 
 - Character art review: dedicated front/three-quarter/left/right turnarounds, stronger expression and stance differentiation, and owner approval of the first interpretation.
