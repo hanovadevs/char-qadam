@@ -82,6 +82,8 @@ void main() {
     );
     for (var i = 1; i <= 12; i++) {
       health.events.add(i);
+      expect(notifier.state.todaySteps, i);
+      expect(notifier.state.hasStepSnapshot, isTrue);
       await tester.pump(const Duration(seconds: 1));
     }
     expect(repo.calls, greaterThanOrEqualTo(1));

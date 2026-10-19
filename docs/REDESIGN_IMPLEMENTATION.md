@@ -5,7 +5,7 @@ This is the first native implementation of `Stepsy_Redesign_Blueprint.md`, with 
 ## Implemented
 
 - Light paper/mint/teal tokens and bundled typography; official logo retained.
-- Steps: compact confirmed activity, separate pending device count, personal daily goal, companion on the accurate progress fill, confirmed points today, available balance entry point, real reward goal/suggestion, dated weekly preview, existing trends, diagnostics and leaderboard.
+- Steps: compact live sensor activity, separate pending sync indication, personal daily goal, companion on the accurate progress fill, confirmed points today, available balance entry point, real reward goal/suggestion, dated weekly preview, existing trends, diagnostics and leaderboard.
 - Rewards: compact benefit/brand/price/restriction cards, approved store cover thumbnail, existing admin Maps destination, Within my points filter, full terms/detail, explicit redemption confirmation, claimed offer linking to its existing Wallet record.
 - Wallet: Ready/History grouping with used, expired and cancelled records retained. Codes are inside voucher detail. Existing redemption recovery, single-claim rules, success navigation and themed fireworks remain connected.
 - Points: available balance, walking points earned, spent and existing paginated ledger retained; walking aggregate is not mislabeled as all credits.
@@ -16,7 +16,7 @@ This is the first native implementation of `Stepsy_Redesign_Blueprint.md`, with 
 
 `design/stepsy-companion/stepsy-companion.blend` is the editable source. Build/render/packing scripts, transparent 256px masters, contact sheet and rig/palette guide are included. Nine clips: rest, idle, walk, wave, point, cheer, ready, wait and reassure. Eight runtime atlases contain 24 frames each at 128px; rest is a small static image.
 
-Playback is brief and event driven, with static fallback. Home only walks after a settled positive change on the same day and goal; opening an existing count or receiving a downward correction does not animate a day's progress. Goal celebrations use an account/day/goal marker. System reduced motion and the user's animation preference take priority. There is no continuous animation loop or additional service/network request.
+Playback is event driven, with static fallback. Home walks after a live positive change on the same day and goal; opening an existing count or receiving a downward correction does not animate a day's progress. Walking cycles continue while step events arrive and stop three seconds after the last event. Goal celebrations use an account/day/goal marker. System reduced motion and the user's animation preference take priority. There is no unattended animation loop or additional service/network request.
 
 Each decoded atlas is 768×512×4 = 1,572,864 bytes; static rest is 65,536 decoded bytes. Runtime PNG compression is a separate disk budget. Profile builds log clip decode time and Flutter build/raster p95 for physical-device measurement. These measurements cover the surrounding app frames during playback, not an isolated GPU benchmark.
 
@@ -31,7 +31,7 @@ Home reward links open the actual catalog detail, including repeated visits. Cla
 ## Validation
 
 - Flutter analyzer: no issues.
-- Full mobile regression suite on the final source: **114 passing**, including claimed-offer navigation and walking beyond the daily earning cap without additional earning requests.
+- Full mobile regression suite after the live-step correction: **116 passing**, including delayed-sync live updates, animation continuity, claimed-offer navigation and walking beyond the daily earning cap without additional earning requests.
 - Layout/meter coverage: 320, 360, 390 and 430 widths; progress at 0/1/50/99/100/120 percent; up to 200% text. Five destinations, progress, confirmation and QR are exercised. Initial loading, zero activity, denied permission, offline and failed redemption have explicit fixture previews.
 - Redemption tests cover success, reduced motion, fireworks without blocking QR, failure, recovered used vouchers, claimed-offer navigation without a second purchase and admin-configured Maps links.
 - Preference tests cover account isolation, persisted selection, concurrent writes, invalid goals and celebration guards.
@@ -57,3 +57,11 @@ The Redmi initially disconnected during replacement installation. After owner re
 - Retention improvements remain a hypothesis for user testing, not a guaranteed result.
 
 Play Console upload remains paused at the owner's request.
+
+## Live-step correction after owner walkthrough
+
+The owner reported that steps arrived in batches and walking playback was too brief. The first blueprint implementation had incorrectly bound the main count to API settlement. This is corrected to use the existing live persisted sensor stream (with the server total as a reopening floor); point earnings and available balance still use server values. Initial activity remains unknown until an actual sensor or server snapshot is available. Pending sync refers only to eligible steps not yet acknowledged, not movement beyond the daily earning cap.
+
+Walking now uses a three-second recent-movement window, extending the same cycle on subsequent steps. A background sync cannot replace walking with a wait clip. Inherited-widget rebuilds do not interrupt playback. Manual wave and other single clips play for 1.5 seconds. Hidden tabs and reduced motion stop rendering; profiling samples are bounded even during a long walk.
+
+New regression checks exercise live count updates during delayed sync without awarding points, continuous movement without restarting the cycle, resting after inactivity, and real atlas playback across inherited-widget changes and hidden tabs. Physical-phone confirmation of the corrected build is tracked separately from automated checks.

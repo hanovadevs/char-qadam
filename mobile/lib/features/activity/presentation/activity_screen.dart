@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -91,8 +92,12 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     final eligible = inventory.offers.where((o) => eligibleReward(o)).toList();
     final chosen = eligible.where((o) => o.id == prefs.rewardId).firstOrNull;
     final reward = chosen ?? suggestedReward(eligible, balance);
-    final steps = state.settledSteps ?? state.serverSteps;
-    final known = state.settledSteps != null || state.lastSyncTime != null;
+    // Movement is live from the persisted sensor; only points await the API.
+    final steps = max(state.todaySteps, state.serverSteps);
+    final known =
+        state.hasStepSnapshot ||
+        state.settledSteps != null ||
+        state.lastSyncTime != null;
     final cap = state.dailyCap;
     final number = NumberFormat.decimalPattern();
     final progress = (steps / prefs.goal).clamp(0.0, 1.0);
@@ -205,9 +210,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 ),
               ),
             ),
-            if (state.todaySteps > steps)
+            if (min(state.todaySteps, cap) > state.serverSteps)
               Text(
-                '${number.format(state.todaySteps - steps)} device steps awaiting sync',
+                '${number.format(min(state.todaySteps, cap) - state.serverSteps)} device steps awaiting sync',
                 style: AppTheme.captionStyle,
               ),
             if (state.errorMessage != null)

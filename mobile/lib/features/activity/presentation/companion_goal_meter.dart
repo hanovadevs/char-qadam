@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,23 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
   String _clip = 'rest';
   int _event = 0;
   bool _tip = false;
+  Timer? _motionTimer;
+
+  void _play(String clip, Duration duration) {
+    if (_clip != clip || clip != 'walk') _event++;
+    _clip = clip;
+    _motionTimer?.cancel();
+    _motionTimer = Timer(duration, () {
+      if (mounted) setState(() => _clip = 'rest');
+    });
+  }
+
+  @override
+  void dispose() {
+    _motionTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   void didUpdateWidget(covariant CompanionGoalMeter old) {
     super.didUpdateWidget(old);
@@ -36,24 +54,28 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
         old.day == widget.day &&
         old.goal == widget.goal &&
         widget.steps > old.steps) {
-      _clip = 'walk';
-      _event++;
       final event = '${widget.day}:${widget.goal}';
       if (old.steps < widget.goal &&
           widget.steps >= widget.goal &&
           ref.read(experienceProvider).loaded &&
           ref.read(experienceProvider).celebratedEvent != event) {
-        _clip = 'cheer';
+        _play('cheer', const Duration(milliseconds: 1600));
         final settings = ref.read(experienceProvider.notifier);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             settings.update(celebratedEvent: event).catchError((_) {});
           }
         });
+      } else if (_clip != 'cheer') {
+        // Keep the same walk cycle while sensor events arrive; never restart
+        // the atlas on every step. Rest shortly after movement stops.
+        _play('walk', const Duration(seconds: 3));
       }
     } else if (widget.steps < old.steps ||
         old.day != widget.day ||
-        old.goal != widget.goal) {
+        old.goal != widget.goal ||
+        !widget.known) {
+      _motionTimer?.cancel();
       _clip = 'rest';
       _event++;
     }
@@ -75,7 +97,7 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
               Expanded(
                 child: Text(
                   widget.syncing
-                      ? 'Your steps will appear after sync.'
+                      ? 'Steps update live. Points update after sync.'
                       : 'Ready whenever you are.',
                   style: AppTheme.captionStyle,
                 ),
@@ -123,7 +145,9 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
                     ),
                   ),
                   AnimatedPositioned(
-                    duration: MediaQuery.disableAnimationsOf(context)
+                    duration:
+                        MediaQuery.disableAnimationsOf(context) ||
+                            !prefs.animations
                         ? Duration.zero
                         : const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
@@ -138,17 +162,19 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
                           : 'Walking companion. Wave',
                       child: GestureDetector(
                         onTap: () => setState(() {
-                          _clip = 'wave';
-                          _event++;
+                          _play('wave', const Duration(milliseconds: 1600));
                           _tip = prefs.tips;
                         }),
                         child: Companion(
-                          clip: widget.syncing
+                          clip: _clip != 'rest'
+                              ? _clip
+                              : !widget.known && widget.syncing
                               ? 'wait'
                               : widget.denied
                               ? 'reassure'
                               : _clip,
                           event: _event,
+                          repeat: _clip == 'walk',
                           size: sprite,
                         ),
                       ),

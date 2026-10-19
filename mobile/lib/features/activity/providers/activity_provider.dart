@@ -17,6 +17,7 @@ class ActivityState {
   /// Last settled sensor/server snapshot, updated only after a successful read/sync.
   final int? settledSteps;
   final int todaySteps;
+  final bool hasStepSnapshot;
   final int serverSteps;
   final int pointsEarnedToday;
   final int userBalance;
@@ -33,6 +34,7 @@ class ActivityState {
   const ActivityState({
     this.settledSteps,
     this.todaySteps = 0,
+    this.hasStepSnapshot = false,
     this.serverSteps = 0,
     this.pointsEarnedToday = 0,
     this.userBalance = 0,
@@ -50,6 +52,7 @@ class ActivityState {
   ActivityState copyWith({
     int? settledSteps,
     int? todaySteps,
+    bool? hasStepSnapshot,
     int? serverSteps,
     int? pointsEarnedToday,
     int? userBalance,
@@ -66,6 +69,7 @@ class ActivityState {
     return ActivityState(
       settledSteps: settledSteps ?? this.settledSteps,
       todaySteps: todaySteps ?? this.todaySteps,
+      hasStepSnapshot: hasStepSnapshot ?? this.hasStepSnapshot,
       serverSteps: serverSteps ?? this.serverSteps,
       pointsEarnedToday: pointsEarnedToday ?? this.pointsEarnedToday,
       userBalance: userBalance ?? this.userBalance,
@@ -135,6 +139,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       if (steps > state.todaySteps) {
         state = state.copyWith(
           todaySteps: steps,
+          hasStepSnapshot: true,
           // Once earning is capped, further validated sensor movement still
           // advances the personal goal without another points request.
           settledSteps: state.serverSteps >= state.dailyCap ? steps : null,
@@ -225,6 +230,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       if (_checkDay() || _day != date) return;
       state = state.copyWith(
         todaySteps: max(state.todaySteps, steps),
+        hasStepSnapshot: true,
         settledSteps: state.serverSteps >= state.dailyCap
             ? max(state.serverSteps, max(state.todaySteps, steps))
             : null,

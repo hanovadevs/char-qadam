@@ -12,11 +12,15 @@ class Companion extends ConsumerStatefulWidget {
   final String clip;
   final double size;
   final int event;
+
+  /// Used only while the parent has a recent movement event and a rest timer.
+  final bool repeat;
   const Companion({
     super.key,
     this.clip = 'rest',
     this.size = 72,
     this.event = 0,
+    this.repeat = false,
   });
   @override
   ConsumerState<Companion> createState() => _CompanionState();
@@ -25,15 +29,21 @@ class Companion extends ConsumerStatefulWidget {
 class _CompanionState extends ConsumerState<Companion>
     with SingleTickerProviderStateMixin {
   late final _controller =
-      AnimationController(vsync: this, duration: const Duration(seconds: 1))
-        ..addStatusListener((status) {
-          if (status == AnimationStatus.completed) _finishMetrics();
-        });
+      AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1500),
+      )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) _finishMetrics();
+      });
   final List<FrameTiming> _timings = [];
   bool _recording = false;
   int _decodeMs = 0;
+  String _metricsClip = '';
   void _record(List<FrameTiming> timings) {
-    if (_recording) _timings.addAll(timings);
+    if (_recording) {
+      _timings.addAll(timings);
+      if (_timings.length >= 120) _finishMetrics();
+    }
   }
 
   void _finishMetrics() {
@@ -47,7 +57,7 @@ class _CompanionState extends ConsumerState<Companion>
       ..sort();
     final index = ((build.length - 1) * .95).round();
     debugPrint(
-      'StepsyCompanion clip=${widget.clip} frames=${build.length} decode_ms=$_decodeMs build_p95_us=${build[index]} raster_p95_us=${raster[index]} decoded_bytes=${(_image?.width ?? 0) * (_image?.height ?? 0) * 4}',
+      'StepsyCompanion clip=$_metricsClip frames=${build.length} decode_ms=$_decodeMs build_p95_us=${build[index]} raster_p95_us=${raster[index]} decoded_bytes=${(_image?.width ?? 0) * (_image?.height ?? 0) * 4}',
     );
   }
 
@@ -55,6 +65,8 @@ class _CompanionState extends ConsumerState<Companion>
   int _request = 0;
   bool _animate = false;
   String? _played;
+  String? _imageClip;
+  String? _loading;
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -64,52 +76,78 @@ class _CompanionState extends ConsumerState<Companion>
   @override
   void didUpdateWidget(covariant Companion old) {
     super.didUpdateWidget(old);
-    if (old.clip != widget.clip || old.event != widget.event) _load();
+    if (old.clip != widget.clip ||
+        old.event != widget.event ||
+        old.repeat != widget.repeat) {
+      _load();
+    }
   }
 
   Future<void> _load() async {
-    _finishMetrics();
-    final request = ++_request;
     final signature = '${widget.clip}:${widget.event}';
     final canAnimate =
-        _played != signature &&
         widget.clip != 'rest' &&
         !MediaQuery.disableAnimationsOf(context) &&
         ref.read(experienceProvider).animations &&
         TickerMode.valuesOf(context).enabled;
-    _controller.stop();
-    _controller.value = 0;
-    _animate = canAnimate;
     if (!canAnimate) {
+      _request++;
+      _loading = null;
+      _finishMetrics();
+      _controller.stop();
+      _animate = false;
       _image?.dispose();
       _image = null;
+      _imageClip = null;
       return;
     }
+    // Dependency rebuilds and background sync must not cut a playing clip short.
+    if (_loading == signature ||
+        (_played == signature && (_image != null || !widget.repeat))) {
+      return;
+    }
+    _finishMetrics();
+    final request = ++_request;
+    _loading = signature;
+    _controller.stop();
+    _animate = false;
     try {
       final decoding = Stopwatch()..start();
-      final data = await rootBundle.load(
-        'assets/companion/animations/${widget.clip}.png',
-      );
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      final frame = await codec.getNextFrame();
-      codec.dispose();
-      if (!mounted || request != _request) {
-        frame.image.dispose();
-        return;
-      }
-      setState(() {
+      if (_image == null || _imageClip != widget.clip) {
+        final clip = widget.clip;
+        final data = await rootBundle.load(
+          'assets/companion/animations/$clip.png',
+        );
+        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+        final frame = await codec.getNextFrame();
+        codec.dispose();
+        if (!mounted || request != _request) {
+          frame.image.dispose();
+          return;
+        }
         _image?.dispose();
         _image = frame.image;
+        _imageClip = clip;
+      }
+      setState(() {
+        _animate = true;
         _played = signature;
+        _loading = null;
       });
       if (kProfileMode) {
+        _metricsClip = widget.clip;
         _decodeMs = decoding.elapsedMilliseconds;
         _timings.clear();
         _recording = true;
         SchedulerBinding.instance.addTimingsCallback(_record);
       }
-      _controller.forward(from: 0);
+      if (widget.repeat) {
+        _controller.repeat(period: const Duration(seconds: 1));
+      } else {
+        _controller.forward(from: 0);
+      }
     } catch (_) {
+      if (request == _request) _loading = null;
       /* A missing clip leaves the static fallback usable. */
     }
   }
@@ -125,6 +163,10 @@ class _CompanionState extends ConsumerState<Companion>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(
+      experienceProvider.select((s) => s.animations),
+      (_, _) => _load(),
+    );
     final enabled = ref.watch(experienceProvider.select((s) => s.animations));
     final reduced = MediaQuery.disableAnimationsOf(context) || !enabled;
     return ExcludeSemantics(

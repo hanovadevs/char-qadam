@@ -18,6 +18,7 @@ import 'package:qadam/data/models/voucher_models.dart';
 import 'package:qadam/data/wallet/wallet_repository.dart';
 import 'package:qadam/features/activity/providers/activity_provider.dart';
 import 'package:qadam/features/companion/experience_provider.dart';
+import 'package:qadam/features/companion/companion.dart';
 import 'package:qadam/features/points/providers/points_provider.dart';
 import 'package:qadam/features/rewards/providers/rewards_provider.dart';
 import 'package:qadam/features/rewards/presentation/reward_card.dart';
@@ -68,6 +69,14 @@ class PreviewActivity extends StateNotifier<ActivityState>
       );
   @override
   Future<void> initAndSync({bool force = false}) async {}
+  void liveSteps(int steps, {bool? syncing}) {
+    state = state.copyWith(
+      todaySteps: steps,
+      hasStepSnapshot: true,
+      isSyncing: syncing,
+    );
+  }
+
   @override
   Future<void> loadHistory(String range) async {
     state = state.copyWith(selectedRange: range);
@@ -304,6 +313,54 @@ Future<void> capture(WidgetTester tester, String name) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets('Live steps and walking continue while points sync is delayed', (
+    tester,
+  ) async {
+    final container = await mountPreview(
+      tester,
+      initialPath: '/steps',
+      activity: const ActivityState(
+        todaySteps: 100,
+        serverSteps: 100,
+        pointsEarnedToday: 1,
+        hasStepSnapshot: true,
+        hasPermission: true,
+        lastSyncTime: '10:24 AM',
+      ),
+    );
+    final activity =
+        container.read(activityProvider.notifier) as PreviewActivity;
+    activity.liveSteps(101, syncing: true);
+    await tester.pump();
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('settled-step-count')))
+          .data,
+      '101',
+    );
+    expect(find.text('1 device steps awaiting sync'), findsOneWidget);
+    expect(container.read(activityProvider).pointsEarnedToday, 1);
+    final walking = find.byWidgetPredicate(
+      (w) => w is Companion && w.clip == 'walk',
+    );
+    expect(walking, findsOneWidget);
+    final event = tester.widget<Companion>(walking).event;
+    await tester.pump(const Duration(seconds: 2));
+    activity.liveSteps(102, syncing: false);
+    await tester.pump();
+    expect(
+      tester.widget<Companion>(walking).event,
+      event,
+      reason: 'A step extends the walk without restarting its cycle',
+    );
+    expect(tester.widget<Companion>(walking).repeat, isTrue);
+    await tester.pump(const Duration(seconds: 2));
+    expect(walking, findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1100));
+    expect(walking, findsNothing, reason: 'Rest after movement stops');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets(
     'Claimed offer opens its existing voucher without a second purchase',
     (tester) async {

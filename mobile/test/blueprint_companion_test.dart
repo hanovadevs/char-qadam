@@ -13,6 +13,64 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets(
+    'Walking playback survives rebuilds and stops when its slot is hidden',
+    (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          experienceProvider.overrideWith((ref) => ExperienceNotifier(null)),
+        ],
+      );
+      addTearDown(container.dispose);
+      Future<void> show({double scale = 1, bool visible = true}) async {
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              home: MediaQuery(
+                data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+                child: TickerMode(
+                  enabled: visible,
+                  child: const Companion(clip: 'walk', repeat: true, event: 1),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await show();
+      final animated = find.descendant(
+        of: find.byType(Companion),
+        matching: find.byType(AnimatedBuilder),
+      );
+      for (var i = 0; i < 30 && animated.evaluate().isEmpty; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      expect(animated, findsOneWidget);
+      final controller =
+          tester.widget<AnimatedBuilder>(animated).animation
+              as AnimationController;
+      await tester.pump(const Duration(milliseconds: 400));
+      final before = controller.value;
+      await show(scale: 1.1);
+      expect(
+        controller.value,
+        closeTo(before, .001),
+        reason: 'An inherited widget rebuild must not restart the clip',
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(controller.isAnimating, isTrue);
+      await show(visible: false);
+      expect(controller.isAnimating, isFalse);
+      expect(animated, findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'Opening, corrections and goal changes never replay a completion',
     (tester) async {
       final prefs = ExperienceNotifier('completion-user');
