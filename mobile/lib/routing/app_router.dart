@@ -175,6 +175,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/wallet',
                 builder: (context, state) => WalletScreen(
                   highlightId: state.uri.queryParameters['highlight'],
+                  offerId: state.uri.queryParameters['offer'],
                   recovered: state.uri.queryParameters['recovered'] == 'true',
                 ),
               ),

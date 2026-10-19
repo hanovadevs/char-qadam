@@ -126,7 +126,7 @@ void main() {
       );
       final button = find.byKey(const ValueKey('redeem-one-reward'));
       expect(tester.widget<ElevatedButton>(button).onPressed, isNull);
-      expect(find.text('Claimed'), findsOneWidget);
+      expect(find.text('View voucher'), findsOneWidget);
       expect(find.text('Get reward'), findsNothing);
       await tester.ensureVisible(button);
       await tester.tap(button);

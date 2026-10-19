@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../companion/companion.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../providers/points_provider.dart';
 
@@ -59,11 +60,6 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            const Text(
-              'Every walk\nhas its perks.',
-              style: AppTheme.largeTitleStyle,
-            ),
-            const SizedBox(height: 24),
             SurfaceCard(
               color: AppTheme.mintWash,
               child: Column(
@@ -73,7 +69,7 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                     children: [
                       const Expanded(
                         child: Text(
-                          'Your point pocket',
+                          'Available points',
                           style: AppTheme.headlineStyle,
                         ),
                       ),
@@ -83,10 +79,7 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                           color: AppTheme.surface,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          CupertinoIcons.sparkles,
-                          color: AppTheme.accentDeep,
-                        ),
+                        child: const Companion(size: 48),
                       ),
                     ],
                   ),
@@ -122,7 +115,7 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                 runSpacing: 16,
                 children: [
                   _total(
-                    'Lifetime earned',
+                    'Walking points earned',
                     balance == null ? '—' : number.format(balance.totalEarned),
                   ),
                   _total(
@@ -132,7 +125,14 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                 ],
               ),
             ),
-            const SectionHeading('The little things add up.'),
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Text(
+                'Walking points earned excludes manual adjustments. Your available balance includes all credits and debits.',
+                style: AppTheme.captionStyle,
+              ),
+            ),
+            const SectionHeading('Your transactions'),
             if (state.errorMessage != null)
               StatusNotice(
                 state.errorMessage!,
@@ -206,7 +206,7 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                               '${entry.delta > 0 ? '+' : ''}${number.format(entry.delta)}',
                               style: AppTheme.headlineStyle.copyWith(
                                 color: entry.delta > 0
-                                        ? AppTheme.accentDeep
+                                    ? AppTheme.accentDeep
                                     : AppTheme.inkPrimary,
                                 fontFeatures: AppTheme.tabular,
                               ),

@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qadam/core/services/store_location.dart';
 import 'package:qadam/core/theme/app_theme.dart';
 import 'package:qadam/data/activity/activity_repository.dart';
@@ -16,6 +17,7 @@ import 'package:qadam/data/models/user_model.dart';
 import 'package:qadam/data/models/voucher_models.dart';
 import 'package:qadam/data/wallet/wallet_repository.dart';
 import 'package:qadam/features/activity/providers/activity_provider.dart';
+import 'package:qadam/features/companion/experience_provider.dart';
 import 'package:qadam/features/points/providers/points_provider.dart';
 import 'package:qadam/features/rewards/providers/rewards_provider.dart';
 import 'package:qadam/features/rewards/presentation/reward_card.dart';
@@ -52,16 +54,17 @@ final previewVoucher = VoucherModel(
 
 class PreviewActivity extends StateNotifier<ActivityState>
     implements ActivityNotifier {
-  PreviewActivity()
+  PreviewActivity({ActivityState? snapshot})
     : super(
-        const ActivityState(
-          todaySteps: 7240,
-          serverSteps: 7240,
-          pointsEarnedToday: 72,
-          currentStreakDays: 4,
-          hasPermission: true,
-          lastSyncTime: '10:24 AM',
-        ),
+        snapshot ??
+            const ActivityState(
+              todaySteps: 7240,
+              serverSteps: 7240,
+              pointsEarnedToday: 72,
+              currentStreakDays: 4,
+              hasPermission: true,
+              lastSyncTime: '10:24 AM',
+            ),
       );
   @override
   Future<void> initAndSync({bool force = false}) async {}
@@ -107,7 +110,12 @@ class PreviewRewards extends StateNotifier<RewardsState>
     implements RewardsNotifier {
   int purchases = 0, acknowledgements = 0;
   bool fail = false;
-  PreviewRewards() : super(RewardsState(offers: [previewOffer]));
+  PreviewRewards({bool claimed = false})
+    : super(
+        RewardsState(
+          offers: [claimed ? previewOffer.asClaimed() : previewOffer],
+        ),
+      );
   @override
   Future<void> fetchOffers() async {}
   @override
@@ -208,13 +216,16 @@ final captureKey = GlobalKey();
 Future<ProviderContainer> mountPreview(
   WidgetTester tester, {
   double width = 390,
+  double height = 980,
   double textScale = 1,
   PreviewRewards? rewards,
   bool used = false,
   bool disableAnimations = true,
   String? initialPath,
+  ActivityState? activity,
+  bool settle = true,
 }) async {
-  tester.view.physicalSize = Size(width, 980);
+  tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -223,7 +234,9 @@ Future<ProviderContainer> mountPreview(
       overrides: [
         authStateProvider.overrideWith((ref) => PreviewAuth()),
         onboardingCompleteProvider.overrideWith((ref) async => true),
-        activityProvider.overrideWith((ref) => PreviewActivity()),
+        activityProvider.overrideWith(
+          (ref) => PreviewActivity(snapshot: activity),
+        ),
         pointsProvider.overrideWith((ref) => PreviewPoints()),
         rewardsProvider.overrideWith((ref) => rewards ?? PreviewRewards()),
         walletRepositoryProvider.overrideWithValue(
@@ -253,7 +266,11 @@ Future<ProviderContainer> mountPreview(
     await tester.pump();
     container.read(routerProvider).go(initialPath);
   }
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump(const Duration(milliseconds: 200));
+  }
   return container;
 }
 
@@ -286,6 +303,71 @@ Future<void> capture(WidgetTester tester, String name) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets(
+    'Claimed offer opens its existing voucher without a second purchase',
+    (tester) async {
+      final rewards = PreviewRewards(claimed: true);
+      final container = await mountPreview(
+        tester,
+        rewards: rewards,
+        initialPath: '/rewards',
+      );
+      await reveal(tester, find.text('View voucher'));
+      await tester.tap(find.text('View voucher'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(routerProvider).routeInformationProvider.value.uri.path,
+        '/wallet',
+      );
+      expect(
+        find.byKey(const ValueKey('voucher-preview-voucher')),
+        findsOneWidget,
+      );
+      expect(find.text(previewVoucher.shortCode), findsNothing);
+      expect(rewards.purchases, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets(
+    'A reward goal saves to this account and View reward reopens its details',
+    (tester) async {
+      final container = await mountPreview(tester, initialPath: '/steps');
+      await tester.tap(find.text('View reward'));
+      await tester.pumpAndSettle();
+      expect(find.text('Make this my walking goal'), findsOneWidget);
+      await reveal(tester, find.text('Make this my walking goal'));
+      await tester.tap(find.text('Make this my walking goal'));
+      await tester.pumpAndSettle();
+      expect(container.read(experienceProvider).rewardId, previewOffer.id);
+      container.read(routerProvider).go('/steps');
+      await tester.pumpAndSettle();
+      expect(find.text('Your reward goal'), findsOneWidget);
+      await tester.tap(find.text('View reward'));
+      await tester.pumpAndSettle();
+      expect(find.text('Make this my walking goal'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets('Initial loading does not invent a zero count', (tester) async {
+    await mountPreview(
+      tester,
+      width: 390,
+      height: 844,
+      initialPath: '/steps',
+      activity: const ActivityState(isSyncing: true),
+      settle: false,
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('settled-step-count')))
+          .data,
+      '—',
+    );
+    await capture(tester, 'blueprint-home-loading');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   setUpAll(() async {
     for (final family in ['Manrope', 'SpaceGrotesk']) {
       final loader = FontLoader(family)
@@ -300,6 +382,62 @@ void main() {
         ))
         .load();
   });
+  for (final width in [360.0, 390.0]) {
+    testWidgets('Home reward action is visible at $width by 844', (
+      tester,
+    ) async {
+      await mountPreview(
+        tester,
+        width: width,
+        height: 844,
+        initialPath: '/steps',
+      );
+      final action = tester.getRect(
+        find.widgetWithText(ElevatedButton, 'View reward'),
+      );
+      final navigation = tester.getRect(find.byType(NavigationBar));
+      expect(
+        action.bottom,
+        lessThanOrEqualTo(navigation.top),
+        reason: 'The primary reward action should not require a scroll',
+      );
+      await capture(tester, 'blueprint-home-${width.toInt()}');
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+  final states = <String, ActivityState>{
+    'zero': const ActivityState(
+      settledSteps: 0,
+      hasPermission: true,
+      lastSyncTime: '10:24 AM',
+    ),
+    'denied': const ActivityState(
+      settledSteps: 0,
+      errorMessage: 'Motion access is off. Connect activity to start tracking.',
+    ),
+    'offline': const ActivityState(
+      settledSteps: 3120,
+      serverSteps: 3120,
+      pointsEarnedToday: 31,
+      hasPermission: true,
+      lastSyncTime: '9:20 AM',
+      errorMessage: 'You are offline. Showing your last successful sync.',
+    ),
+  };
+  for (final entry in states.entries) {
+    testWidgets('Home ${entry.key} state remains useful', (tester) async {
+      await mountPreview(
+        tester,
+        width: 390,
+        height: 844,
+        initialPath: '/steps',
+        activity: entry.value,
+      );
+      expect(tester.takeException(), isNull);
+      await capture(tester, 'blueprint-home-${entry.key}');
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
   for (final width in [320.0, 375.0, 414.0, 768.0]) {
     testWidgets(
       'Main screens fit ${width.toInt()}px with real bundled typography',
@@ -326,7 +464,7 @@ void main() {
   testWidgets('Main screens and confirmation support larger text', (
     tester,
   ) async {
-    final container = await mountPreview(tester, width: 320, textScale: 1.6);
+    final container = await mountPreview(tester, width: 320, textScale: 2);
     final router = container.read(routerProvider);
     for (final path in [
       '/steps',
@@ -449,6 +587,7 @@ void main() {
       );
       expect(rewards.acknowledgements, 0);
       expect(find.text('The reward is unavailable.'), findsWidgets);
+      await capture(tester, 'blueprint-redemption-error');
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

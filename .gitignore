@@ -60,3 +60,5 @@ web/.next/
 # ---------- IDE / Editors ----------
 .vscode/
 *.swp
+design/stepsy-companion/*.blend1
+design/stepsy-companion/__pycache__/

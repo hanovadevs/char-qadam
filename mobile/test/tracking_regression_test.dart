@@ -117,6 +117,7 @@ void main() {
       await tester.pump();
       expect(notifier.state.todaySteps, 550);
       expect(notifier.state.serverSteps, 500);
+      expect(notifier.state.settledSteps, 500);
       expect(notifier.state.pointsEarnedToday, 5);
       notifier.dispose();
       await health.events.close();
@@ -138,6 +139,9 @@ void main() {
     await tester.pump();
     expect(notifier.state.todaySteps, 25000);
     expect(notifier.state.serverSteps, 20000);
+    expect(notifier.state.settledSteps, 25000);
+    health.events.add(25100);
+    expect(notifier.state.settledSteps, 25100);
     await tester.pump(const Duration(seconds: 10));
     expect(repo.calls, 1);
     notifier.dispose();

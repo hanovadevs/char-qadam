@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 class AppTheme {
   static const String bodyFont = 'Manrope';
   static const String displayFont = 'SpaceGrotesk';
-  static const Color mintWash = Color(0xFFE5F6F0);
+  static const Color mintWash = Color(0xFFE8F6F2);
   static const Color onDeep = Color(0xFFDAF7EE);
   static const Color walkerSkin = Color(0xFFF1C9A7);
   static const Duration motion = Duration(milliseconds: 220);
@@ -24,14 +24,14 @@ class AppTheme {
   ); // Gradient start (hero moments)
   static const Color accentDeep = Color(0xFF0B4A47); // Gradient end
   static const Color accentSolid = Color(
-    0xFF0F8A78,
+    0xFF087F72,
   ); // Primary buttons, active tabs, text links
 
   static const Color inkPrimary = Color(
-    0xFF16213A,
+    0xFF102B32,
   ); // Primary text: dark navy-charcoal, NOT pure black
   static const Color inkSecondary = Color(
-    0xFF5B6472,
+    0xFF536B71,
   ); // Secondary text, inactive icons
   static const Color inkTertiary = Color(
     0xFF9AA3AD,
@@ -41,14 +41,14 @@ class AppTheme {
     0xFFFFFFFF,
   ); // Cards, modals, primary content
   static const Color surfaceMuted = Color(
-    0xFFF3F6F5,
+    0xFFFAFBF8,
   ); // Grouped list backgrounds, subtle fills
   static const Color hairline = Color(
-    0xFFE7EBEA,
+    0xFFDDE8E3,
   ); // 1px dividers, card outlines (never black)
 
   static const Color destructive = Color(
-    0xFFFF3B30,
+    0xFFB43837,
   ); // Strictly reserved for account deletion
 
   // Backward-compatibility aliases (mapped directly to Stepsy brand tokens)
@@ -82,7 +82,7 @@ class AppTheme {
   // Typography Constants (iOS Native Type Scale)
   static const TextStyle largeTitleStyle = TextStyle(
     fontFamily: displayFont,
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.8,
     color: inkPrimary,

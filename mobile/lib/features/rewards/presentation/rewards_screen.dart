@@ -11,6 +11,9 @@ import '../../points/providers/points_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../providers/rewards_provider.dart';
 import 'reward_card.dart';
+import '../../companion/companion.dart';
+import '../../companion/experience_provider.dart';
+import '../reward_goal.dart';
 import 'reward_fireworks.dart';
 
 class RewardsScreen extends ConsumerStatefulWidget {
@@ -22,6 +25,7 @@ class RewardsScreen extends ConsumerStatefulWidget {
 class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   String _filter = 'all';
   String _search = '';
+  String? _openedOffer;
 
   Future<void> _refreshAll() => Future.wait([
     ref.read(rewardsProvider.notifier).fetchOffers(),
@@ -84,6 +88,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               Text(offer.title, style: AppTheme.headlineStyle),
               if (offer.partnerName != null)
                 Text(offer.partnerName!, style: AppTheme.captionStyle),
+              if (offer.minBasket != null && offer.minBasket! > 0)
+                Text(
+                  'Minimum spend Rs ${NumberFormat.decimalPattern().format(offer.minBasket)}',
+                  style: AppTheme.bodyStyle,
+                ),
+              if (offer.endsAt != null)
+                Text(
+                  'Offer ends ${DateFormat('d MMM yyyy').format(offer.endsAt!.toLocal())}',
+                  style: AppTheme.captionStyle,
+                ),
               const SizedBox(height: 24),
               SurfaceCard(
                 color: AppTheme.mintWash,
@@ -128,6 +142,129 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     if (confirmed == true && mounted) await _redeem(offer.id);
   }
 
+  Future<void> _details(OfferModel offer) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Companion(size: 64, clip: 'point'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      offer.partnerName ?? 'Stepsy partner',
+                      style: AppTheme.headlineStyle,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                discountLabel(offer.discountType, offer.discountValue),
+                style: AppTheme.largeTitleStyle,
+              ),
+              const SizedBox(height: 8),
+              Text(offer.title, style: AppTheme.titleStyle),
+              const SizedBox(height: 12),
+              Text(
+                '${offer.pointsCost} points · One per account',
+                style: AppTheme.headlineStyle,
+              ),
+              if (offer.minBasket != null && offer.minBasket! > 0)
+                Text(
+                  'Minimum spend Rs ${NumberFormat.decimalPattern().format(offer.minBasket)}',
+                  style: AppTheme.bodyStyle,
+                ),
+              if (offer.partnerLocation != null)
+                Text(offer.partnerLocation!, style: AppTheme.bodyStyle),
+              if (offer.endsAt != null)
+                Text(
+                  'Offer ends ${DateFormat('d MMM yyyy, h:mm a').format(offer.endsAt!.toLocal())}',
+                  style: AppTheme.bodyStyle,
+                ),
+              const SizedBox(height: 12),
+              Text(
+                offer.description?.trim().isNotEmpty == true
+                    ? offer.description!
+                    : 'Show your issued voucher at the participating store. Check the branch and minimum spend before redeeming.',
+                style: AppTheme.bodyStyle,
+              ),
+              const SizedBox(height: 16),
+              if (eligibleReward(offer))
+                OutlinedButton(
+                  onPressed: () async {
+                    try {
+                      await ref
+                          .read(experienceProvider.notifier)
+                          .update(rewardId: offer.id);
+                      if (mounted && sheetContext.mounted) {
+                        Navigator.pop(sheetContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Walking goal saved on this phone. Stock and price are not reserved.',
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Could not save your walking goal. Please try again.',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Make this my walking goal'),
+                ),
+              const SizedBox(height: 12),
+              if (offer.alreadyRedeemed)
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    context.go('/wallet?offer=${offer.id}');
+                  },
+                  child: const Text('View voucher'),
+                )
+              else
+                ElevatedButton(
+                  onPressed:
+                      !eligibleReward(offer) ||
+                          (ref.read(pointsProvider).balanceData?.balance ??
+                                  -1) <
+                              offer.pointsCost
+                      ? null
+                      : () {
+                          Navigator.pop(sheetContext);
+                          _confirm(
+                            offer,
+                            ref.read(pointsProvider).balanceData!.balance,
+                          );
+                        },
+                  child: Text('Redeem for ${offer.pointsCost} points'),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _math(String label, int amount) => Row(
     children: [
       Expanded(child: Text(label, style: AppTheme.captionStyle)),
@@ -154,6 +291,15 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   balance >= o.pointsCost &&
                   (o.inventory == null || o.inventory! > 0)));
     }).toList();
+    final requested = GoRouterState.of(context).uri.queryParameters['offer'];
+    final requestKey='$requested:${GoRouterState.of(context).uri.queryParameters['view']}';
+    final target = state.offers.where((o) => o.id == requested).firstOrNull;
+    if (target != null && requestKey != _openedOffer) {
+      _openedOffer = requestKey;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _details(target);
+      });
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rewards'),
@@ -177,54 +323,21 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            const Text(
-              'Good things.\nEarned on foot.',
-              style: AppTheme.largeTitleStyle,
+            Row(
+              children: [
+                const Companion(size: 52),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    balance == null
+                        ? 'Checking your points'
+                        : '${NumberFormat.decimalPattern().format(balance)} points available',
+                    style: AppTheme.headlineStyle,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Your everyday steps, a little more rewarding.',
-              style: AppTheme.captionStyle,
-            ),
-            const SizedBox(height: 24),
-            SurfaceCard(
-              color: AppTheme.accentDeep,
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 16,
-                runSpacing: 12,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Yours to spend',
-                        style: AppTheme.captionStyle.copyWith(
-                          color: AppTheme.onDeep,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        balance == null
-                            ? '— pts'
-                            : '${NumberFormat('#,###').format(balance)} pts',
-                        style: AppTheme.largeTitleStyle.copyWith(
-                          color: AppTheme.surface,
-                          fontFeatures: AppTheme.tabular,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Icon(
-                    CupertinoIcons.sparkles,
-                    size: 36,
-                    color: AppTheme.accentBright,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
             TextField(
               onChanged: (value) => setState(() => _search = value),
               decoration: const InputDecoration(
@@ -235,7 +348,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             ),
             const SizedBox(height: 16),
             FilterPills(
-              options: const {'all': 'Explore all', 'ready': 'Ready for you'},
+              options: const {
+                'all': 'Explore all',
+                'ready': 'Within my points',
+              },
               selected: _filter,
               onSelected: (value) => setState(() => _filter = value),
             ),
@@ -296,6 +412,8 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                   balance: balance,
                   busy: state.isRedeeming,
                   onRedeem: () => _confirm(offer, balance!),
+                  onDetails: () => _details(offer),
+                  onClaimed: () => context.go('/wallet?offer=${offer.id}'),
                 ),
               ),
             const SizedBox(height: 8),

@@ -14,6 +14,8 @@ import '../../../core/services/background_sync_service.dart';
 import '../../../data/auth/auth_state_provider.dart';
 
 class ActivityState {
+  /// Last settled sensor/server snapshot, updated only after a successful read/sync.
+  final int? settledSteps;
   final int todaySteps;
   final int serverSteps;
   final int pointsEarnedToday;
@@ -29,6 +31,7 @@ class ActivityState {
   final ActivityRangeModel? history;
 
   const ActivityState({
+    this.settledSteps,
     this.todaySteps = 0,
     this.serverSteps = 0,
     this.pointsEarnedToday = 0,
@@ -45,6 +48,7 @@ class ActivityState {
   });
 
   ActivityState copyWith({
+    int? settledSteps,
     int? todaySteps,
     int? serverSteps,
     int? pointsEarnedToday,
@@ -60,6 +64,7 @@ class ActivityState {
     ActivityRangeModel? history,
   }) {
     return ActivityState(
+      settledSteps: settledSteps ?? this.settledSteps,
       todaySteps: todaySteps ?? this.todaySteps,
       serverSteps: serverSteps ?? this.serverSteps,
       pointsEarnedToday: pointsEarnedToday ?? this.pointsEarnedToday,
@@ -128,7 +133,12 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       if (!mounted) return;
       _checkDay();
       if (steps > state.todaySteps) {
-        state = state.copyWith(todaySteps: steps);
+        state = state.copyWith(
+          todaySteps: steps,
+          // Once earning is capped, further validated sensor movement still
+          // advances the personal goal without another points request.
+          settledSteps: state.serverSteps >= state.dailyCap ? steps : null,
+        );
         _scheduleSync();
       }
     });
@@ -194,6 +204,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
           if (!mounted) return;
           if (cached != null && cached.localDate == date && _day == date) {
             state = state.copyWith(
+              settledSteps: cached.eligibleSteps,
               serverSteps: cached.eligibleSteps,
               pointsEarnedToday: cached.pointsEarnedToday,
               userBalance: cached.balance,
@@ -212,7 +223,12 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       final steps = await healthService.fetchTodaySteps();
       if (!mounted) return;
       if (_checkDay() || _day != date) return;
-      state = state.copyWith(todaySteps: max(state.todaySteps, steps));
+      state = state.copyWith(
+        todaySteps: max(state.todaySteps, steps),
+        settledSteps: state.serverSteps >= state.dailyCap
+            ? max(state.serverSteps, max(state.todaySteps, steps))
+            : null,
+      );
       // Even a zero-step sync restores today's server count and balance after
       // reopening; it does not mint points or invent missing sensor readings.
       await _send(steps: state.todaySteps, source: 'health', date: date);
@@ -288,6 +304,10 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       _lastSyncAt = now();
       final balanceChanged = response.balance != state.userBalance;
       state = state.copyWith(
+        settledSteps:
+            response.eligibleSteps >= min(steps, response.dailyStepCap)
+            ? max(steps, response.eligibleSteps)
+            : response.eligibleSteps,
         todaySteps: max(state.todaySteps, response.eligibleSteps),
         serverSteps: response.eligibleSteps,
         pointsEarnedToday:

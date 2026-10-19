@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +8,14 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../../../data/activity/health_service.dart';
 import '../providers/activity_provider.dart';
-import 'walking_progress.dart';
+import '../../points/providers/points_provider.dart';
+import '../../rewards/providers/rewards_provider.dart';
+import '../../rewards/reward_goal.dart';
+import '../../companion/experience_provider.dart';
+import '../../companion/experience_sheet.dart';
+import '../../companion/companion.dart';
+import 'companion_goal_meter.dart';
+import 'weekly_preview.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -36,8 +42,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     if (state == AppLifecycleState.resumed) _sync();
   }
 
-  Future<void> _sync() =>
-      ref.read(activityProvider.notifier).initAndSync(force: true);
+  Future<void> _sync() async {
+    await ref.read(activityProvider.notifier).initAndSync(force: true);
+    if (mounted) ref.invalidate(weeklyActivityProvider);
+  }
+
   Future<void> _diagnostics() async {
     final data = await ref.read(healthServiceProvider).diagnostics();
     if (!mounted) return;
@@ -75,39 +84,48 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(activityProvider);
-    final steps = math.max(state.todaySteps, state.serverSteps);
-    final cap = state.dailyCap > 0 ? state.dailyCap : 20000;
-    final milestones = <int>{
-      1000,
-      5000,
-      10000,
-      cap,
-    }.where((v) => v <= cap).toList()..sort();
-    final milestone = milestones.where((v) => v > steps).firstOrNull ?? cap;
-    final perPoint = math.max(1, state.stepsPerPoint);
-    final nextPoint = perPoint - (steps % perPoint);
-    final number = NumberFormat('#,###');
+    final weekly = ref.watch(weeklyActivityProvider);
+    final prefs = ref.watch(experienceProvider);
+    final balance = ref.watch(pointsProvider).balanceData?.balance;
+    final inventory = ref.watch(rewardsProvider);
+    final eligible = inventory.offers.where((o) => eligibleReward(o)).toList();
+    final chosen = eligible.where((o) => o.id == prefs.rewardId).firstOrNull;
+    final reward = chosen ?? suggestedReward(eligible, balance);
+    final steps = state.settledSteps ?? state.serverSteps;
+    final known = state.settledSteps != null || state.lastSyncTime != null;
+    final cap = state.dailyCap;
+    final number = NumberFormat.decimalPattern();
+    final progress = (steps / prefs.goal).clamp(0.0, 1.0);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Today'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/icon/Stepsy_Icon1.png', height: 32, width: 32),
+            const SizedBox(width: 6),
+            if (MediaQuery.textScalerOf(context).scale(1) < 1.4)
+              const Text(
+                'stepsy',
+                style: TextStyle(
+                  color: AppTheme.accentSolid,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+          ],
+        ),
         actions: [
+          TextButton(
+            onPressed: () => context.go('/points'),
+            child: Text(
+              balance == null ? '— pts' : '${number.format(balance)} pts',
+            ),
+          ),
           IconButton(
             tooltip: 'Tracking diagnostics',
             onPressed: _diagnostics,
             icon: const Icon(CupertinoIcons.info_circle, size: 21),
           ),
-          IconButton(
-            tooltip: 'Sync steps',
-            onPressed: state.isSyncing ? null : _sync,
-            icon: state.isSyncing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(CupertinoIcons.arrow_2_circlepath, size: 21),
-          ),
-          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
@@ -121,100 +139,202 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               style: AppTheme.captionStyle,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Small steps.\nLovely possibilities.',
-              style: AppTheme.largeTitleStyle,
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppTheme.accentDeep,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Your daily movement',
-                          style: AppTheme.bodyStyle.copyWith(
-                            color: AppTheme.surface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        state.isSyncing
-                            ? 'Syncing'
-                            : state.hasPermission
-                            ? 'Motion allowed'
-                            : 'Motion off',
-                        style: AppTheme.captionStyle.copyWith(
-                          color: AppTheme.onDeep,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: WalkingProgress(
-                      steps: steps,
-                      goal: milestone,
-                      enabled: state.hasPermission,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    steps >= cap
-                        ? 'Daily earning limit reached. Keep moving for you.'
-                        : '${number.format(milestone - steps)} to your ${number.format(milestone)}-step milestone',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.captionStyle.copyWith(
-                      color: AppTheme.onDeep,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    height: 1,
-                    color: AppTheme.onDeep.withValues(alpha: 0.2),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => context.go('/points'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.surface,
-                    ),
-                    child: Wrap(
-                      spacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        Text(
-                          '+${number.format(state.pointsEarnedToday)} pts earned today',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: AppTheme.tabular,
-                          ),
-                        ),
-                        const Icon(CupertinoIcons.arrow_up_right, size: 16),
-                      ],
-                    ),
-                  ),
-                ],
+            Text(
+              'A little walk. A real reward.',
+              style: AppTheme.titleStyle.copyWith(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      known ? number.format(steps) : '—',
+                      key: const ValueKey('settled-step-count'),
+                      style: AppTheme.heroNumeralStyle.copyWith(
+                        fontSize: 60,
+                        height: 1.05,
+                      ),
+                    ),
+                    const Text('steps today', style: AppTheme.headlineStyle),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () => showExperienceSettings(context),
+                  child: Text(
+                    known
+                        ? '${(progress * 100).round()}% of goal'
+                        : 'Set daily goal',
+                  ),
+                ),
+              ],
+            ),
+            CompanionGoalMeter(
+              steps: steps,
+              goal: prefs.goal,
+              day: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+              syncing: state.isSyncing,
+              denied: !state.hasPermission,
+              known: known,
+            ),
+            const SizedBox(height: 8),
+            Semantics(
+              liveRegion: true,
+              child: TextButton(
+                onPressed: state.isSyncing ? null : _sync,
+                style: TextButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  padding: EdgeInsets.zero,
+                ),
+                child: Text(
+                  '${known ? '+${number.format(state.pointsEarnedToday)} pts today' : 'Waiting for activity'} · ${state.isSyncing
+                      ? 'Syncing…'
+                      : state.errorMessage != null
+                      ? 'Sync needs attention'
+                      : state.lastSyncTime == null
+                      ? 'Not synced yet'
+                      : 'Synced ${state.lastSyncTime}'}',
+                ),
+              ),
+            ),
+            if (state.todaySteps > steps)
+              Text(
+                '${number.format(state.todaySteps - steps)} device steps awaiting sync',
+                style: AppTheme.captionStyle,
+              ),
             if (state.errorMessage != null)
               StatusNotice(state.errorMessage!, onRetry: _sync),
             if (!state.hasPermission && !state.isSyncing)
               StatusNotice(
-                'Allow motion access to count your walks.',
+                'Connect activity to count your walks.',
                 onRetry: _sync,
               ),
+            if (reward != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(top: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.mintWash,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            chosen != null
+                                ? 'Your reward goal'
+                                : 'A reward to walk toward',
+                            style: AppTheme.captionStyle,
+                          ),
+                        ),
+                        Companion(
+                          size: 44,
+                          clip: balance != null && balance >= reward.pointsCost
+                              ? 'ready'
+                              : 'rest',
+                          event: reward.id.hashCode,
+                        ),
+                      ],
+                    ),
+                    Text(reward.title, style: AppTheme.titleStyle),
+                    if (reward.partnerName != null)
+                      Text(reward.partnerName!, style: AppTheme.captionStyle),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: balance == null
+                            ? null
+                            : reward.pointsCost == 0
+                            ? 1
+                            : (balance / reward.pointsCost).clamp(0.0, 1.0),
+                        minHeight: 8,
+                        color: AppTheme.accentSolid,
+                        backgroundColor: AppTheme.hairline,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      spacing: 12,
+                      runSpacing: 6,
+                      children: [
+                        Text(
+                          '${balance == null ? '—' : number.format(balance)} / ${number.format(reward.pointsCost)} pts',
+                          style: AppTheme.headlineStyle,
+                        ),
+                        Text(
+                          balance == null
+                              ? 'Checking balance'
+                              : balance >= reward.pointsCost
+                              ? 'Ready to redeem'
+                              : '${number.format(reward.pointsCost - balance)} pts to unlock',
+                          style: AppTheme.captionStyle,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => context.go(
+                          '/rewards?offer=${reward.id}&view=${DateTime.now().microsecondsSinceEpoch}',
+                        ),
+                        child: const Text('View reward'),
+                      ),
+                    ),
+                    if (prefs.rewardId != null && chosen == null)
+                      const Text(
+                        'Your previous goal is unavailable. Choose another reward.',
+                        style: AppTheme.captionStyle,
+                      ),
+                  ],
+                ),
+              )
+            else if (!inventory.isLoading)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Your next reward'),
+                subtitle: const Text(
+                  'Explore partner offers when they’re available.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/rewards'),
+              ),
+            const SizedBox(height: 12),
+            Text(
+              state.currentStreakDays > 0
+                  ? '${state.currentStreakDays}-day streak · 1,000 steps/day'
+                  : 'Every day is a fresh start. Streaks start at 1,000 steps/day.',
+              style: AppTheme.captionStyle,
+            ),
+            const SectionHeading('Your week'),
+            WeeklyPreview(
+              days: weekly.valueOrNull ?? state.history?.days ?? const [],
+            ),
+            if (weekly.hasError)
+              const Text(
+                'Weekly history is unavailable. Pull down to try again.',
+                style: AppTheme.captionStyle,
+              ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => context.push('/progress'),
+                child: const Text('View trends'),
+              ),
+            ),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -222,124 +342,29 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 _metric(
                   context,
                   'Est. distance',
-                  '${(steps * 0.0007).toStringAsFixed(2)} km',
+                  known ? '${(steps * .0007).toStringAsFixed(2)} km' : '—',
                   CupertinoIcons.location,
                 ),
                 _metric(
                   context,
                   'Est. energy',
-                  '${(steps * 0.04).round()} kcal',
+                  known ? '${(steps * .04).round()} kcal' : '—',
                   CupertinoIcons.flame,
                 ),
               ],
             ),
-            const SectionHeading('Make a little more of today'),
-            SurfaceCard(
-              color: AppTheme.mintWash,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    state.currentStreakDays > 0
-                        ? '${state.currentStreakDays}-day walking streak'
-                        : 'Start a feel-good streak.',
-                    style: AppTheme.titleStyle,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Walk 1,000 steps a day to build your streak. Every day is a fresh chance.',
-                    style: AppTheme.captionStyle.copyWith(height: 1.5),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    steps >= cap
-                        ? 'Today’s reward-eligible steps are complete.'
-                        : '$nextPoint steps to the next point boundary.',
-                    style: AppTheme.bodyStyle.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.accentDeep,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${number.format(perPoint)} steps = 1 pt · Daily earning cap ${number.format(cap)} steps',
-                    style: AppTheme.captionStyle,
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                '${number.format(state.stepsPerPoint)} eligible steps = 1 point · Earning cap ${number.format(cap)} steps/day${state.serverSteps >= cap ? ' · Cap reached; movement still counts toward your personal goal.' : ''}',
+                style: AppTheme.captionStyle,
               ),
             ),
-            const SizedBox(height: 16),
-            SurfaceCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Where will your steps take you?',
-                    style: AppTheme.titleStyle,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Find a little something worth walking for.',
-                    style: AppTheme.captionStyle,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => context.go('/rewards'),
-                      icon: const Icon(CupertinoIcons.ticket, size: 18),
-                      label: const Text('Explore rewards'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SectionHeading('Your walking story'),
-            SurfaceCard(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    title: const Text(
-                      'Progress & trends',
-                      style: AppTheme.headlineStyle,
-                    ),
-                    subtitle: const Text(
-                      'See your weeks and months',
-                      style: AppTheme.captionStyle,
-                    ),
-                    trailing: const Icon(
-                      CupertinoIcons.arrow_up_right,
-                      size: 18,
-                    ),
-                    onTap: () => context.push('/progress'),
-                  ),
-                  const Divider(),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    title: const Text(
-                      'Community leaderboard',
-                      style: AppTheme.headlineStyle,
-                    ),
-                    subtitle: const Text(
-                      'A little friendly motivation',
-                      style: AppTheme.captionStyle,
-                    ),
-                    trailing: const Icon(
-                      CupertinoIcons.arrow_up_right,
-                      size: 18,
-                    ),
-                    onTap: () => context.push('/leaderboard'),
-                  ),
-                ],
-              ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Community leaderboard'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/leaderboard'),
             ),
             const SectionHeading('Synced activity'),
             FilterPills(

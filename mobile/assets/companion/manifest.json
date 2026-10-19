@@ -1,0 +1,440 @@
+{
+  "version": 1,
+  "authoring": "Blender 5.2.1 cutouts",
+  "runtimeFrameSize": [
+    128,
+    128
+  ],
+  "masterFrameSize": [
+    256,
+    256
+  ],
+  "footAnchor": [
+    128,
+    223
+  ],
+  "cropOffset": [
+    0,
+    0
+  ],
+  "clips": {
+    "cheer": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/cheer/00.png",
+        "design/stepsy-companion/renders/cheer/01.png",
+        "design/stepsy-companion/renders/cheer/02.png",
+        "design/stepsy-companion/renders/cheer/03.png",
+        "design/stepsy-companion/renders/cheer/04.png",
+        "design/stepsy-companion/renders/cheer/05.png",
+        "design/stepsy-companion/renders/cheer/06.png",
+        "design/stepsy-companion/renders/cheer/07.png",
+        "design/stepsy-companion/renders/cheer/08.png",
+        "design/stepsy-companion/renders/cheer/09.png",
+        "design/stepsy-companion/renders/cheer/10.png",
+        "design/stepsy-companion/renders/cheer/11.png",
+        "design/stepsy-companion/renders/cheer/12.png",
+        "design/stepsy-companion/renders/cheer/13.png",
+        "design/stepsy-companion/renders/cheer/14.png",
+        "design/stepsy-companion/renders/cheer/15.png",
+        "design/stepsy-companion/renders/cheer/16.png",
+        "design/stepsy-companion/renders/cheer/17.png",
+        "design/stepsy-companion/renders/cheer/18.png",
+        "design/stepsy-companion/renders/cheer/19.png",
+        "design/stepsy-companion/renders/cheer/20.png",
+        "design/stepsy-companion/renders/cheer/21.png",
+        "design/stepsy-companion/renders/cheer/22.png",
+        "design/stepsy-companion/renders/cheer/23.png"
+      ],
+      "atlas": "assets/companion/animations/cheer.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        63,
+        13,
+        195,
+        217
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "idle": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/idle/00.png",
+        "design/stepsy-companion/renders/idle/01.png",
+        "design/stepsy-companion/renders/idle/02.png",
+        "design/stepsy-companion/renders/idle/03.png",
+        "design/stepsy-companion/renders/idle/04.png",
+        "design/stepsy-companion/renders/idle/05.png",
+        "design/stepsy-companion/renders/idle/06.png",
+        "design/stepsy-companion/renders/idle/07.png",
+        "design/stepsy-companion/renders/idle/08.png",
+        "design/stepsy-companion/renders/idle/09.png",
+        "design/stepsy-companion/renders/idle/10.png",
+        "design/stepsy-companion/renders/idle/11.png",
+        "design/stepsy-companion/renders/idle/12.png",
+        "design/stepsy-companion/renders/idle/13.png",
+        "design/stepsy-companion/renders/idle/14.png",
+        "design/stepsy-companion/renders/idle/15.png",
+        "design/stepsy-companion/renders/idle/16.png",
+        "design/stepsy-companion/renders/idle/17.png",
+        "design/stepsy-companion/renders/idle/18.png",
+        "design/stepsy-companion/renders/idle/19.png",
+        "design/stepsy-companion/renders/idle/20.png",
+        "design/stepsy-companion/renders/idle/21.png",
+        "design/stepsy-companion/renders/idle/22.png",
+        "design/stepsy-companion/renders/idle/23.png"
+      ],
+      "atlas": "assets/companion/animations/idle.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        210,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "point": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/point/00.png",
+        "design/stepsy-companion/renders/point/01.png",
+        "design/stepsy-companion/renders/point/02.png",
+        "design/stepsy-companion/renders/point/03.png",
+        "design/stepsy-companion/renders/point/04.png",
+        "design/stepsy-companion/renders/point/05.png",
+        "design/stepsy-companion/renders/point/06.png",
+        "design/stepsy-companion/renders/point/07.png",
+        "design/stepsy-companion/renders/point/08.png",
+        "design/stepsy-companion/renders/point/09.png",
+        "design/stepsy-companion/renders/point/10.png",
+        "design/stepsy-companion/renders/point/11.png",
+        "design/stepsy-companion/renders/point/12.png",
+        "design/stepsy-companion/renders/point/13.png",
+        "design/stepsy-companion/renders/point/14.png",
+        "design/stepsy-companion/renders/point/15.png",
+        "design/stepsy-companion/renders/point/16.png",
+        "design/stepsy-companion/renders/point/17.png",
+        "design/stepsy-companion/renders/point/18.png",
+        "design/stepsy-companion/renders/point/19.png",
+        "design/stepsy-companion/renders/point/20.png",
+        "design/stepsy-companion/renders/point/21.png",
+        "design/stepsy-companion/renders/point/22.png",
+        "design/stepsy-companion/renders/point/23.png"
+      ],
+      "atlas": "assets/companion/animations/point.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        215,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "ready": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/ready/00.png",
+        "design/stepsy-companion/renders/ready/01.png",
+        "design/stepsy-companion/renders/ready/02.png",
+        "design/stepsy-companion/renders/ready/03.png",
+        "design/stepsy-companion/renders/ready/04.png",
+        "design/stepsy-companion/renders/ready/05.png",
+        "design/stepsy-companion/renders/ready/06.png",
+        "design/stepsy-companion/renders/ready/07.png",
+        "design/stepsy-companion/renders/ready/08.png",
+        "design/stepsy-companion/renders/ready/09.png",
+        "design/stepsy-companion/renders/ready/10.png",
+        "design/stepsy-companion/renders/ready/11.png",
+        "design/stepsy-companion/renders/ready/12.png",
+        "design/stepsy-companion/renders/ready/13.png",
+        "design/stepsy-companion/renders/ready/14.png",
+        "design/stepsy-companion/renders/ready/15.png",
+        "design/stepsy-companion/renders/ready/16.png",
+        "design/stepsy-companion/renders/ready/17.png",
+        "design/stepsy-companion/renders/ready/18.png",
+        "design/stepsy-companion/renders/ready/19.png",
+        "design/stepsy-companion/renders/ready/20.png",
+        "design/stepsy-companion/renders/ready/21.png",
+        "design/stepsy-companion/renders/ready/22.png",
+        "design/stepsy-companion/renders/ready/23.png"
+      ],
+      "atlas": "assets/companion/animations/ready.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        13,
+        215,
+        217
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "reassure": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/reassure/00.png",
+        "design/stepsy-companion/renders/reassure/01.png",
+        "design/stepsy-companion/renders/reassure/02.png",
+        "design/stepsy-companion/renders/reassure/03.png",
+        "design/stepsy-companion/renders/reassure/04.png",
+        "design/stepsy-companion/renders/reassure/05.png",
+        "design/stepsy-companion/renders/reassure/06.png",
+        "design/stepsy-companion/renders/reassure/07.png",
+        "design/stepsy-companion/renders/reassure/08.png",
+        "design/stepsy-companion/renders/reassure/09.png",
+        "design/stepsy-companion/renders/reassure/10.png",
+        "design/stepsy-companion/renders/reassure/11.png",
+        "design/stepsy-companion/renders/reassure/12.png",
+        "design/stepsy-companion/renders/reassure/13.png",
+        "design/stepsy-companion/renders/reassure/14.png",
+        "design/stepsy-companion/renders/reassure/15.png",
+        "design/stepsy-companion/renders/reassure/16.png",
+        "design/stepsy-companion/renders/reassure/17.png",
+        "design/stepsy-companion/renders/reassure/18.png",
+        "design/stepsy-companion/renders/reassure/19.png",
+        "design/stepsy-companion/renders/reassure/20.png",
+        "design/stepsy-companion/renders/reassure/21.png",
+        "design/stepsy-companion/renders/reassure/22.png",
+        "design/stepsy-companion/renders/reassure/23.png"
+      ],
+      "atlas": "assets/companion/animations/reassure.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        217,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "rest": {
+      "frames": 1,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/rest/00.png"
+      ],
+      "atlas": null,
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        210,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 65536
+    },
+    "wait": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/wait/00.png",
+        "design/stepsy-companion/renders/wait/01.png",
+        "design/stepsy-companion/renders/wait/02.png",
+        "design/stepsy-companion/renders/wait/03.png",
+        "design/stepsy-companion/renders/wait/04.png",
+        "design/stepsy-companion/renders/wait/05.png",
+        "design/stepsy-companion/renders/wait/06.png",
+        "design/stepsy-companion/renders/wait/07.png",
+        "design/stepsy-companion/renders/wait/08.png",
+        "design/stepsy-companion/renders/wait/09.png",
+        "design/stepsy-companion/renders/wait/10.png",
+        "design/stepsy-companion/renders/wait/11.png",
+        "design/stepsy-companion/renders/wait/12.png",
+        "design/stepsy-companion/renders/wait/13.png",
+        "design/stepsy-companion/renders/wait/14.png",
+        "design/stepsy-companion/renders/wait/15.png",
+        "design/stepsy-companion/renders/wait/16.png",
+        "design/stepsy-companion/renders/wait/17.png",
+        "design/stepsy-companion/renders/wait/18.png",
+        "design/stepsy-companion/renders/wait/19.png",
+        "design/stepsy-companion/renders/wait/20.png",
+        "design/stepsy-companion/renders/wait/21.png",
+        "design/stepsy-companion/renders/wait/22.png",
+        "design/stepsy-companion/renders/wait/23.png"
+      ],
+      "atlas": "assets/companion/animations/wait.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        210,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "walk": {
+      "frames": 24,
+      "fps": 24,
+      "loop": true,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/walk/00.png",
+        "design/stepsy-companion/renders/walk/01.png",
+        "design/stepsy-companion/renders/walk/02.png",
+        "design/stepsy-companion/renders/walk/03.png",
+        "design/stepsy-companion/renders/walk/04.png",
+        "design/stepsy-companion/renders/walk/05.png",
+        "design/stepsy-companion/renders/walk/06.png",
+        "design/stepsy-companion/renders/walk/07.png",
+        "design/stepsy-companion/renders/walk/08.png",
+        "design/stepsy-companion/renders/walk/09.png",
+        "design/stepsy-companion/renders/walk/10.png",
+        "design/stepsy-companion/renders/walk/11.png",
+        "design/stepsy-companion/renders/walk/12.png",
+        "design/stepsy-companion/renders/walk/13.png",
+        "design/stepsy-companion/renders/walk/14.png",
+        "design/stepsy-companion/renders/walk/15.png",
+        "design/stepsy-companion/renders/walk/16.png",
+        "design/stepsy-companion/renders/walk/17.png",
+        "design/stepsy-companion/renders/walk/18.png",
+        "design/stepsy-companion/renders/walk/19.png",
+        "design/stepsy-companion/renders/walk/20.png",
+        "design/stepsy-companion/renders/walk/21.png",
+        "design/stepsy-companion/renders/walk/22.png",
+        "design/stepsy-companion/renders/walk/23.png"
+      ],
+      "atlas": "assets/companion/animations/walk.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        210,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    },
+    "wave": {
+      "frames": 24,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "source": [
+        "design/stepsy-companion/renders/wave/00.png",
+        "design/stepsy-companion/renders/wave/01.png",
+        "design/stepsy-companion/renders/wave/02.png",
+        "design/stepsy-companion/renders/wave/03.png",
+        "design/stepsy-companion/renders/wave/04.png",
+        "design/stepsy-companion/renders/wave/05.png",
+        "design/stepsy-companion/renders/wave/06.png",
+        "design/stepsy-companion/renders/wave/07.png",
+        "design/stepsy-companion/renders/wave/08.png",
+        "design/stepsy-companion/renders/wave/09.png",
+        "design/stepsy-companion/renders/wave/10.png",
+        "design/stepsy-companion/renders/wave/11.png",
+        "design/stepsy-companion/renders/wave/12.png",
+        "design/stepsy-companion/renders/wave/13.png",
+        "design/stepsy-companion/renders/wave/14.png",
+        "design/stepsy-companion/renders/wave/15.png",
+        "design/stepsy-companion/renders/wave/16.png",
+        "design/stepsy-companion/renders/wave/17.png",
+        "design/stepsy-companion/renders/wave/18.png",
+        "design/stepsy-companion/renders/wave/19.png",
+        "design/stepsy-companion/renders/wave/20.png",
+        "design/stepsy-companion/renders/wave/21.png",
+        "design/stepsy-companion/renders/wave/22.png",
+        "design/stepsy-companion/renders/wave/23.png"
+      ],
+      "atlas": "assets/companion/animations/wave.png",
+      "canvas": [
+        256,
+        256
+      ],
+      "bounds": [
+        48,
+        22,
+        204,
+        226
+      ],
+      "anchor": [
+        128,
+        223
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 1572864
+    }
+  }
+}

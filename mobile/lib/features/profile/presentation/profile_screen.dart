@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../companion/companion.dart';
+import '../../companion/experience_sheet.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../data/auth/auth_state_provider.dart';
 import '../../../data/profile/profile_repository.dart';
@@ -282,7 +284,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
-          'Profile',
+          'You',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -294,13 +296,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
-          const Text(
-            'Your corner\nof Stepsy.',
-            style: AppTheme.largeTitleStyle,
+          const Row(
+            children: [
+              Companion(size: 64),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Your pace. Your space.',
+                  style: AppTheme.titleStyle,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          const Text('Make yourself at home.', style: AppTheme.captionStyle),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          if (!isMerchant) ...[
+            _buildSettingRow(
+              icon: CupertinoIcons.flag,
+              title: 'Daily goal & companion',
+              onTap: () => showExperienceSettings(context),
+            ),
+            _buildSettingRow(
+              icon: CupertinoIcons.chart_bar,
+              title: 'Progress & activity',
+              onTap: () => context.push('/progress'),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_isUpdating)
             const Padding(
               padding: EdgeInsets.only(bottom: 12.0),
@@ -349,7 +370,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                             ),
                           Text(
-                            user?.email ?? 'User',
+                            'Walking member',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -376,18 +397,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Divider(color: AppTheme.hairline, height: 1),
-                const SizedBox(height: 14),
-                _buildDetailRow('Country', user?.country ?? 'PK'),
-                const SizedBox(height: 8),
-                _buildDetailRow('Timezone', user?.timezone ?? 'Asia/Karachi'),
-                const SizedBox(height: 8),
-                _buildDetailRow(
-                  'Member since',
-                  user != null
-                      ? DateFormat('MMMM yyyy').format(user.createdAt.toLocal())
-                      : '—',
+                Material(
+                  color: Colors.transparent,
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(bottom: 12),
+                    expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                    title: const Text('Account details'),
+                    children: [
+                      SelectableText(
+                        user?.email ?? 'Email unavailable',
+                        style: AppTheme.bodyStyle,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDetailRow('Country', user?.country ?? 'PK'),
+                      const SizedBox(height: 8),
+                      _buildDetailRow(
+                        'Timezone',
+                        user?.timezone ?? 'Asia/Karachi',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDetailRow(
+                        'Member since',
+                        user != null
+                            ? DateFormat(
+                                'MMMM yyyy',
+                              ).format(user.createdAt.toLocal())
+                            : '—',
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

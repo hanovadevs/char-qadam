@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../companion/companion.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../routing/app_router.dart';
 
@@ -205,11 +206,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               border: Border.all(color: AppTheme.borderDark, width: 1.5),
             ),
-            child: const Icon(
-              Icons.directions_walk,
-              size: 40,
-              color: AppTheme.black,
-            ),
+            child: const Companion(clip: 'wave', size: 80),
           ),
           const SizedBox(height: 32),
           const Text(

@@ -11,12 +11,19 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../../../data/models/voucher_models.dart';
 import '../../rewards/presentation/reward_card.dart';
+import '../../companion/companion.dart';
 import '../providers/wallet_provider.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   final String? highlightId;
+  final String? offerId;
   final bool recovered;
-  const WalletScreen({super.key, this.highlightId, this.recovered = false});
+  const WalletScreen({
+    super.key,
+    this.highlightId,
+    this.offerId,
+    this.recovered = false,
+  });
   @override
   ConsumerState<WalletScreen> createState() => _WalletScreenState();
 }
@@ -36,7 +43,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
   @override
   void didUpdateWidget(covariant WalletScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.highlightId != widget.highlightId) {
+    if (oldWidget.highlightId != widget.highlightId ||
+        oldWidget.offerId != widget.offerId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _locateHighlight();
       });
@@ -58,14 +66,17 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
 
   Future<void> _locateHighlight() async {
     final id = widget.highlightId;
-    if (id == null) return;
+    if (id == null && widget.offerId == null) return;
     final request = ++_locateRequest;
     // A recovered purchase might already have been used or expired.
     for (final status in ['active', 'redeemed', 'expired', 'cancelled']) {
       await ref.read(walletProvider.notifier).fetchVouchers(status);
       if (!mounted || request != _locateRequest) return;
       final state = ref.read(walletProvider);
-      if (state.errorMessage != null || state.vouchers.any((v) => v.id == id)) {
+      if (state.errorMessage != null ||
+          state.vouchers.any(
+            (v) => v.id == id || v.offerId == widget.offerId,
+          )) {
         return;
       }
     }
@@ -178,8 +189,10 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
     final state = ref.watch(walletProvider);
     final vouchers = [...state.vouchers]
       ..sort((a, b) {
-        if (a.id == widget.highlightId) return -1;
-        if (b.id == widget.highlightId) return 1;
+        if (a.id == widget.highlightId || a.offerId == widget.offerId) {
+          return -1;
+        }
+        if (b.id == widget.highlightId || b.offerId == widget.offerId) return 1;
         return b.issuedAt.compareTo(a.issuedAt);
       });
     final highlighted = vouchers.any((v) => v.id == widget.highlightId);
@@ -203,27 +216,49 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            const Text('Steps well spent.', style: AppTheme.largeTitleStyle),
-            const SizedBox(height: 8),
-            const Text(
-              'Your rewards, all in one happy place.',
-              style: AppTheme.captionStyle,
+            Row(
+              children: [
+                Companion(
+                  size: 56,
+                  clip: highlighted && !widget.recovered ? 'cheer' : 'rest',
+                  event: widget.highlightId.hashCode,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Your vouchers, ready when you are.',
+                    style: AppTheme.headlineStyle,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
             FilterPills(
-              options: const {
-                'active': 'Ready to use',
-                'redeemed': 'Used',
-                'expired': 'Expired',
-                'cancelled': 'Cancelled',
-              },
-              selected: state.selectedStatus,
+              options: const {'active': 'Ready', 'history': 'History'},
+              selected: state.selectedStatus == 'active' ? 'active' : 'history',
               onSelected: (status) {
                 _locateRequest++;
-                HapticsService.selection();
-                ref.read(walletProvider.notifier).fetchVouchers(status);
+                ref
+                    .read(walletProvider.notifier)
+                    .fetchVouchers(status == 'active' ? 'active' : 'redeemed');
               },
             ),
+            if (state.selectedStatus != 'active') ...[
+              const SizedBox(height: 8),
+              FilterPills(
+                options: const {
+                  'redeemed': 'Used',
+                  'expired': 'Expired',
+                  'cancelled': 'Cancelled',
+                },
+                selected: state.selectedStatus,
+                onSelected: (status) {
+                  _locateRequest++;
+                  HapticsService.selection();
+                  ref.read(walletProvider.notifier).fetchVouchers(status);
+                },
+              ),
+            ],
             const SizedBox(height: 20),
             if (highlighted)
               StatusNotice(
@@ -331,15 +366,20 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            v.shortCode,
-                            style: AppTheme.headlineStyle.copyWith(
-                              fontFeatures: AppTheme.tabular,
-                              letterSpacing: 1,
-                            ),
+                            ready
+                                ? 'Ready to use'
+                                : cancelled
+                                ? 'Cancelled'
+                                : used
+                                ? 'Used'
+                                : 'Expired',
+                            style: AppTheme.captionStyle,
                           ),
                           if (ready)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
+                            Wrap(
+                              spacing: 4,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 IconButton(
                                   tooltip: 'Share voucher',
