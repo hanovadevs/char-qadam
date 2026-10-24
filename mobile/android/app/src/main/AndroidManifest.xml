@@ -18,6 +18,7 @@
         android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true">
         <service android:name=".StepTrackingService" android:exported="false" android:foregroundServiceType="health" android:stopWithTask="false" />
+        <receiver android:name=".StepTrackingControlReceiver" android:exported="false" />
         <receiver android:name=".StepBootReceiver" android:exported="false">
             <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>
         </receiver>

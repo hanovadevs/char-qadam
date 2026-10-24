@@ -8,6 +8,12 @@ class DailyStepCounter(
     var boot: Int = -1,
     var lastAt: Long = 0,
 ) {
+    /** Keep earned movement, but never credit the hardware delta while paused. */
+    fun pause() {
+        lastRaw = null
+        lastAt = 0
+    }
+
     fun record(raw: Int, day: String, bootCount: Int, at: Long): Int {
         if (raw < 0 || (boot == bootCount && at < lastAt)) return steps
         val previous = lastRaw

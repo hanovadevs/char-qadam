@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../../../data/activity/health_service.dart';
 import '../providers/activity_provider.dart';
+import '../providers/tracking_controller.dart';
 import '../../points/providers/points_provider.dart';
 import '../../rewards/providers/rewards_provider.dart';
 import '../../rewards/reward_goal.dart';
@@ -17,6 +18,7 @@ import '../../companion/experience_sheet.dart';
 import '../../companion/companion_buddy.dart';
 import 'companion_goal_meter.dart';
 import 'weekly_preview.dart';
+import 'tracking_controls.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -40,7 +42,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _sync();
+    if (state == AppLifecycleState.resumed) {
+      ref.read(trackingControllerProvider.notifier).refresh();
+      _sync();
+    }
   }
 
   Future<void> _sync() async {
@@ -85,6 +90,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(activityProvider);
+    // Observe recovery even when the controls are below the lazy list viewport.
+    final tracking = ref.watch(trackingControllerProvider);
     final weekly = ref.watch(weeklyActivityProvider);
     final prefs = ref.watch(experienceProvider);
     final balance = ref.watch(pointsProvider).balanceData?.balance;
@@ -217,6 +224,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               ),
             if (state.errorMessage != null)
               StatusNotice(state.errorMessage!, onRetry: _sync),
+            if (tracking?.paused == true)
+              const Text(
+                'Tracking paused. Resume below your reward goal.',
+                style: AppTheme.captionStyle,
+              ),
             if (!state.hasPermission && !state.isSyncing)
               StatusNotice(
                 'Connect activity to count your walks.',
@@ -324,6 +336,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                   : 'Every day is a fresh start. Streaks start at 1,000 steps/day.',
               style: AppTheme.captionStyle,
             ),
+            const TrackingControls(),
             const SectionHeading('Your week'),
             WeeklyPreview(
               days: weekly.valueOrNull ?? state.history?.days ?? const [],

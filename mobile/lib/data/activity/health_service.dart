@@ -163,10 +163,13 @@ class HealthService {
     int? rawAtRead;
     int? bootAtRead;
     var healthEnd = now;
+    var healthAllowed = true;
     if (_android) {
       try {
         final raw = await _channel.invokeMethod<String>('snapshot');
         final data = jsonDecode(raw ?? '{}') as Map<String, dynamic>;
+        healthAllowed =
+            data['paused'] != true && data['health_allowed'] != false;
         if (data['date'] == day) {
           hardware = data['steps'] as int? ?? 0;
           final at = data['at'] as int? ?? 0;
@@ -187,6 +190,9 @@ class HealthService {
     // Restore the native counter before waiting on optional Health Connect.
     // Never reuse an old health total with a newer hardware baseline.
     _emit(hardware);
+    // A deliberate notification stop excludes movement while paused, including
+    // whole-day Health Connect backfill after tracking is resumed.
+    if (!healthAllowed) return _currentSteps;
     if (_lastHealthCheck != null &&
         _lastHealthCheck!.year == now.year &&
         _lastHealthCheck!.month == now.month &&
@@ -221,6 +227,10 @@ class HealthService {
           'boot': bootAtRead,
         });
         final data = jsonDecode(raw ?? '{}') as Map<String, dynamic>;
+        if (data['paused'] == true || data['health_allowed'] == false) {
+          _emit(data['steps'] as int? ?? hardware);
+          return _currentSteps;
+        }
         hardware = data['steps'] as int? ?? hardware;
       } catch (e) {
         debugPrint('Step reconciliation unavailable: $e');
@@ -270,6 +280,7 @@ class HealthService {
         result['Tracking service'] = data['service_running'] == true
             ? 'Running'
             : 'Stopped';
+        result['Tracking paused'] = data['paused'] == true ? 'Yes' : 'No';
         result['Step sensor'] = data['sensor_available'] == true
             ? 'Available'
             : 'Unavailable';

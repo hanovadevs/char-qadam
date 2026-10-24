@@ -43,4 +43,16 @@ class DailyStepCounterTest {
         c.mergeHealth(3000, day, 5000, 1)
         assertEquals(3010, c.steps)
     }
+    @Test fun threeMinutesAndHoursOfIdleDoNotStopNewSteps() {
+        val c = DailyStepCounter(day, 100, 5000, 1, 1000)
+        assertEquals(101, c.record(5001, day, 1, 181000))
+        assertEquals(151, c.record(5051, day, 1, 18000000))
+        assertEquals(152, c.record(5052, day, 1, 18001000))
+    }
+    @Test fun pausePreservesProgressAndExcludesTheStoppedInterval() {
+        val c = DailyStepCounter(day, 100, 5000, 1, 1000)
+        c.pause()
+        assertEquals(100, c.record(9000, day, 1, 18000000))
+        assertEquals(101, c.record(9001, day, 1, 18001000))
+    }
 }

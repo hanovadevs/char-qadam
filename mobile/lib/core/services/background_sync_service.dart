@@ -52,6 +52,9 @@ class BackgroundSyncService {
   static Future<void> initialize() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      if (prefs.getBool('stepsy_tracking_paused') == true) return;
       await Workmanager().initialize(callbackDispatcher);
 
       await Workmanager().registerPeriodicTask(
@@ -71,6 +74,9 @@ class BackgroundSyncService {
   /// Read today's step total (Health Connect first, stored pedometer fallback)
   /// and sync it to the backend. Returns true on success / nothing-to-do.
   static Future<bool> performSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    if (prefs.getBool('stepsy_tracking_paused') == true) return true;
     // 1. Auth — bail quietly if the user isn't logged in.
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: _kTokenKey);
@@ -86,7 +92,13 @@ class BackgroundSyncService {
     final todayStr = DateFormat('yyyy-MM-dd').format(now);
 
     // 2. Resolve today's step total.
-    final steps = await _resolveTodaySteps(now, todayStr);
+    var steps = await _resolveTodaySteps(now, todayStr);
+    // Stop may have been pressed while Health Connect was reading.
+    await prefs.reload();
+    if (prefs.getBool('stepsy_tracking_paused') == true) return true;
+    if (prefs.getString('stepsy_health_excluded_date') == todayStr) {
+      steps = await _resolveTodaySteps(now, todayStr);
+    }
     if (steps <= 0) {
       return true; // no steps recorded yet today
     }
@@ -135,10 +147,13 @@ class BackgroundSyncService {
   /// the last pedometer total the foreground app persisted for today.
   static Future<int> _resolveTodaySteps(DateTime now, String todayStr) async {
     var storedSteps = 0;
+    var excludeHealth = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       // The foreground service writes outside this isolate's preference cache.
       await prefs.reload();
+      excludeHealth =
+          prefs.getString('stepsy_health_excluded_date') == todayStr;
       final raw = prefs.getString('stepsy_native_steps_v1');
       if (raw != null) {
         final data = jsonDecode(raw) as Map<String, dynamic>;
@@ -149,6 +164,7 @@ class BackgroundSyncService {
     } catch (e) {
       debugPrint('Background snapshot unavailable: $e');
     }
+    if (excludeHealth) return storedSteps;
     try {
       final health = Health();
       await health.configure();

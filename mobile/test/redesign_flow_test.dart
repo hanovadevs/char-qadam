@@ -314,6 +314,25 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets(
+    'Home checks native tracking recovery before controls scroll into view',
+    (tester) async {
+      var recoveryChecks = 0;
+      const channel = MethodChannel('stepsy/step_tracking');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            if (call.method == 'ensureTracking') recoveryChecks++;
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null),
+      );
+      await mountPreview(tester, initialPath: '/steps', height: 600);
+      expect(recoveryChecks, greaterThan(0));
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets(
     'Pip guides a real offer through explicit confirmation to its QR',
     (tester) async {
       final rewards = PreviewRewards();
