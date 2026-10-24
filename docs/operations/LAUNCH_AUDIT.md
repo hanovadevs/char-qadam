@@ -182,7 +182,7 @@ with 233 saved steps preserved. The owner accepted the design and requested
 a more interesting progress bar with a 2D walking character; that follow-up adds
 a native rig and pause/resume regression coverage. Final hosted rollout and
 installation evidence are recorded in the deployment follow-up. See
-[UI_REDESIGN.md](UI_REDESIGN.md) for the six supplied skills, implementation and
+[UI_REDESIGN.md](../design/UI_REDESIGN.md) for the six supplied skills, implementation and
 Maps setup. The hosted Sleek API was unavailable without a configured key;
 no hosted Sleek output or full Hallmark certification is claimed.
 
@@ -225,7 +225,7 @@ Local checks: **124 backend tests passed** on a fresh database through migration
 APK build (44.7 seconds) passed. Coverage includes competing first claims,
 verification races, copied/legacy tokens, transfer, daily caps, wallet isolation,
 legacy credit seeding and deactivation/sync races. See
-[DEVICE_POLICY.md](DEVICE_POLICY.md) for behavior, coordinated rollout and the
+[DEVICE_POLICY.md](../product/DEVICE_POLICY.md) for behavior, coordinated rollout and the
 limits of a client-supplied identifier versus hardware attestation.
 
 Deployed `440f981` with migration 0008 after restoring the 41,230-byte pre-rollout
@@ -273,7 +273,7 @@ was removed. Installed the new APK without clearing data: the saved count was
 exchange returned 200, the app is running and its foreground step service resumed.
 All eight other app containers retained their IDs/start times. CI
 [39045527202](https://github.com/hanovadevs/char-qadam/actions/runs/39045527202)
-passed. [AUTH_SETUP.md](AUTH_SETUP.md) records public fingerprints, sender and
+passed. [AUTH_SETUP.md](../setup/AUTH_SETUP.md) records public fingerprints, sender and
 rollout details. Production Play signing/Google audience publication and external
 inbox deliverability remain release checks.
 
@@ -349,7 +349,7 @@ Use the isolated test database and development accounts for full redemption test
   generated-output cleanup.
 - `d747810`: current product requirements, launch audit, and verification CI.
 - `ccfe58c`: optional admin portal path/regressions, phone test evidence, and
-  hosted Android build disk cleanup. See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md)
+  hosted Android build disk cleanup. See [backend/DEPLOYMENT.md](../../backend/DEPLOYMENT.md)
   for the Docker rollout sequence and public deployment checks.
 - `1fc687b`: verified HTTPS API, private Docker ingress/trusted proxy, updated
   mobile/admin defaults, reproducible Nginx config and successful APK rebuild.

@@ -14,7 +14,7 @@ class DailyStepCounter(
         lastAt = 0
     }
 
-    fun record(raw: Int, day: String, bootCount: Int, at: Long): Int {
+    fun record(raw: Int, day: String, bootCount: Int, at: Long, countMovement: Boolean = true): Int {
         if (raw < 0 || (boot == bootCount && at < lastAt)) return steps
         val previous = lastRaw
         val sameDay = date == day
@@ -22,7 +22,7 @@ class DailyStepCounter(
         // Do not attribute an unknown multi-day gap to today's steps.
         val nearMidnight = at >= lastAt && at - lastAt <= 120_000
         if (!sameDay) steps = 0
-        if (previous != null && (sameDay || nearMidnight)) {
+        if (countMovement && previous != null && (sameDay || nearMidnight)) {
             val delta = if (rebooted || raw < previous) raw else raw - previous
             steps += delta.coerceAtLeast(0)
         }

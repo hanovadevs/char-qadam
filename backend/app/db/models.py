@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models for all Qadam MVP tables (PostgreSQL).
 
-Tables (§2 of MVP_PLAN.md):
+Tables (§2 of docs/history/MVP_PLAN.md):
     users, devices, activity_daily, points_ledger,
     partners, offers, vouchers, redemptions, audit_log
 

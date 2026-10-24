@@ -55,7 +55,7 @@ commercial commitment. At those defaults a user can earn at most 200 step points
 
 ## Redmi acceptance protocol
 
-Use the detailed protocol in [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md). A provisional
+Use the detailed protocol in [LAUNCH_AUDIT.md](../operations/LAUNCH_AUDIT.md). A provisional
 release target is <=5% error over each of three manually counted 500-step walks,
 zero unexplained increases while the phone remains still for five minutes, no
 backward flicker during refresh, and retained counts after a locked-screen walk
@@ -63,6 +63,6 @@ and restart. Diagnose raw-sensor false positives separately from app arithmetic.
 
 ## Explicit remaining work
 
-See the prioritized launch gates in [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md). In particular,
+See the prioritized launch gates in [LAUNCH_AUDIT.md](../operations/LAUNCH_AUDIT.md). In particular,
 basic client-reported counts and caps are not hardware attestation or proof of a
 real walk; no claim of fraud-proof rewards or guaranteed background execution is made.

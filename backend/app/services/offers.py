@@ -1,6 +1,6 @@
 """Offer redemption business logic.
 
-Correctness invariants (MVP_PLAN.md §1):
+Correctness invariants (docs/history/MVP_PLAN.md §1):
   - All-or-nothing: points are only deducted if the voucher is successfully
     issued.  If any check fails the transaction is rolled back.
   - Balance is computed inside the same transaction that deducts points, with

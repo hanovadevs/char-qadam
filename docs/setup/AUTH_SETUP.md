@@ -81,7 +81,7 @@ Reference: [Hostinger mail configuration](https://support.hostinger.com/en/artic
 
 The device-account update also requires `X-Device-ID` on mobile authentication
 and protected user requests. Tokens and email challenges are device-bound;
-legacy sessions require a new sign-in. See [DEVICE_POLICY.md](DEVICE_POLICY.md).
+legacy sessions require a new sign-in. See [DEVICE_POLICY.md](../product/DEVICE_POLICY.md).
 
 - Registration returns a purpose-limited `verification_token`, email and resend
   delay, never an access token. Correct-password login to an unverified account

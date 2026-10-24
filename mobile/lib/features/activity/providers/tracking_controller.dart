@@ -5,10 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class TrackingStatus {
   final bool paused, running, unrestricted;
+  final bool vehicleBlocked;
+  final String vehicleFilter;
   const TrackingStatus({
     required this.paused,
     required this.running,
     required this.unrestricted,
+    this.vehicleBlocked = false,
+    this.vehicleFilter = 'STARTING',
   });
   factory TrackingStatus.parse(String json) {
     final data = jsonDecode(json) as Map<String, dynamic>;
@@ -16,6 +20,8 @@ class TrackingStatus {
       paused: data['paused'] == true,
       running: data['running'] == true,
       unrestricted: data['unrestricted'] == true,
+      vehicleBlocked: data['vehicle_blocked'] == true,
+      vehicleFilter: data['vehicle_filter'] as String? ?? 'STARTING',
     );
   }
 }

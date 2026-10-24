@@ -34,6 +34,7 @@ class StepTrackingService : Service(), SensorEventListener {
     private var wakeLock: PowerManager.WakeLock? = null
     private var registered = false
     private var wakeUpSensor = false
+    private var lastVehicleBlocked = false
     private val handler = Handler(Looper.getMainLooper())
     private val renewWakeLock = object : Runnable {
         override fun run() {
@@ -80,6 +81,7 @@ class StepTrackingService : Service(), SensorEventListener {
                 prefs.edit().putBoolean("stepsy_wakeup_counter", wakeUpSensor).commit()
             }
             running = true
+            VehicleRecognition.start(this)
             if (!wakeUpSensor) {
                 wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
                     .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Stepsy:StepTracking")
@@ -98,18 +100,25 @@ class StepTrackingService : Service(), SensorEventListener {
         wakeLock = null
         if (::sensors.isInitialized) sensors.unregisterListener(this)
         registered = false
+        VehicleRecognition.stop(this)
         publishState(this)
         super.onDestroy()
     }
 
     override fun onSensorChanged(event: SensorEvent) {
         if (!enabled(this) || paused(this)) return
+        val vehicleBlocked = VehicleRecognition.blocked(this)
+        if (vehicleBlocked != lastVehicleBlocked) {
+            lastVehicleBlocked = vehicleBlocked
+            publishState(this)
+        }
         // Use the sensor event's timestamp: batched callbacks may arrive later.
         val at = System.currentTimeMillis() - (SystemClock.elapsedRealtimeNanos() - event.timestamp) / 1_000_000
         val day = Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()).toLocalDate().toString()
         val result = update(this) { counter ->
             counter.record(event.values[0].toInt(), day,
-                Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT, 0), at)
+                Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT, 0), at,
+                countMovement = !vehicleBlocked)
         }
         onSteps?.invoke(result.optInt("steps"))
         val steps = result.optInt("steps")
@@ -156,6 +165,8 @@ class StepTrackingService : Service(), SensorEventListener {
             return JSONObject().put("paused", paused(context)).put("running", running)
                 .put("enabled", enabled(context)).put("unrestricted", power.isIgnoringBatteryOptimizations(context.packageName))
                 .put("health_allowed", healthAllowed(context))
+                .put("vehicle_filter", VehicleRecognition.state(context))
+                .put("vehicle_blocked", VehicleRecognition.blocked(context))
                 .put("wake_up_sensor", context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                     .getBoolean("stepsy_wakeup_counter", false))
         }
@@ -167,6 +178,7 @@ class StepTrackingService : Service(), SensorEventListener {
             val manager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
             if (manager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER, true) == null && manager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) == null) return false
             val wasPaused = paused(context)
+            if (wasPaused) VehicleRecognition.resetOnResume(context)
             val editor = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE).edit()
                 .putBoolean("stepsy_tracking_enabled", true).putBoolean(PAUSED_KEY, false)
             if (wasPaused) editor.putString(HEALTH_EXCLUDED_KEY, LocalDate.now().toString())
@@ -181,6 +193,7 @@ class StepTrackingService : Service(), SensorEventListener {
             if (userPaused) editor.putString(HEALTH_EXCLUDED_KEY, LocalDate.now().toString())
             editor.commit()
             if (userPaused) update(context) { it.pause() }
+            VehicleRecognition.stop(context)
             try { WorkManager.getInstance(context).cancelUniqueWork("stepsy-periodic-step-sync") }
             catch (e: IllegalStateException) { android.util.Log.w("Stepsy", "Background sync cancellation unavailable; pause gate remains active", e) }
             context.stopService(Intent(context, StepTrackingService::class.java))

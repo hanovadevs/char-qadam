@@ -1,6 +1,6 @@
 """Activity sync business logic.
 
-Core invariants (from MVP_PLAN.md §1):
+Core invariants (from docs/history/MVP_PLAN.md §1):
   - Server clamps eligible_steps to ``daily_step_cap``.
   - Upsert activity_daily by (user_id, local_date); append a STEP_EARN
     ledger entry for the **delta only** when the day's total increases.

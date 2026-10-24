@@ -3,6 +3,11 @@
 *.log
 .env
 .env.local
+.env.*
+!.env.example
+!.env.*.example
+*.jks
+*.keystore
 .local-test-postgres/
 *-test-results.txt
 *-build-results.txt

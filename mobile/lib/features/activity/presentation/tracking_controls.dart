@@ -96,6 +96,15 @@ class _TrackingControlsState extends ConsumerState<TrackingControls>
               ),
             ],
           ),
+          if (!status.paused && status.running)
+            Text(
+              status.vehicleBlocked
+                  ? 'Bike/car movement detected. These sensor steps are excluded.'
+                  : status.vehicleFilter == 'UNAVAILABLE'
+                  ? 'Bike/car detection is unavailable on this device.'
+                  : 'Bike/car detection uses motion sensors, without GPS.',
+              style: AppTheme.captionStyle,
+            ),
           if (status.paused)
             const Text(
               'Your saved progress stays here. Resume when you want to count again.',

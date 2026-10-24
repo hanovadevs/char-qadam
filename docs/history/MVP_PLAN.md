@@ -1,4 +1,4 @@
-> Historical build plan. Current Android-first requirements and release gates are in [REQUIREMENTS.md](REQUIREMENTS.md) and [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md).
+> Historical build plan. Current Android-first requirements and release gates are in [REQUIREMENTS.md](../product/REQUIREMENTS.md) and [LAUNCH_AUDIT.md](../operations/LAUNCH_AUDIT.md).
 
 # Qadam — MVP Build Plan
 

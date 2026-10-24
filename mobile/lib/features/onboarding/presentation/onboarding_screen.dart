@@ -306,7 +306,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _buildPrivacyRow(
             Icons.location_off_outlined,
             'ZERO GPS TRACKING',
-            'No location, route, or movement data is collected.',
+            'Motion sensors count walks; GPS locations and routes are not collected.',
           ),
           const SizedBox(height: 14),
           _buildPrivacyRow(

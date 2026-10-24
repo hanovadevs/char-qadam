@@ -5,7 +5,7 @@ FastAPI + async SQLAlchemy + PostgreSQL. Run commands below from `backend/`.
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item .env.example .env
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 # Fill DATABASE_URL and secrets in .env, then:
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -16,7 +16,8 @@ cover auth, daily activity, points, offers, vouchers, profile, and leaderboard.
 `/partner/v1` handles merchant credentials and single-use redemption. Every
 `/admin` route except `/admin/auth/login` requires an admin token.
 
-For production set `ENVIRONMENT=production`, a random `JWT_SECRET`, a unique
+For production set `PUBLIC_API_URL` to the public HTTPS API domain for cover images,
+`ENVIRONMENT=production`, a random `JWT_SECRET`, a unique
 `ADMIN_PASSWORD` (12+ characters), the real `GOOGLE_CLIENT_ID`, and the SMTP
 settings in `.env.example`. Recovery fails closed with 503 until email delivery
 is configured. Tokens are never returned to a recovery requester. Migrations
@@ -43,4 +44,4 @@ The React admin is independently built in `web/`. Local API serving can expose
 that build under `/portal` when `web/dist` exists in the repository layout;
 backend-only Docker builds use the separately hosted admin portal.
 
-See [the launch audit](../LAUNCH_AUDIT.md) before a public release.
+See [the launch audit](../docs/operations/LAUNCH_AUDIT.md) before a public release.

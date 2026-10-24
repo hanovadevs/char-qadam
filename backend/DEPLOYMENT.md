@@ -1,6 +1,11 @@
 # Docker rollout for the audited API
 
-Latest API source: `c600f48`, deployed on 2026-10-18 for one claim per offer per
+This file includes historical rollout records. The later media/lifecycle rollout is
+recorded in [admin media evidence](../docs/operations/ADMIN_MEDIA_ROLLOUT.md).
+When deploying from the development `.env.example`, set `PUBLIC_API_URL` to the
+production HTTPS API domain so uploaded covers use the correct origin.
+
+Historical API source: `c600f48`, deployed on 2026-10-18 for one claim per offer per
 account. The check uses existing purchase/voucher history and row locks; migration
 0008 is unchanged and existing data is preserved. A read-only live catalog probe
 verified historical claims are marked. The container is healthy, the private
@@ -74,7 +79,7 @@ account after logout, and return to the original account with rewards intact.
 It requires the device header and device-bound user tokens, so older clients
 need the update and existing users sign in again to choose their phone's account.
 No account balances or vouchers are merged or deleted. Device consumption
-history survives deactivation. See [DEVICE_POLICY.md](../DEVICE_POLICY.md).
+history survives deactivation. See [DEVICE_POLICY.md](../docs/product/DEVICE_POLICY.md).
 
 Root-only rollout evidence is under `/root/stepsy-rollouts/20261017-device`.
 The 41,230-byte pre-migration public-schema archive restored successfully at
@@ -88,7 +93,7 @@ for the next 100, retained original credits, legacy/copied-token rejection and
 actual email verification. All temporary test users were removed. Backend,
 admin and Android CI passed in
 [39048543060](https://github.com/hanovadevs/char-qadam/actions/runs/39048543060).
-See [AUTH_SETUP.md](../AUTH_SETUP.md) for the coordinated API/APK rollout and
+See [AUTH_SETUP.md](../docs/setup/AUTH_SETUP.md) for the coordinated API/APK rollout and
 Google error-10 package/signing-certificate configuration.
 
 The owner added `api` A -> `72.62.250.191` in Namecheap BasicDNS. The API is now
