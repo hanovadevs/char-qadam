@@ -17,3 +17,9 @@ Activity recognition is probabilistic and can arrive late, especially under syst
 Native tests cover confident vehicle/bicycle blocking, uncertain signals, immediate on-foot recovery, stale/previous-boot context and preserving the filtered baseline across reopening. Actual walking, riding as a passenger and bicycle testing are separate physical checks. Do not operate the phone while driving/riding; test safely as a passenger or inspect a completed ride.
 
 References: [Activity Recognition client](https://developers.google.com/android/reference/com/google/android/gms/location/ActivityRecognitionClient), [confidence/type definitions](https://developers.google.com/android/reference/com/google/android/gms/location/DetectedActivity), [activity recognition overview](https://developers.google.com/location-context/activity-recognition).
+
+## Build and validation — 24 October 2026
+
+Feature/setup/organization source: `6133e56`. Flutter analysis is clean; 122 mobile tests, 16 native tests and 23 admin tests pass. The admin production build and a real ephemeral local dev-proxy HTTP check pass. The documentation checker validates 74 local targets. Fresh PostgreSQL setup was not smoke-tested in this session because Docker Desktop was stopped; backend changes are setup templates and documentation references.
+
+The final profile arm64 build succeeded in 111.0 seconds. APK SHA-256: `DD51224A1504EF4462CEBF949E362A83FCDC6D1ECA3CB4397551F31974704E78`. Replacement installation on the Redmi succeeded at 2026-10-24 18:42:23, preserving storage and with Physical Activity permissions granted. APK inspection confirmed the native classifier is bundled and the removed duplicate icon is absent. Normal walking/Stop regression feedback and a real passenger/cycling classification check were requested; physical vehicle exclusion remains unverified until that trip is observed.

@@ -11,6 +11,8 @@ Removed confirmed disposable content:
 
 Environment files, signing material, local database data, installed dependencies, current APKs, editable Blender art, transparent masters, font licenses and migrations were preserved. The pre-existing uncommitted companion-settings edit was left untouched and excluded from commits.
 
+Ignored cache directories and the automatic Blender backup were also left in place; no recursive cache removal was completed.
+
 Local admin development now proxies to localhost by default, with `VITE_PROXY_TARGET` for an explicit override. A real ephemeral HTTP proxy test checks the override without contacting production. The backend template includes a local `PUBLIC_API_URL` so development cover images do not point at the live server; production operators must supply their actual HTTPS domain.
 
 Run `python tools/check_docs.py` from the repository root to check local Markdown links and HTML image targets without fetching remote URLs. It uses Python's standard library and skips generated/dependency directories.
