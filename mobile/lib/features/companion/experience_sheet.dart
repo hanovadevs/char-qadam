@@ -24,16 +24,6 @@ class _ExperienceSheetState extends ConsumerState<_ExperienceSheet> {
   );
   String? _error;
   bool _saving = false;
-  Future<void> _toggle({bool? animations, bool? tips}) async {
-    try {
-      await ref
-          .read(experienceProvider.notifier)
-          .update(animations: animations, tips: tips);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Could not save. Please try again.');
-    }
-  }
-
   @override
   void dispose() {
     _goal.dispose();
@@ -88,13 +78,19 @@ class _ExperienceSheetState extends ConsumerState<_ExperienceSheet> {
                 'System reduced motion always takes priority.',
               ),
               value: prefs.animations,
-              onChanged: prefs.loaded ? (v) => _toggle(animations: v) : null,
+              onChanged: prefs.loaded
+                  ? (v) => ref
+                        .read(experienceProvider.notifier)
+                        .update(animations: v)
+                  : null,
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Companion tips'),
               value: prefs.tips,
-              onChanged: prefs.loaded ? (v) => _toggle(tips: v) : null,
+              onChanged: prefs.loaded
+                  ? (v) => ref.read(experienceProvider.notifier).update(tips: v)
+                  : null,
             ),
             const Text(
               'Goals and companion preferences are saved for your account on this phone.',
