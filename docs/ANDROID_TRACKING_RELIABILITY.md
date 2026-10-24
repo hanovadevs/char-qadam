@@ -31,3 +31,7 @@ Android's [sensor guidance](https://source.android.com/docs/core/interaction/sen
 Physical walkthrough: grant background battery access; lock and leave still for at least three minutes; walk 30 manually counted steps before reopening. Then use notification Stop, verify that refresh/reopening stays paused and does not add walking, Resume explicitly, and verify new movement without a catch-up jump. Overnight standby and actual reboot recovery need separate observation.
 
 The pre-existing local edit to `experience_sheet.dart` was preserved and excluded from this change's commit.
+
+## Installed build
+
+Source commit `422e7d6`; final profile arm64 build succeeded (132.7-second Gradle build). APK SHA-256: `436DE0EDE9FEF13F18A474DBD60ECC871398272C6BB327BF5B763E09837AF311`. Replacement installation on the Redmi succeeded at 2026-10-24 17:48:14, without clearing app storage; motion and notification permissions remain granted. The owner was asked to allow background battery access and perform the locked three-minute idle → 30-step walk, followed by notification Stop/Resume checks. Physical outcomes are pending below.
