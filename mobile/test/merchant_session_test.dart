@@ -49,6 +49,13 @@ class MerchantSessionStorage implements TokenStorage {
 }
 
 class MerchantSessionAdapter implements HttpClientAdapter {
+  final bool storeLinked;
+  MerchantSessionAdapter({this.storeLinked = true});
+  Map<String, dynamic> get profile => {
+    ...merchantProfile,
+    if (!storeLinked) 'partner_id': null,
+    if (!storeLinked) 'partner_name': null,
+  };
   final requests = <String>[];
   @override
   Future<ResponseBody> fetch(
@@ -60,16 +67,28 @@ class MerchantSessionAdapter implements HttpClientAdapter {
     if (options.headers['X-Device-ID'] != 'a' * 64) {
       throw StateError('Missing merchant device identity');
     }
+    if (!storeLinked && options.path.startsWith('/partner/v1/')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'detail':
+              'No store is linked to this merchant account. Ask an administrator to link a store in the admin panel.',
+        }),
+        403,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
     Object body;
     switch (options.path) {
       case '/auth/login':
         body = {
           'access_token': 'merchant-session',
           'role': 'MERCHANT',
-          'user': merchantProfile,
+          'user': profile,
         };
       case '/auth/me':
-        body = merchantProfile;
+        body = profile;
       case '/partner/v1/info':
         body = {
           'partner_id': 'partner-test',
@@ -100,6 +119,46 @@ class MerchantSessionAdapter implements HttpClientAdapter {
 }
 
 void main() {
+  testWidgets(
+    'a missing store is shown as a recoverable merchant error without signing out',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final adapter = MerchantSessionAdapter(storeLinked: false);
+      final storage = MerchantSessionStorage()
+        ..token = 'merchant-session'
+        ..user = UserModel.fromJson(adapter.profile);
+      final api = ApiClient(
+        tokenStorage: storage,
+        deviceIdentity: DeviceIdentity(loader: () async => 'a' * 64),
+      );
+      api.dio.httpClientAdapter = adapter;
+      final container = ProviderContainer(
+        overrides: [
+          tokenStorageProvider.overrideWithValue(storage),
+          apiClientProvider.overrideWithValue(api),
+          onboardingCompleteProvider.overrideWith((ref) async => true),
+        ],
+      );
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(MerchantPosScreen), findsOneWidget);
+      expect(find.textContaining('No store is linked'), findsOneWidget);
+      expect(
+        container.read(authStateProvider).status,
+        AuthStatus.authenticated,
+      );
+      expect(storage.clears, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+      api.dio.close();
+    },
+  );
   testWidgets(
     'managed merchant sign-in opens POS and survives profile refresh and restart',
     (tester) async {

@@ -38,6 +38,7 @@ export default function Stores() {
     name: '',
     email: '',
     password: '',
+    use_existing_account: false,
     category: '',
     location: '',
     google_maps_url: '',
@@ -73,8 +74,8 @@ export default function Stores() {
 
   const handleCreateStore = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-      alert('Please fill in Store Name, Merchant Email, and Initial Password.');
+    if (!formData.name.trim() || !formData.email.trim() || (!formData.use_existing_account && !formData.password.trim())) {
+      alert('Please fill in Store Name, Merchant Email, and an Initial Password for a new account.');
       return;
     }
 
@@ -83,7 +84,8 @@ export default function Stores() {
       const data = await api.createPartner({
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
-        password: formData.password,
+        password: formData.use_existing_account ? undefined : formData.password,
+        use_existing_account: formData.use_existing_account,
         category: formData.category.trim() || undefined,
         location: formData.location.trim() || undefined,
         google_maps_url: formData.google_maps_url.trim() || undefined,
@@ -270,7 +272,7 @@ export default function Stores() {
           onClick={() => {
             setCreatedPartner(null);
             setCreatedPassword('');
-            setFormData({ name: '', email: '', password: '', category: '', location: '', status: 'ACTIVE' });
+            setFormData({ name: '', email: '', password: '', use_existing_account: false, category: '', location: '', google_maps_url: '', status: 'ACTIVE' });
             setIsRegisterOpen(true);
           }}
           className="btn btn-primary"
@@ -551,7 +553,7 @@ export default function Stores() {
               </div>
 
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.4' }}>
-                The store manager will use this email and password to log in through the standard Stepsy mobile app. Their account has been automatically configured with the Merchant POS role.
+                {createdPassword ? 'Use the email and initial password above to sign in.' : 'The existing password and Google sign-in are kept.'} The account is now linked to this store and opens its Merchant POS terminal in the Stepsy app.
               </p>
             </div>
 
@@ -567,6 +569,14 @@ export default function Stores() {
           </div>
         ) : (
           <form onSubmit={handleCreateStore} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+              <input type="checkbox" checked={Boolean(formData.use_existing_account)}
+                onChange={(e) => setFormData({ ...formData, use_existing_account: e.target.checked, password: '' })} />
+              Use existing account
+            </label>
+            {formData.use_existing_account && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Enter the existing account’s email. Its password, Google sign-in and history are kept. It must be active and not already linked to a store. The user will need to sign in again.
+            </p>}
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                 Store / Brand Name *
@@ -596,20 +606,20 @@ export default function Stores() {
                 />
               </div>
 
-              <div>
+              {!formData.use_existing_account && <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                   Initial Password *
                 </label>
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={8}
                   className="input-control"
-                  placeholder="Min. 6 characters"
+                  placeholder="Min. 8 characters"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
-              </div>
+              </div>}
             </div>
 
             <div className="grid-cols-2" style={{ gap: '12px' }}>
@@ -657,7 +667,7 @@ export default function Stores() {
             </div>
 
             <div style={{ padding: '10px 12px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
-              A linked merchant user account will be created. The merchant can log in from the exact same mobile login screen and will be automatically presented with the POS Terminal.
+              {formData.use_existing_account ? 'The existing account will be linked to this store as its merchant.' : 'A linked merchant user account will be created.'} The merchant can sign in through the Stepsy mobile app to open the POS Terminal.
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>

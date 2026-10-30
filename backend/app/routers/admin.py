@@ -101,7 +101,8 @@ class AdminAdjustPointsIn(BaseModel):
 class AdminPartnerIn(BaseModel):
     name: str = Field(min_length=2, max_length=128)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    use_existing_account: bool = False
     category: str | None = None
     description: str | None = None
     location: str | None = None
@@ -110,6 +111,14 @@ class AdminPartnerIn(BaseModel):
     generate_api_key: bool | None = False
 
     _maps_url = field_validator('google_maps_url')(normalize_maps_url)
+
+    @model_validator(mode='after')
+    def valid_merchant_login(self):
+        if self.use_existing_account and self.password is not None:
+            raise ValueError('An existing account keeps its current password; do not supply a new password.')
+        if not self.use_existing_account and self.password is None:
+            raise ValueError('An initial password is required for a new merchant account.')
+        return self
 
 
 class AdminPartnerPatchIn(BaseModel):
@@ -163,7 +172,7 @@ class AdminOfferPatchIn(BaseModel):
 
 class AdminUserPatchIn(BaseModel):
     email: EmailStr | None = None
-    role: str | None = None
+    role: Literal['USER', 'MERCHANT'] | None = None
     status: str | None = None
 
 
@@ -376,9 +385,16 @@ async def create_partner(
 
     # Check for existing user account with this email
     existing_user = (await session.execute(
-        select(User).where(User.email == email_clean)
+        select(User).where(User.email == email_clean).with_for_update()
     )).scalar_one_or_none()
-    if existing_user is not None:
+    if body.use_existing_account:
+        if existing_user is None:
+            raise HTTPException(404, 'No account exists with this email. Choose a new merchant login instead.')
+        if existing_user.status != UserStatus.ACTIVE:
+            raise HTTPException(409, 'Activate the existing account before linking a store.')
+        if existing_user.partner_id:
+            raise HTTPException(409, 'This account already manages a store. Its existing store link cannot be replaced here.')
+    elif existing_user is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"An account with email '{email_clean}' already exists.",
@@ -390,7 +406,7 @@ async def create_partner(
         raw_api_key = f"pk_live_{secrets.token_urlsafe(32)}"
         api_key_hash = hash_api_key(raw_api_key)
 
-    hashed_pwd = hash_password(body.password)
+    hashed_pwd = existing_user.password_hash if body.use_existing_account else hash_password(body.password)
     partner_id = str(uuid.uuid4())
 
     partner = Partner(
@@ -408,15 +424,23 @@ async def create_partner(
     session.add(partner)
 
     # Create matching merchant user account for mobile app login
-    merchant_user = User(
-        id=str(uuid.uuid4()),
-        email=email_clean,
-        password_hash=hashed_pwd,
-        role="MERCHANT",
-        partner_id=partner_id,
-        status=UserStatus.ACTIVE,
-    )
-    session.add(merchant_user)
+    if body.use_existing_account:
+        # Keep identity, mailbox proof, Google binding, device ownership and history.
+        existing_user.role = 'MERCHANT'
+        existing_user.partner_id = partner_id
+        existing_user.auth_version += 1
+        session.add(AuditLog(id=str(uuid.uuid4()), actor='admin', action='LINK_MERCHANT_STORE',
+                             object_type='USER', object_id=existing_user.id))
+    else:
+        merchant_user = User(
+            id=str(uuid.uuid4()),
+            email=email_clean,
+            password_hash=hashed_pwd,
+            role="MERCHANT",
+            partner_id=partner_id,
+            status=UserStatus.ACTIVE,
+        )
+        session.add(merchant_user)
 
     # Add audit log
     audit = AuditLog(
@@ -1188,6 +1212,7 @@ async def list_users(
             "email": u.email,
             "can_delete": can_delete,
             "role": u.role,
+            "partner_id": u.partner_id,
             "status": u.status.value,
             "total_steps": int(total_steps),
             "points_balance": int(pts),
@@ -1244,7 +1269,11 @@ async def update_user(
         change_email(user, email_clean)
 
     if body.role is not None:
-        user.role = body.role.strip().upper()
+        if body.role == 'MERCHANT' and not user.partner_id:
+            raise HTTPException(409, 'A merchant account needs a linked store. Create a store in Stores and choose Use existing account.')
+        if user.role != body.role:
+            user.role = body.role
+            user.auth_version += 1
 
     if body.status is not None:
         next_status = UserStatus(body.status.strip().upper())

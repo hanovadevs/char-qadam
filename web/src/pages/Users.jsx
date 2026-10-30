@@ -120,7 +120,7 @@ export default function Users() {
     try {
       await api.updateUser(editingUser.id, {
         email: editForm.email.trim().toLowerCase(),
-        role: editForm.role,
+        role: editForm.role !== editingUser.role ? editForm.role : undefined,
         status: editForm.status,
       });
       setIsEditOpen(false);
@@ -504,7 +504,7 @@ export default function Users() {
                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
               >
                 <option value="USER">Customer (USER)</option>
-                <option value="MERCHANT">Partner Store (MERCHANT)</option>
+                <option value="MERCHANT" disabled={!editingUser?.partner_id}>Partner Store (MERCHANT)</option>
               </select>
             </div>
 
@@ -523,6 +523,10 @@ export default function Users() {
               </select>
             </div>
           </div>
+
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Merchant access requires a linked store. To make this account a merchant, create its store in Stores and choose “Use existing account”.
+          </p>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
             <button

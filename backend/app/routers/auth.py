@@ -56,9 +56,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 async def _token(user: User, session: AsyncSession, key: str) -> TokenOut:
+    partner = await session.get(Partner, user.partner_id) if user.partner_id else None
+    if user.role == 'MERCHANT' and partner is None:
+        raise HTTPException(403, 'No store is linked to this merchant account. Ask an administrator to link a store in the admin panel.')
     binding = await claim_device(key, user, session)
     await session.commit()
-    partner = await session.get(Partner, user.partner_id) if user.partner_id else None
     return TokenOut(
         access_token=create_access_token(user.id, extra_claims={
             'role': user.role, 'partner_id': user.partner_id, 'ver': user.auth_version,

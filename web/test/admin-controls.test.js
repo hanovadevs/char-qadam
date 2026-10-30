@@ -6,7 +6,7 @@ import TestRenderer, { act } from 'react-test-renderer';
 import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 
-let server, api, ArchiveActions, StoreCoverEditor, Settings;
+let server, api, ArchiveActions, StoreCoverEditor, Settings, Stores, Users;
 before(async () => {
   server = await createServer({ configFile: false, root: fileURLToPath(new URL('../', import.meta.url)),
     plugins: [react()], server: { middlewareMode: true, hmr: false }, appType: 'custom' });
@@ -14,13 +14,15 @@ before(async () => {
   ({ default: ArchiveActions } = await server.ssrLoadModule('/src/components/ArchiveActions.jsx'));
   ({ default: StoreCoverEditor } = await server.ssrLoadModule('/src/components/StoreCoverEditor.jsx'));
   ({ default: Settings } = await server.ssrLoadModule('/src/pages/Settings.jsx'));
+  ({ default: Stores } = await server.ssrLoadModule('/src/pages/Stores.jsx'));
+  ({ default: Users } = await server.ssrLoadModule('/src/pages/Users.jsx'));
 });
 after(async () => { await server?.close(); });
 
 function fixture(t, component, props) {
   const oldWindow = globalThis.window, oldDocument = globalThis.document;
   globalThis.window = { confirm: () => true, location: { host: 'local-admin.test' }, addEventListener() {}, removeEventListener() {} };
-  globalThis.document = { visibilityState: 'visible', addEventListener() {}, removeEventListener() {} };
+  globalThis.document = { visibilityState: 'visible', body: { style: {} }, addEventListener() {}, removeEventListener() {} };
   let view;
   act(() => { view = TestRenderer.create(React.createElement(component, props),
     { createNodeMock: () => ({ value: '' }) }); });
@@ -99,4 +101,34 @@ test('Settings sign-out invokes the same authenticated client as the navbar', as
   const logout = f.view.root.findAllByType('button').find((node) => buttonText(node).includes('Sign Out'));
   await act(async () => logout.props.onClick());
   assert.equal(logouts, 1);
+});
+
+test('new stores can explicitly link an existing account without submitting a password', async (t) => {
+  const writes = [];
+  t.mock.method(api, 'request', async () => []);
+  t.mock.method(api, 'createPartner', async (body) => { writes.push(body); return { id: 'new-store', email: body.email, name: body.name }; });
+  const f = fixture(t, Stores, {});
+  await act(async () => {});
+  const register = f.view.root.findAllByType('button').find((node) => node.findAllByType('span').some((label) => label.children.includes('Register New Store')));
+  await act(async () => register.props.onClick());
+  await act(async () => f.view.root.findByProps({ type: 'checkbox' }).props.onChange({ target: { checked: true } }));
+  assert.equal(f.view.root.findAllByProps({ type: 'password' }).length, 0);
+  const name = f.view.root.findAllByType('input').find((node) => node.props.placeholder?.includes('Apex Cafe'));
+  await act(async () => name.props.onChange({ target: { value: 'Linked test store' } }));
+  await act(async () => f.view.root.findByProps({ type: 'email' }).props.onChange({ target: { value: 'merchant@example.com' } }));
+  await act(async () => f.view.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].use_existing_account, true);
+  assert.equal(writes[0].password, undefined);
+  assert.equal(writes[0].email, 'merchant@example.com');
+  assert.match(JSON.stringify(f.view.toJSON()), /existing password and Google sign-in are kept/);
+});
+
+test('user editor prevents granting an unlinked merchant role', async (t) => {
+  t.mock.method(api, 'request', async () => [{ id: 'customer', email: 'customer@example.com', role: 'USER', partner_id: null, status: 'ACTIVE', total_steps: 0, points_balance: 0 }]);
+  const f = fixture(t, Users, {});
+  await act(async () => {});
+  const edit = f.view.root.findByProps({ title: 'Edit User' });
+  await act(async () => edit.props.onClick());
+  assert.equal(f.view.root.findByProps({ value: 'MERCHANT' }).props.disabled, true);
 });

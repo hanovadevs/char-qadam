@@ -10,6 +10,19 @@ store IDs work without recreating the store. Use the store's **Reset merchant
 password** action for password recovery when there is no inbox. Updating a login
 ID or resetting its password revokes its previous sessions.
 
+To let an existing account manage a **new** store, open **Stores → Register New
+Store → Use existing account**, enter the store name and the account's email,
+then create the store. The account must be active and have no existing store
+link. This keeps its identity, password, Google sign-in, mailbox proof, device
+ownership and points/voucher history; it revokes older sessions so the next
+sign-in receives the new store link. The operation is audited. It cannot take an
+account away from an existing store.
+
+Setting a role to `MERCHANT` without a store is rejected. Merchant creation and
+linking belong in Stores; the Users editor disables merchant promotion for an
+unlinked account. Legacy accounts with a missing store receive a specific
+configuration error instead of an authentication error that signs them out.
+
 ## Store / brand cover
 
 Open **Stores → Edit → Store / brand cover**, choose a JPEG, PNG or WebP up to 4 MB, then click **Save cover**. Cover upload is separate from the store metadata's **Save changes** button. A local preview is not confirmation of an upload; wait for **Cover saved**.

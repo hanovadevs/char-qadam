@@ -99,6 +99,14 @@ For a managed ID without a mailbox, use **Stores → Store details → Reset
 merchant password** to recover access. Email password recovery requires a real
 inbox and is unsuitable for these login IDs.
 
+Merchant sessions also require a real linked store. Older unlinked merchant
+roles return a clear 403 store-configuration error, rather than a 401 that
+triggers automatic mobile logout. New sign-ins cannot issue a merchant token
+without a store. **Stores → Register New Store → Use existing account** links
+an active unassigned account without replacing its password, Google identity,
+mailbox proof or history. Linking revokes old sessions and is recorded in the
+admin audit log. Ordinary customer accounts cannot operate the POS.
+
 ### Customer mailbox verification
 
 The device-account update also requires `X-Device-ID` on mobile authentication

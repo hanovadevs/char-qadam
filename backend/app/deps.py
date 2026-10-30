@@ -113,8 +113,12 @@ async def get_current_partner(
             user_id = claims['sub']
             user_res = await session.execute(select(User).where(User.id == user_id))
             user = user_res.scalar_one_or_none()
-            if user is not None and not requires_email_verification(user) and user.status == UserStatus.ACTIVE and user.partner_id and claims.get('ver', 0) == user.auth_version:
+            if user is not None and not requires_email_verification(user) and user.status == UserStatus.ACTIVE and claims.get('ver', 0) == user.auth_version:
                 await validate_device(x_device_id, user, claims, session)
+                if user.role != 'MERCHANT':
+                    raise HTTPException(403, 'A merchant store account is required for this terminal.')
+                if not user.partner_id:
+                    raise HTTPException(403, 'No store is linked to this merchant account. Ask an administrator to link a store in the admin panel.')
                 partner = await session.get(Partner, user.partner_id)
                 if partner is not None:
                     if partner.status != PartnerStatus.ACTIVE:
@@ -123,6 +127,7 @@ async def get_current_partner(
                             detail="Partner store account is inactive",
                         )
                     return partner
+                raise HTTPException(403, 'The linked merchant store is unavailable. Please contact an administrator.')
         except JWTError:
             pass  # Fall through to check X-Partner-Key if any
 
