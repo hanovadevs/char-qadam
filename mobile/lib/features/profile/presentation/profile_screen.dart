@@ -10,6 +10,7 @@ import '../../companion/companion_buddy.dart';
 import '../../companion/experience_sheet.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../data/auth/auth_state_provider.dart';
+import '../../auth/presentation/sign_out_confirmation.dart';
 import '../../../data/profile/profile_repository.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -538,13 +539,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildSettingRow(
                   icon: CupertinoIcons.square_arrow_right,
                   title: 'Sign out',
-                  onTap: () => ref.read(authStateProvider.notifier).logout(),
-                ),
-                const Divider(height: 1, color: AppTheme.hairline),
-                _buildSettingRow(
-                  icon: CupertinoIcons.person_crop_rectangle,
-                  title: 'Use merchant account',
-                  onTap: () => ref.read(authStateProvider.notifier).logout(),
+                  onTap: () => confirmSignOut(context, ref),
                 ),
                 const Divider(height: 1, color: AppTheme.hairline),
                 _buildSettingRow(

@@ -128,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 24),
 
                   const Text(
-                    'One active account per phone. Deactivate it in Profile before switching accounts.',
+                    'One customer account and one merchant account can use this phone.',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.inkSecondary,

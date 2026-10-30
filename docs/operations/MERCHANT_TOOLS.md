@@ -9,6 +9,12 @@ merged, copied or reset when switching. Personal points/vouchers remain with
 their customer identity. Merchants use the customer account to earn points and
 claim discounts. See [device policy](../product/DEVICE_POLICY.md).
 
+User-initiated sign-out and merchant-to-customer switching show a confirmation
+dialog. Cancel/dismiss keeps the current session; Confirm clears it and requires
+sign-in again. An old dialog cannot clear a replacement session. Expired or
+revoked sessions still clear immediately through the API error handler. Customer
+settings show the regular Sign out action without a merchant-switch shortcut.
+
 ## Checkout
 
 **Scan customer QR** opens the camera and requests camera permission on first
@@ -71,8 +77,8 @@ single device slot is unsafe once both reservations are in use.
   downloads, idempotent generation, and direct-data RLS denial.
 - A fresh `0009 -> 0011` migration retained a real legacy-format merchant token,
   its generation and the physical step-consumption watermark.
-- Flutter: 128 tests passed; the final merchant/session subset also passed after
-  final UI changes. Analysis is clean. Profile APK and Android JVM tests passed.
+- Flutter: 132 tests passed after the final sign-out UI changes. Analysis is
+  clean. Profile APK and Android JVM tests passed.
 - A 180-row synthetic PDF rendered to 16 pages; first/last pages were visually
   inspected for wrapping, repeated headings, units, footers and clipping.
 - Physical camera, Android save chooser and two-account acceptance are recorded
@@ -100,11 +106,22 @@ and other-store access. All disposable records, empty reports and files were
 removed; operator audit entries remain. No real account or reward was changed
 by the smoke test.
 
-The arm64 profile APK was built and passed 16 Android JVM tests. Its SHA-256 is
-`084DE174642F2158C25C73C43B72CFD40B3C0EFE137241A605B6403999EDDDEC`.
-The Redmi disconnected before installation; installation and physical
-two-account/camera/document-save acceptance remain pending reconnection. No
-Play Console upload was performed.
+The owner confirmed on the Redmi that both account types work with personal
+data intact, and accepted the camera, PDF saving/opening and generation history.
+A completed in-store QR redemption was not part of that phone check.
+
+The owner then requested confirmation before sign-out/account changes and the
+removal of the customer settings merchant shortcut. Four new dialog tests cover
+Cancel, Confirm, dismissal and replacement-session protection. Login/signup
+help text now describes the two role reservations. Forced authentication
+revocation still signs out immediately.
+
+The final arm64 profile APK was installed using `adb install -r`, preserving
+app data and the camera/motion permissions. Its SHA-256 is
+`ECE8B32E57F0B16C45D4D78B4E8C3897FDBB7EC5E0E1AE1E8ABE863BC8597CEE`;
+the installed APK hash was checked against the local build. The app starts
+without a recorded startup exception. The 16 Android JVM tests passed on the
+unchanged native implementation. No Play Console upload was performed.
 
 Restricted backups, image reference and rollout logs:
 `/root/stepsy-rollouts/20261030-merchant-tools/`.

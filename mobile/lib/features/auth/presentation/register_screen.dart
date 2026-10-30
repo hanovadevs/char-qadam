@@ -93,7 +93,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const Padding(
                     padding: EdgeInsets.only(bottom: 16),
                     child: Text(
-                      'One active account per phone. Deactivate your current account in Profile before creating another on this phone.',
+                      'One customer account and one merchant account can use this phone. Creating another customer account requires deactivating the previous customer account.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.inkSecondary,

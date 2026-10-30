@@ -15,9 +15,10 @@ account without allowing multiple customer reward accounts on the same phone.
   Email verification challenges also belong to the requesting device.
 - Logout retains ownership. The same account can sign back in; another account
   of the same type receives a clear conflict message. The other type may sign
-  in through the normal login screen. **You → Use merchant account** and the
-  merchant terminal's **Account options → Use customer account** sign out the
-  current session before the other account signs in. Passwords are not retained
+  in through the normal login screen. **You → Sign out** and the merchant
+  terminal's account options ask for confirmation before clearing the current
+  session. Customer settings do not expose a merchant-switch shortcut.
+  Passwords are not retained
   for switching. Google sign-in opens the account chooser
   so a rejected account does not trap the user in repeated automatic sign-in.
 - Profile/admin deactivation releases only that account's reservation and revokes its

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/auth/auth_state_provider.dart';
+import '../../auth/presentation/sign_out_confirmation.dart';
 import '../../../data/models/merchant_models.dart';
 import '../providers/merchant_provider.dart';
 
@@ -119,9 +120,9 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
           ),
           PopupMenuButton<String>(
             tooltip: 'Account options',
-            onSelected: (value) {
+            onSelected: (value) async {
               if (value == 'customer' || value == 'signout') {
-                ref.read(authStateProvider.notifier).logout();
+                await confirmSignOut(context, ref);
               }
             },
             itemBuilder: (_) => [
@@ -211,7 +212,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
             ),
             const SizedBox(height: 10),
             OutlinedButton(
-              onPressed: () => ref.read(authStateProvider.notifier).logout(),
+              onPressed: () => confirmSignOut(context, ref),
               child: const Text('SIGN OUT'),
             ),
           ],
