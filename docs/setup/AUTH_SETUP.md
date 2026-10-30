@@ -178,3 +178,25 @@ private environment, media volume or mobile build changed. The existing API
 schema was already at `0009`; the previous image and rollout records are retained
 privately at `/root/stepsy-rollouts/20261030-managed-merchant`. The server received
 the checked Git bundle because its HTTPS Git remote had no usable credentials.
+
+### Missing-store logout follow-up
+
+Source `066fd02` fixes the reported merchant-session failure: an older admin
+role edit had produced a `MERCHANT` user without a store. The POS returned 401,
+causing the app to clear an otherwise valid session. Missing-store access now
+returns a specific 403 configuration error; sign-in also refuses to issue an
+unusable merchant token. Store creation can explicitly link an existing active
+account while preserving credentials, mailbox proof, Google identity, device
+binding and account history. Role edits cannot create a new unlinked merchant.
+
+Validation: **187 backend tests**, **25 admin tests**, admin production build,
+and **4 Flutter merchant/session checks** passed, including a missing-store
+screen that remains signed in. The API is healthy and the production admin
+deployment `dpl_2wa4haNMSR5esZsqCbeZL9fYBP8N` serves this commit. All 11 other
+containers retained their IDs/start times. The owner-requested store was created
+and linked to the existing account through the authenticated API, with the
+account ID, recorded steps and points balance unchanged. Phone sign-in
+acceptance is a separate check. No APK or schema update was required.
+
+Previous image and rollout evidence:
+`/root/stepsy-rollouts/20261030-merchant-store-link` (private).
