@@ -40,7 +40,7 @@ from app.schemas.auth import (
     UserOut,
     VerificationOut, VerifyEmailIn, ResendVerificationIn,
 )
-from app.services.email_verification import challenge, clear_code, code_hash, decode_challenge
+from app.services.email_verification import challenge, clear_code, code_hash, decode_challenge, requires_email_verification
 from app.services.device_binding import require_device_key, claim_device, check_device_available
 from app.services.security import (
     create_access_token,
@@ -148,7 +148,7 @@ async def login(
         )
 
     await check_device_available(key, user.id, session)
-    if user.email_verified_at is None:
+    if requires_email_verification(user):
         response = await challenge(user, device_id=key)
         await session.commit()
         return response

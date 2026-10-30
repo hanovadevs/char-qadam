@@ -14,6 +14,20 @@ from app.schemas.auth import VerificationOut
 from app.services.email import send_verification_email
 
 
+def requires_email_verification(user: User) -> bool:
+    """Managed store login IDs are not mailboxes; never exempt public signups.
+
+    Only administrators can assign MERCHANT and link a store. Keep the actual
+    mailbox-proof timestamp empty instead of claiming an inbox was verified.
+    """
+    managed_store_login = (
+        user.role == 'MERCHANT'
+        and bool(user.partner_id)
+        and user.email.rpartition('@')[2].lower() == 'stepsyapp.com'
+    )
+    return user.email_verified_at is None and not managed_store_login
+
+
 def code_hash(user: User, code: str) -> str:
     value = f'email-verification:{user.id}:{user.auth_version}:{code}'
     return hmac.new(get_settings().jwt_secret.encode(), value.encode(), hashlib.sha256).hexdigest()

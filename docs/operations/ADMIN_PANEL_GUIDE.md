@@ -1,5 +1,15 @@
 # Store covers and safe admin edits
 
+## Merchant sign-in IDs
+
+For a store login without an inbox, assign an ID such as
+`broadway@stepsyapp.com` and a strong password in **Stores**. Only store-linked
+merchant accounts on this exact domain skip the email code; customers and
+merchants using other domains still need mailbox verification. Existing managed
+store IDs work without recreating the store. Use the store's **Reset merchant
+password** action for password recovery when there is no inbox. Updating a login
+ID or resetting its password revokes its previous sessions.
+
 ## Store / brand cover
 
 Open **Stores → Edit → Store / brand cover**, choose a JPEG, PNG or WebP up to 4 MB, then click **Save cover**. Cover upload is separate from the store metadata's **Save changes** button. A local preview is not confirmation of an upload; wait for **Cover saved**.

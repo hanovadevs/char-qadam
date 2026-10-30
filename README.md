@@ -119,7 +119,7 @@ Edit `backend/.env` before starting:
 | `REDEMPTION_RECEIPT_KEYS` | A stable Fernet key for purchase recovery; generation command in `.env.example` |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Your local admin credentials; do not use production credentials |
 | `GOOGLE_CLIENT_ID` | Your Web OAuth client ID, matching the mobile build; [Google setup](docs/setup/AUTH_SETUP.md) |
-| `SMTP_*` | A working sender for verification and password-reset email; email access requires verification |
+| `SMTP_*` | A working sender for customer verification and password-reset email; admin-issued `@stepsyapp.com` store logins use their password without an email code ([policy](docs/setup/AUTH_SETUP.md#admin-issued-merchant-login-ids)) |
 
 ```powershell
 .\.venv\Scripts\python.exe -m alembic upgrade head

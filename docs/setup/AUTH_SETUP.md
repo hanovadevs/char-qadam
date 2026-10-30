@@ -79,6 +79,28 @@ Reference: [Hostinger mail configuration](https://support.hostinger.com/en/artic
 
 ## Implemented contract and rollout
 
+### Admin-issued merchant login IDs
+
+Store-linked `MERCHANT` accounts whose login ID ends in the exact domain
+`@stepsyapp.com` sign in with their assigned password without an email code.
+These IDs do not need a real inbox. The exception applies to existing accounts
+and accounts created or edited in **Stores**; no migration or password change
+is needed. A public customer signup cannot grant itself the merchant role or
+store link and still requires email verification, even on this domain.
+
+Managed IDs do not receive a fabricated `email_verified_at` timestamp.
+Session validation and the merchant POS use the same exception. Password
+checks, device binding, suspension, store inactivity and password-reset session
+revocation remain enforced. External merchant email addresses still require
+mailbox verification. Changing an ID revokes old sessions and reevaluates the
+policy against the new address. Google sign-in proof is unchanged.
+
+For a managed ID without a mailbox, use **Stores → Store details → Reset
+merchant password** to recover access. Email password recovery requires a real
+inbox and is unsuitable for these login IDs.
+
+### Customer mailbox verification
+
 The device-account update also requires `X-Device-ID` on mobile authentication
 and protected user requests. Tokens and email challenges are device-bound;
 legacy sessions require a new sign-in. See [DEVICE_POLICY.md](../product/DEVICE_POLICY.md).
@@ -108,7 +130,8 @@ legacy sessions require a new sign-in. See [DEVICE_POLICY.md](../product/DEVICE_
   and credential version, so tokens sent to an old address cannot verify a new one.
 - Changing a customer or merchant email in the admin portal clears old mailbox
   proof, Google binding, pending codes and existing sessions. The new address
-  must be verified; editing other profile fields preserves verification.
+  must be verified unless it meets the managed merchant rule above; editing
+  other profile fields preserves verification.
 - Migration 0007 adds ownership/challenge fields. It does not fabricate
   historical verification. It normalizes existing emails after checking for
   case collisions and refuses automatic downgrade that would erase proof.
