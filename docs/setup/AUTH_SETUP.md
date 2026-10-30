@@ -195,8 +195,11 @@ screen that remains signed in. The API is healthy and the production admin
 deployment `dpl_2wa4haNMSR5esZsqCbeZL9fYBP8N` serves this commit. All 11 other
 containers retained their IDs/start times. The owner-requested store was created
 and linked to the existing account through the authenticated API, with the
-account ID, recorded steps and points balance unchanged. Phone sign-in
-acceptance is a separate check. No APK or schema update was required.
+account ID, recorded steps and points balance unchanged. The owner confirmed on
+the Redmi that signing in opens **HANOVA DEVS** and the merchant session stays
+signed in after closing and reopening Stepsy. No APK or schema update was
+required. This acceptance covers sign-in/session persistence; it is not a new
+in-store voucher-redemption acceptance test.
 
 Previous image and rollout evidence:
 `/root/stepsy-rollouts/20261030-merchant-store-link` (private).
