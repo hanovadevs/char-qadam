@@ -81,3 +81,30 @@ single device slot is unsafe once both reservations are in use.
 References: [mobile_scanner](https://pub.dev/packages/mobile_scanner),
 [Android document storage](https://developer.android.com/training/data-storage/shared/documents-files),
 [ReportLab](https://docs.reportlab.com/reportlab/userguide/ch7_tables/).
+
+## Live rollout — 30 October 2026
+
+Implementation `684b3d1` is live on the Stepsy API at schema **0011**. A private
+48,713-byte public-schema archive restored successfully in an isolated
+PostgreSQL 17 container; the new image then migrated that restored data to 0011
+while retaining its 24 users and 8 device-day rows. The existing media volume
+was also archived and retained. Temporary restore containers/network were
+removed after the drill. All 11 other app containers retained their IDs and
+start times during the Stepsy-only rollout.
+
+An actual HTTPS smoke used disposable accounts to sign in a customer and a
+merchant with the same device key, rejected second accounts of either type,
+and verified both original sessions. It generated a private empty ledger,
+checked retry idempotency and identical PDF downloads, and rejected customer
+and other-store access. All disposable records, empty reports and files were
+removed; operator audit entries remain. No real account or reward was changed
+by the smoke test.
+
+The arm64 profile APK was built and passed 16 Android JVM tests. Its SHA-256 is
+`084DE174642F2158C25C73C43B72CFD40B3C0EFE137241A605B6403999EDDDEC`.
+The Redmi disconnected before installation; installation and physical
+two-account/camera/document-save acceptance remain pending reconnection. No
+Play Console upload was performed.
+
+Restricted backups, image reference and rollout logs:
+`/root/stepsy-rollouts/20261030-merchant-tools/`.
