@@ -153,3 +153,20 @@ passed for the deployed source.
 
 Authentication references: [Google ID token verification and mailbox authority](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token),
 [OWASP email verification](https://cheatsheetseries.owasp.org/cheatsheets/Email_Validation_and_Verification_Cheat_Sheet.html).
+
+## Managed merchant rollout — 2026-10-30
+
+Source `d4dd635` is deployed to the HTTPS API. All **183 backend tests** passed
+against a separate local PostgreSQL test database, including 11 new managed
+merchant cases. The live HTTPS smoke used a temporary store to verify password
+login without a code, an honestly unverified mailbox status, protected merchant
+profile/POS history, inactive-store rejection, and admin password reset with old
+session revocation. The temporary merchant and store were archived/deleted after
+the check; no steps, points, offers or vouchers were created.
+
+The Stepsy container is healthy, and both `/health` and `/health/ready` return
+200. All **11 other containers** retained their IDs and start times. No schema,
+private environment, media volume or mobile build changed. The existing API
+schema was already at `0009`; the previous image and rollout records are retained
+privately at `/root/stepsy-rollouts/20261030-managed-merchant`. The server received
+the checked Git bundle because its HTTPS Git remote had no usable credentials.
