@@ -41,7 +41,7 @@ from app.schemas.auth import (
     VerificationOut, VerifyEmailIn, ResendVerificationIn,
 )
 from app.services.email_verification import challenge, clear_code, code_hash, decode_challenge, requires_email_verification
-from app.services.device_binding import require_device_key, claim_device, check_device_available
+from app.services.device_binding import require_device_key, claim_device, check_device_available, binding_generation, device_slot
 from app.services.security import (
     create_access_token,
     create_password_reset_token,
@@ -64,7 +64,7 @@ async def _token(user: User, session: AsyncSession, key: str) -> TokenOut:
     return TokenOut(
         access_token=create_access_token(user.id, extra_claims={
             'role': user.role, 'partner_id': user.partner_id, 'ver': user.auth_version,
-            'did': binding.id, 'dgen': binding.generation,
+            'did': binding.id, 'dgen': binding_generation(user, binding), 'dslot': device_slot(user.role),
         }), role=user.role, partner_id=user.partner_id,
         partner_name=partner.name if partner else None,
         user=_user_out(user, partner.name if partner else None),
@@ -104,7 +104,7 @@ async def register(
         country=body.country,
         timezone=body.timezone,
     )
-    await check_device_available(key, user.id, session)
+    await check_device_available(key, user.id, session, role=user.role or 'USER')
     session.add(user)
     try:
         await session.flush()
@@ -149,7 +149,7 @@ async def login(
             detail="Account is suspended or deleted",
         )
 
-    await check_device_available(key, user.id, session)
+    await check_device_available(key, user.id, session, role=user.role or 'USER')
     if requires_email_verification(user):
         response = await challenge(user, device_id=key)
         await session.commit()
@@ -229,7 +229,7 @@ async def google_auth(
                 detail="Account is suspended or deleted",
             )
 
-    await check_device_available(key, user.id, session)
+    await check_device_available(key, user.id, session, role=user.role or 'USER')
     if not bound and not verified_info.get('authoritative_email', False):
         response = await challenge(user, device_id=key, google_subject=subject)
         await session.commit()
@@ -260,7 +260,7 @@ async def _challenge_user(token: str, session: AsyncSession, key: str) -> tuple[
         raise HTTPException(400, 'Verification expired. Please sign in again.')
     if user.email_verified_at is not None and not claims.get('google_sub'):
         raise HTTPException(400, 'Email already verified. Please sign in.')
-    await check_device_available(key, user.id, session)
+    await check_device_available(key, user.id, session, role=user.role or 'USER')
     return user, claims
 
 

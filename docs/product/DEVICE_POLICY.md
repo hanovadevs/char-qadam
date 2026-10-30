@@ -1,7 +1,9 @@
 # Device account and reward policy
 
-The owner selected one active account per Android device after reproducing the
-same physical step total in two accounts with separate points and vouchers.
+Each Android phone has two independent reservations: **one customer account**
+and **one merchant account**. A second account of the same type is blocked until
+the previous account is deactivated. This lets a merchant use a personal Stepsy
+account without allowing multiple customer reward accounts on the same phone.
 
 ## Behavior
 
@@ -12,9 +14,13 @@ same physical step total in two accounts with separate points and vouchers.
   Registration on an already-owned phone is rejected before sending mail.
   Email verification challenges also belong to the requesting device.
 - Logout retains ownership. The same account can sign back in; another account
-  receives a clear conflict message. Google sign-in opens the account chooser
+  of the same type receives a clear conflict message. The other type may sign
+  in through the normal login screen. **You → Use merchant account** and the
+  merchant terminal's **Account options → Use customer account** sign out the
+  current session before the other account signs in. Passwords are not retained
+  for switching. Google sign-in opens the account chooser
   so a rejected account does not trap the user in repeated automatic sign-in.
-- Profile deactivation releases the account's device bindings and revokes its
+- Profile/admin deactivation releases only that account's reservation and revokes its
   sessions. A replacement account can then sign in. Suspension retains the
   reservation so a suspended account cannot use switching to evade the hold.
 - Points and vouchers remain with the original account. The replacement starts
@@ -23,6 +29,9 @@ same physical step total in two accounts with separate points and vouchers.
 - Example: A earns 10 points at 1,000 steps. After A deactivates, B earns zero
   from those same 1,000 steps and one new point at 1,100. A's old wallet is never
   exposed to B. The device's daily cap and fractional steps survive transfer.
+- Merchant accounts cannot earn walking points or claim personal rewards. Use
+  the customer account for those actions. Foreground and background sync skip
+  merchant sessions; an in-flight background read rechecks the active token.
 - One account can use multiple devices. User-level cumulative limits continue
   alongside device consumption limits; logging into another phone does not mint
   the same user-day total again.
@@ -39,8 +48,13 @@ Migration 0008 creates `device_bindings` and `device_activity_daily`, both with
 RLS and no direct client policies. Device keys are unique; first claims and
 transfers lock the binding. Access tokens bind device ID and ownership generation
 in addition to the user's credential version. Protected APIs reject missing,
-mismatched or stale device credentials. Merchant API keys remain available for
-server-to-server POS integrations; mobile merchant sessions follow the policy.
+mismatched or stale device credentials. Migration **0010** adds a separate
+merchant user/generation pair to the same physical-device row. Existing merchant
+bindings move into that pair with their generation preserved, so legacy merchant
+tokens remain valid. Customer bindings and every device-day consumption row stay
+intact. New tokens identify their slot explicitly. Admin role changes move only
+that identity's reservations and reject a move if another account holds the
+destination slot. Merchant API keys remain available for server-to-server POS.
 
 Account deactivation, step earning and voucher issuance serialize on the user
 row. Deactivation invalidates sessions and releases ownership in one transaction.

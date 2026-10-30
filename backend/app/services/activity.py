@@ -56,6 +56,8 @@ async def sync_activity(
     user = await session.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
     if user is None or user.status != UserStatus.ACTIVE or user.auth_version != auth_version:
         raise HTTPException(401, 'Please sign in again.')
+    if user.role == 'MERCHANT':
+        raise HTTPException(403, 'Use your personal customer account to earn walking points.')
     binding = await session.scalar(select(DeviceBinding).where(DeviceBinding.id == device_id).with_for_update().execution_options(populate_existing=True))
     if binding is None or binding.user_id != user_id:
         raise HTTPException(401, 'Device access has changed. Please sign in again.')

@@ -92,7 +92,9 @@ final activityProvider = StateNotifierProvider<ActivityNotifier, ActivityState>(
     final activityRepository = ref.watch(activityRepositoryProvider);
     final authenticated = ref.watch(
       authStateProvider.select(
-        (state) => state.status == AuthStatus.authenticated,
+        (state) =>
+            state.status == AuthStatus.authenticated &&
+            state.user?.isMerchant != true,
       ),
     );
     if (authenticated) unawaited(BackgroundSyncService.initialize());

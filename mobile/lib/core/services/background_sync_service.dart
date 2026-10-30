@@ -48,6 +48,19 @@ void callbackDispatcher() {
 /// even when the app process has been killed, so points keep accruing without
 /// the user opening the app.
 class BackgroundSyncService {
+  static Future<bool> _merchantSession() async {
+    final raw = await const FlutterSecureStorage().read(
+      key: 'qadam_cached_user',
+    );
+    if (raw == null) return false;
+    try {
+      final profile = jsonDecode(raw);
+      return profile is Map && profile['role'] == 'MERCHANT';
+    } on FormatException {
+      return false;
+    }
+  }
+
   /// Register the WorkManager engine + periodic task. Call once from `main()`.
   static Future<void> initialize() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
@@ -55,6 +68,7 @@ class BackgroundSyncService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
       if (prefs.getBool('stepsy_tracking_paused') == true) return;
+      if (await _merchantSession()) return;
       await Workmanager().initialize(callbackDispatcher);
 
       await Workmanager().registerPeriodicTask(
@@ -83,6 +97,7 @@ class BackgroundSyncService {
     if (token == null || token.isEmpty) {
       return true; // not logged in; nothing to sync, not a failure
     }
+    if (await _merchantSession()) return true;
     final deviceKey = await DeviceIdentity.getBackgroundKey();
     if (deviceKey == null) {
       return true; // foreground app must establish identity first
@@ -101,6 +116,10 @@ class BackgroundSyncService {
     }
     if (steps <= 0) {
       return true; // no steps recorded yet today
+    }
+    if (await storage.read(key: _kTokenKey) != token ||
+        await _merchantSession()) {
+      return true;
     }
 
     // 3. Sync to backend. Idempotent server-side via sync_key.

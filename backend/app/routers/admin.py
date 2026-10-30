@@ -36,7 +36,7 @@ from app.deps import get_current_admin
 from app.services.partner_auth import hash_api_key
 from app.services.security import create_access_token, hash_password
 from app.services.email_verification import change_email
-from app.services.device_binding import release_devices
+from app.services.device_binding import release_devices, reclassify_devices
 from app.services.voucher_sweep import sweep_expired_vouchers
 from app.services.local_date import local_today
 from app.services.store_location import normalize_maps_url
@@ -426,6 +426,7 @@ async def create_partner(
     # Create matching merchant user account for mobile app login
     if body.use_existing_account:
         # Keep identity, mailbox proof, Google binding, device ownership and history.
+        await reclassify_devices(existing_user, 'MERCHANT', session)
         existing_user.role = 'MERCHANT'
         existing_user.partner_id = partner_id
         existing_user.auth_version += 1
@@ -1272,6 +1273,7 @@ async def update_user(
         if body.role == 'MERCHANT' and not user.partner_id:
             raise HTTPException(409, 'A merchant account needs a linked store. Create a store in Stores and choose Use existing account.')
         if user.role != body.role:
+            await reclassify_devices(user, body.role, session)
             user.role = body.role
             user.auth_version += 1
 

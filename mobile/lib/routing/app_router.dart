@@ -14,6 +14,8 @@ import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/home/presentation/main_scaffold.dart';
 import '../features/leaderboard/presentation/leaderboard_screen.dart';
 import '../features/merchant/presentation/merchant_pos_screen.dart';
+import '../features/merchant/presentation/merchant_ledgers_screen.dart';
+import '../features/merchant/presentation/merchant_scanner_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/points/presentation/points_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
@@ -68,14 +70,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (status == AuthStatus.authenticated) {
         // If the authenticated user is a Merchant, route directly to /merchant-pos!
         if (authState.user?.isMerchant == true) {
-          if (state.matchedLocation != '/merchant-pos') {
+          if (!{
+            '/merchant-pos',
+            '/merchant-ledgers',
+            '/merchant-scan',
+          }.contains(state.matchedLocation)) {
             return '/merchant-pos';
           }
           return null;
         }
 
         // Customer users should not view merchant POS screen
-        if (state.matchedLocation == '/merchant-pos') {
+        if ({
+          '/merchant-pos',
+          '/merchant-ledgers',
+          '/merchant-scan',
+        }.contains(state.matchedLocation)) {
           return '/steps';
         }
 
@@ -131,6 +141,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/merchant-pos',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const MerchantPosScreen(),
+      ),
+      GoRoute(
+        path: '/merchant-ledgers',
+        builder: (context, state) => const MerchantLedgersScreen(),
+      ),
+      GoRoute(
+        path: '/merchant-scan',
+        builder: (context, state) => const MerchantScannerScreen(),
       ),
       GoRoute(
         path: '/v/:code',

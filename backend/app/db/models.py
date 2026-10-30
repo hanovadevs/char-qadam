@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import enum
 import uuid
+from decimal import Decimal
 from datetime import datetime, timezone
 
 # pyrefly: ignore [missing-import]
@@ -22,6 +23,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    Index,
     Numeric,
     String,
     Text,
@@ -148,6 +150,8 @@ class DeviceBinding(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
     generation: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default='0')
+    merchant_user_id: Mapped[str | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    merchant_generation: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default='0')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
@@ -158,6 +162,25 @@ class DeviceActivityDaily(Base):
     device_id: Mapped[str] = mapped_column(ForeignKey('device_bindings.id', ondelete='RESTRICT'), primary_key=True)
     local_date: Mapped[str] = mapped_column(String(10), primary_key=True)
     eligible_steps: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default='0')
+
+
+class MerchantLedger(Base):
+    """Immutable generated redemption snapshots; PDFs live in private media storage."""
+    __tablename__ = 'merchant_ledgers'
+    __table_args__ = (UniqueConstraint('partner_id', 'request_id', name='uq_merchant_ledger_request'),
+                     Index('ix_merchant_ledgers_history', 'partner_id', 'created_at', 'id'))
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    partner_id: Mapped[str] = mapped_column(ForeignKey('partners.id', ondelete='RESTRICT'), nullable=False, index=True)
+    request_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    period: Mapped[str] = mapped_column(String(8), nullable=False)
+    starts_on: Mapped[str] = mapped_column(String(10), nullable=False)
+    ends_on: Mapped[str] = mapped_column(String(10), nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default='Asia/Karachi')
+    row_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    fixed_discount_total: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class ActivityDaily(Base):

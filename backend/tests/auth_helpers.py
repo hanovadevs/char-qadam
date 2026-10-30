@@ -11,13 +11,13 @@ def auth_headers(token):
 async def device_token(client, user_id):
     from app.db.models import User
     from app.db.postgres import get_session_factory
-    from app.services.device_binding import claim_device
+    from app.services.device_binding import claim_device, binding_generation, device_slot
     from app.services.security import create_access_token
     async with get_session_factory()() as session:
         user = await session.get(User, user_id)
         binding = await claim_device(client.headers['X-Device-ID'], user, session)
         await session.commit()
-        return create_access_token(user_id, extra_claims={'ver': user.auth_version, 'did': binding.id, 'dgen': binding.generation})
+        return create_access_token(user_id, extra_claims={'ver': user.auth_version, 'did': binding.id, 'dgen': binding_generation(user, binding), 'dslot': device_slot(user.role)})
 
 
 async def register_verified(client, *, json):

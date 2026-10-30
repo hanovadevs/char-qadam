@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.db.models import User
 from app.db.postgres import get_session_factory
 from app.services.local_date import local_today
-from tests.auth_helpers import auth_headers, register_verified
+from tests.auth_helpers import auth_headers, register_verified, device_token
 
 PASSWORD = 'preserve-store-password-123'
 
@@ -25,6 +25,7 @@ async def test_unlinked_merchant_has_clear_store_error_instead_of_expired_sessio
         user = await session.get(User, user_id)
         user.role = 'MERCHANT'  # Reproduce an older admin-created invalid role.
         await session.commit()
+    token = await device_token(admin_client, user_id)
     login = await admin_client.post('/auth/login', json={'email': email, 'password': PASSWORD})
     assert login.status_code == 403 and 'No store is linked' in login.json()['detail']
     assert 'access_token' not in login.json()

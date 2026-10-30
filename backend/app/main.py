@@ -23,6 +23,7 @@ from app.routers import (
     leaderboard,
     offers,
     partner,
+    partner_ledgers,
     points,
     users,
     vouchers,
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(offers.router)
     app.include_router(vouchers.router)
     app.include_router(partner.router)
+    app.include_router(partner_ledgers.router)
     app.include_router(leaderboard.router)
     app.include_router(admin.public_router)
     app.include_router(admin.router)

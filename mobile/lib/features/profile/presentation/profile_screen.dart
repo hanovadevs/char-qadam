@@ -542,6 +542,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const Divider(height: 1, color: AppTheme.hairline),
                 _buildSettingRow(
+                  icon: CupertinoIcons.person_crop_rectangle,
+                  title: 'Use merchant account',
+                  onTap: () => ref.read(authStateProvider.notifier).logout(),
+                ),
+                const Divider(height: 1, color: AppTheme.hairline),
+                _buildSettingRow(
                   icon: CupertinoIcons.trash,
                   title: 'Deactivate account',
                   titleColor: AppTheme.destructive,

@@ -129,6 +129,8 @@ async def redeem_offer(
     user = locked_user.scalar_one()
     if user.status != UserStatus.ACTIVE or user.auth_version != authenticated_version:
         raise HTTPException(401, 'Account access changed. Please sign in again.')
+    if user.role == 'MERCHANT':
+        raise HTTPException(403, 'Use your personal customer account to claim rewards.')
 
     if request_key:
         receipt = (await session.execute(select(RedemptionRequest).where(

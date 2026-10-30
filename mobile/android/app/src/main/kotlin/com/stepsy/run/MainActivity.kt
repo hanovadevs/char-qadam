@@ -18,8 +18,11 @@ import android.net.Uri
 // and requestAuthorization() always returns false, which leaves the user stuck
 // on the onboarding "Enable Step Tracking" screen.
 class MainActivity : FlutterFragmentActivity() {
+    private val pdfSaveHandler = PdfSaveHandler(this)
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "stepsy/documents")
+            .setMethodCallHandler { call, result -> pdfSaveHandler.handle(call, result) }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "stepsy/device_identity").setMethodCallHandler { call, result ->
             if (call.method != "fingerprint") {
                 result.notImplemented()
