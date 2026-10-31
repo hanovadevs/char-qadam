@@ -41,7 +41,7 @@ Reactions play 60 frames over **2.5 seconds** (24 frames/second), with eased ent
 
 Run `blender --background --factory-startup --python design/cozy-companion/check_gait.py` to check all 60 walk samples. The check verifies four connected skinned garments and 76 stance samples whose conservative sole bounds stay between 0.0948 and 0.0979 in scene units. These are authoring invariants, not phone FPS measurements or medical gait measurements. [Walking preview](walk-preview.gif), [longer wave reaction](reaction-preview.gif) and [six-pose contact sheet](walk-contact-sheet.png) show the revised stride.
 
-The additional atlas memory pays for denser, longer motion. It remains lazy and releases on hiding/replacement. Phone playback timings and data-preserving installation are separate acceptance checks.
+The additional atlas memory pays for denser, longer motion. It remains lazy and releases on hiding/replacement. The revised APK was installed without clearing data; the owner accepted the refined model and live walking on the Redmi. Automated playback-log collection timed out, so measured device frame timings remain unavailable.
 
 ## Artwork generation
 
