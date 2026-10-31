@@ -124,7 +124,7 @@ class _CompanionPortraitState extends State<CompanionPortrait> {
           setState(() {
             _reaction = const ['wave', 'love', 'wiggle', 'peek'][_event++ % 4];
           });
-          _rest = Timer(const Duration(milliseconds: 1600), () {
+          _rest = Timer(const Duration(milliseconds: 2600), () {
             if (mounted) setState(() => _reaction = null);
           });
         },

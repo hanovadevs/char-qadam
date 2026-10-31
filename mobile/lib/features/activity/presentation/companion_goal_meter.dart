@@ -60,7 +60,7 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
           widget.steps >= widget.goal &&
           ref.read(experienceProvider).loaded &&
           ref.read(experienceProvider).celebratedEvent != event) {
-        _play('cheer', const Duration(milliseconds: 1600));
+        _play('cheer', const Duration(milliseconds: 2600));
         final settings = ref.read(experienceProvider.notifier);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -142,7 +142,7 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
                           stops: [0, .45],
                         ).createShader(bounds),
                         child: Image.asset(
-                          'assets/illustrations/cozy-park.png',
+                          'assets/illustrations/cozy-walking-track.png',
                           fit: BoxFit.cover,
                           alignment: const Alignment(0, .2),
                           cacheWidth: 900,
@@ -193,21 +193,52 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
                           _play(
                             const ['wave', 'love', 'peek', 'wiggle'][_taps++ %
                                 4],
-                            const Duration(milliseconds: 1600),
+                            const Duration(milliseconds: 2600),
                           );
                           _tip = prefs.tips;
                         }),
-                        child: Companion(
-                          clip: _clip != 'rest'
-                              ? _clip
-                              : !widget.known && widget.syncing
-                              ? 'wait'
-                              : widget.denied
-                              ? 'reassure'
-                              : _clip,
-                          event: _event,
-                          repeat: _clip == 'walk',
-                          size: sprite,
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              left: sprite * .33,
+                              right: sprite * .28,
+                              bottom: sprite * .075,
+                              height: 4,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.inkPrimary.withValues(
+                                    alpha: .08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.inkPrimary.withValues(
+                                        alpha: .08,
+                                      ),
+                                      blurRadius: 7,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Transform.flip(
+                              flipX:
+                                  Directionality.of(context) ==
+                                  TextDirection.rtl,
+                              child: Companion(
+                                clip: _clip != 'rest'
+                                    ? _clip
+                                    : !widget.known && widget.syncing
+                                    ? 'wait'
+                                    : widget.denied
+                                    ? 'reassure'
+                                    : _clip,
+                                event: _event,
+                                repeat: _clip == 'walk',
+                                size: sprite,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

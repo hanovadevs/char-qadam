@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "authoring": "Blender 5.2.1 editable 3D geometry",
+  "version": 3,
+  "authoring": "Blender 5.2.1 continuous skinned cloth",
   "character": "Cozy walking companion",
   "runtimeFrameSize": [
     192,
@@ -11,7 +11,7 @@
     384
   ],
   "columns": 6,
-  "rows": 4,
+  "rows": 10,
   "cropOffset": [
     0,
     0
@@ -32,9 +32,9 @@
         384
       ],
       "bounds": [
-        122,
+        123,
         35,
-        261,
+        260,
         356
       ],
       "anchor": [
@@ -43,11 +43,11 @@
       ],
       "fallback": "assets/companion/static/rest.png",
       "decodedBytes": 147456,
-      "sha256": "496f2ef3d64ef640f77b4d7e03d0b38a65fd21d20a0d64238b1c7ce1197193c5"
+      "sha256": "eeb633649fe720966b0aac2f13d3961badd006766b0ad782bca0e2eeb2067f5f"
     },
     "walk": {
-      "frames": 24,
-      "fps": 24,
+      "frames": 60,
+      "fps": 50,
       "loop": true,
       "columns": 6,
       "atlas": "assets/companion/animations/walk.png",
@@ -56,21 +56,21 @@
         384
       ],
       "bounds": [
-        122,
-        35,
-        261,
-        353
+        131,
+        38,
+        258,
+        355
       ],
       "anchor": [
         192,
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "ab15e51feba13851cc80ce2a7fa7da6b19c0283087e7eaace061e3bd85e46f93"
+      "decodedBytes": 8847360,
+      "sha256": "38034ae681d6808736227cd74b22fa0692e9ebb594b39e5c3ecb096bf2c3da8c"
     },
     "wave": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -80,9 +80,9 @@
         384
       ],
       "bounds": [
-        122,
+        123,
         35,
-        282,
+        280,
         356
       ],
       "anchor": [
@@ -90,11 +90,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "4494944d1defa53841b687d9bc711d255df9fb8f0181c14c5c0cf273ad7cb3a7"
+      "decodedBytes": 8847360,
+      "sha256": "835a3e806c47a97a4e7f2c27b1fcebec76f98e3cc7d8dd1a79d05ad47e1f350a"
     },
     "point": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -104,7 +104,7 @@
         384
       ],
       "bounds": [
-        122,
+        123,
         35,
         302,
         356
@@ -114,11 +114,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "fe40ee1cdd619c3d30fd26dda3ac487fbd4662422dfd90e59588a63dc76c47ad"
+      "decodedBytes": 8847360,
+      "sha256": "991f03d46b4c881925a7a20c38e3e3f64720bf1cf3e944e185d09a8cf7c58922"
     },
     "cheer": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -138,11 +138,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "cccb04a82cf706930a614026df361f3d27dd8171fd73db501aed99bb4e7bc3e4"
+      "decodedBytes": 8847360,
+      "sha256": "9c4fcdb5936b26b2eb9d62616253d2430a2ef7bbdb2cf1e4aab92eef273ccee4"
     },
     "ready": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -152,7 +152,7 @@
         384
       ],
       "bounds": [
-        122,
+        123,
         35,
         302,
         356
@@ -162,11 +162,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "fe40ee1cdd619c3d30fd26dda3ac487fbd4662422dfd90e59588a63dc76c47ad"
+      "decodedBytes": 8847360,
+      "sha256": "991f03d46b4c881925a7a20c38e3e3f64720bf1cf3e944e185d09a8cf7c58922"
     },
     "wait": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -176,9 +176,9 @@
         384
       ],
       "bounds": [
-        122,
+        123,
         35,
-        261,
+        260,
         356
       ],
       "anchor": [
@@ -186,11 +186,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "8c376a509562c3c5128b76cdf2e43131e37b8300cd0a8cd303bfa1036ca90035"
+      "decodedBytes": 8847360,
+      "sha256": "bf33eb75be42940dd62c798bc86f5404fead7c1c3c788bc32d091df10fabc5e3"
     },
     "reassure": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -200,7 +200,7 @@
         384
       ],
       "bounds": [
-        122,
+        123,
         35,
         302,
         356
@@ -210,11 +210,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "fe40ee1cdd619c3d30fd26dda3ac487fbd4662422dfd90e59588a63dc76c47ad"
+      "decodedBytes": 8847360,
+      "sha256": "991f03d46b4c881925a7a20c38e3e3f64720bf1cf3e944e185d09a8cf7c58922"
     },
     "idle": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -224,9 +224,9 @@
         384
       ],
       "bounds": [
-        122,
+        123,
         35,
-        261,
+        260,
         356
       ],
       "anchor": [
@@ -234,11 +234,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "8c376a509562c3c5128b76cdf2e43131e37b8300cd0a8cd303bfa1036ca90035"
+      "decodedBytes": 8847360,
+      "sha256": "bf33eb75be42940dd62c798bc86f5404fead7c1c3c788bc32d091df10fabc5e3"
     },
     "wiggle": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -258,11 +258,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "cccb04a82cf706930a614026df361f3d27dd8171fd73db501aed99bb4e7bc3e4"
+      "decodedBytes": 8847360,
+      "sha256": "9c4fcdb5936b26b2eb9d62616253d2430a2ef7bbdb2cf1e4aab92eef273ccee4"
     },
     "love": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -272,9 +272,9 @@
         384
       ],
       "bounds": [
-        94,
+        95,
         29,
-        290,
+        288,
         356
       ],
       "anchor": [
@@ -282,11 +282,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "08f4ad647ab2bd7cfed608ac724891ef561a539837b79a17282d73b92f9a3e5c"
+      "decodedBytes": 8847360,
+      "sha256": "c78a50d467abcf635885fd76cd1553e2bb4c7755dc9645cd52c83ee64b5e6044"
     },
     "gift": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -296,7 +296,7 @@
         384
       ],
       "bounds": [
-        111,
+        109,
         35,
         260,
         356
@@ -306,11 +306,11 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "74225f55961e25336232d8e27709be3049c7cf599862241b79d124023b087062"
+      "decodedBytes": 8847360,
+      "sha256": "3e3c0930953e1cede6b4216b70c3f02c649d0a1b044a6c0a93d669397de1217a"
     },
     "peek": {
-      "frames": 24,
+      "frames": 60,
       "fps": 24,
       "loop": false,
       "columns": 6,
@@ -320,9 +320,9 @@
         384
       ],
       "bounds": [
-        90,
+        118,
         35,
-        272,
+        264,
         356
       ],
       "anchor": [
@@ -330,8 +330,8 @@
         350
       ],
       "fallback": "assets/companion/static/rest.png",
-      "decodedBytes": 3538944,
-      "sha256": "407bc8ea716e689c69c63db3586a0380ca72436325017b33adcf4df5d76c9737"
+      "decodedBytes": 8847360,
+      "sha256": "e4cefa791dd2646d30a5aefa71a897dca30dd3d102ace477988fd3f8e2f6cfcd"
     }
   }
 }

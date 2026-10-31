@@ -6,6 +6,7 @@ the midpoint of each clip into review/ without changing the runtime source frame
 import sys
 from pathlib import Path
 import bpy
+FRAMES=60
 
 OUT=Path(__file__).resolve().parent
 CLIPS=['rest','walk','wave','point','cheer','ready','wait','reassure','idle','wiggle','love','gift','peek']
@@ -22,10 +23,10 @@ scene.render.threads=6
 for clip in selected:
     directory=OUT/('review' if review else 'renders')/clip
     directory.mkdir(parents=True,exist_ok=True)
-    indices=[12] if review else ([0] if clip=='rest' else range(24))
+    indices=[FRAMES//2] if review else ([0] if clip=='rest' else range(FRAMES))
     for index in indices:
-        scene.frame_set(CLIPS.index(clip)*24+1+index)
+        scene.frame_set(CLIPS.index(clip)*FRAMES+1+index)
         scene.render.filepath=str(directory/f'{index:02}.png')
         bpy.ops.render.render(write_still=True)
-        print(f'COZY_RENDER {clip} {index+1}/24',flush=True)
+        print(f'COZY_RENDER {clip} {index+1}/{FRAMES}',flush=True)
 print('Rendered clips:',selected)

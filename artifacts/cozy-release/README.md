@@ -11,3 +11,5 @@ flutter test --dart-define=CAPTURE_UI=true --dart-define=CAPTURE_DIRECTORY=../ar
 ```
 
 `steps.png`, `points.png`, `rewards.png`, `wallet.png` and `profile.png` are the main screens. `welcome.png`, `sign-in.png`, `create-account.png` and `recover-access.png` cover authentication. Additional screenshots document loading, zero, offline, denied access, redemption failure, fireworks and voucher QR states. The backend retains token-based password recovery; that control says “Send reset instructions.”
+
+The main screens and authentication views were refreshed for the continuous-cloth/60-frame character refinement. Auxiliary offline/loading/failure/QR previews record the earlier cozy UI and its functional states. The [walk preview](../../design/cozy-companion/walk-preview.gif) demonstrates the current side-facing gait.

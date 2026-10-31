@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent
 CLIPS = ['rest', 'walk', 'wave', 'point', 'cheer', 'ready', 'wait', 'reassure',
          'idle', 'wiggle', 'love', 'gift', 'peek']
+FRAMES = 60
 PALETTE = dict(skin='F2CDB4', blush='E6A598', nose='DC927E', hair='4D3325',
                hair_light='654832', eye='30241E', sage='9DAF8C', sage_dark='879C78',
                seam='81926F', cream='F4F0DF', trouser='DAD7C5', cuff='E7E4D3',
@@ -19,6 +20,7 @@ PALETTE = dict(skin='F2CDB4', blush='E6A598', nose='DC927E', hair='4D3325',
                strap='526B6C', stitch='829592', button='B5996E', peach='E2A18B',
                paper='FFF6E6', leaf='4D6748')
 MATS = {}
+SKINS = []
 
 
 def material(key):
@@ -60,6 +62,13 @@ def oval(name, loc, scale, mat, parent=None):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=40, ring_count=24, location=loc)
     obj = finish(bpy.context.object, name, mat, parent)
     obj.scale = scale
+    return obj
+
+
+def rolled_hem(name,loc,scale,mat,parent):
+    bpy.ops.mesh.primitive_torus_add(major_radius=.29,minor_radius=.026,
+        major_segments=48,minor_segments=12,location=loc)
+    obj=finish(bpy.context.object,name,mat,parent);obj.scale=scale
     return obj
 
 
@@ -111,6 +120,131 @@ def panel(name, outline, depth, mat, parent=None, bevel=.05):
     mod.segments = 4
     obj.modifiers.new('Tailored normals', 'WEIGHTED_NORMAL')
     return obj
+
+
+def smoothstep(a,b,value):
+    t=max(0,min(1,(value-a)/(b-a)))
+    return t*t*(3-2*t)
+
+
+def garment(name,parent,mat,center,width,depth,length,upper,lower):
+    """One continuous cloth tube, weighted through the elbow/knee, without seams."""
+    verts,faces,weights=[],[],[]
+    rings,sides=36,48
+    for row in range(rings+1):
+        t=row/rings
+        cx,cy,cz=center(t)
+        for col in range(sides):
+            angle=col/sides*math.tau
+            ca,sa=math.cos(angle),math.sin(angle)
+            # Rounded superellipse, with loose folds instead of a beveled cube.
+            exponent=.77 if mat=='trouser' else .92
+            a=math.copysign(abs(ca)**exponent,ca)
+            b=math.copysign(abs(sa)**exponent,sa)
+            hem=math.exp(-((t-.86)/.15)**2)
+            fold=(.014*math.sin(angle*4+t*13)+.012*math.cos(angle*3-t*18))*hem
+            bulge=1+.07*math.sin(math.pi*t)
+            verts.append((cx+(width(t)*bulge+fold)*a,
+                          cy+(depth(t)*bulge+fold)*b,
+                          cz+.012*math.sin(angle*3+t*17)*hem))
+            weights.append(smoothstep(.33,.68,t))
+    for row in range(rings):
+        for col in range(sides):
+            a=row*sides+col;b=row*sides+(col+1)%sides
+            faces.append((a,a+sides,b+sides,b))
+    faces += [tuple(reversed(range(sides))),tuple(range(rings*sides,(rings+1)*sides))]
+    mesh=bpy.data.meshes.new(name)
+    mesh.from_pydata(verts,[],faces);mesh.update()
+    obj=bpy.data.objects.new(name,mesh);bpy.context.scene.collection.objects.link(obj)
+    finish(obj,name,mat,parent)
+    groups=[obj.vertex_groups.new(name=x) for x in [upper,lower]]
+    for index,weight in enumerate(weights):
+        groups[0].add([index],1-weight,'REPLACE');groups[1].add([index],weight,'REPLACE')
+    obj.shape_key_add(name='Basis')
+    sway=obj.shape_key_add(name='Soft fabric sway')
+    for index,point in enumerate(sway.data):
+        t=(index//sides)/rings;angle=(index%sides)/sides*math.tau
+        amount=math.exp(-((t-.84)/.2)**2)
+        point.co.y+=.018*amount*math.sin(angle*3+.8)
+        point.co.z+=.010*amount*math.cos(angle*2)
+    return obj
+
+
+def skin_cloth(name,mesh,parent,segments):
+    bpy.context.view_layer.update()
+    data=bpy.data.armatures.new(name)
+    rig=bpy.data.objects.new(name,data);bpy.context.scene.collection.objects.link(rig)
+    rig.parent=parent;rig.show_in_front=True
+    bpy.ops.object.select_all(action='DESELECT');rig.select_set(True)
+    bpy.context.view_layer.objects.active=rig
+    bpy.ops.object.mode_set(mode='EDIT')
+    for bone_name,head,tail,control in segments:
+        bone=data.edit_bones.new(bone_name);bone.head=head;bone.tail=tail
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.context.view_layer.update()
+    bindings=[]
+    for bone_name,head,tail,control in segments:
+        bone=rig.pose.bones[bone_name];bone.rotation_mode='QUATERNION'
+        data.bones[bone_name]['control']=control.name
+        bindings.append((bone_name,control,control.matrix_world.inverted().copy(),
+                         rig.matrix_world.copy()@data.bones[bone_name].matrix_local.copy()))
+    mod=mesh.modifiers.new('Continuous cloth skin','ARMATURE');mod.object=rig
+    mod.use_deform_preserve_volume=True
+    sub=mesh.modifiers.new('Soft continuous fabric','SUBSURF');sub.levels=1;sub.render_levels=1
+    SKINS.append((rig,bindings))
+
+
+def recover_cloth():
+    """Restore editable control/bone bindings after opening the saved rest frame."""
+    SKINS.clear();bpy.context.view_layer.update()
+    for rig in bpy.context.scene.objects:
+        if rig.type!='ARMATURE': continue
+        bindings=[]
+        for bone in rig.data.bones:
+            control=bpy.data.objects[bone['control']]
+            bindings.append((bone.name,control,control.matrix_world.inverted().copy(),
+                rig.matrix_world.copy()@bone.matrix_local.copy()))
+        SKINS.append((rig,bindings))
+
+
+def update_cloth():
+    bpy.context.view_layer.update()
+    for rig,bindings in SKINS:
+        inv=rig.matrix_world.inverted()
+        for name,control,rest_inverse,rest_bone in bindings:
+            rig.pose.bones[name].matrix=inv@control.matrix_world@rest_inverse@rest_bone
+    bpy.context.view_layer.update()
+
+
+def jacket_front(sign,body):
+    verts,faces=[],[]
+    rows,columns=28,16
+    for row in range(rows+1):
+        t=row/rows
+        for col in range(columns+1):
+            u=col/columns
+            inner=.21+.07*t
+            outer=.82-.10*t*t
+            x=sign*(inner+(outer-inner)*u)
+            z=1.99+1.56*t-.17*u*t*t+.025*math.sin(u*math.tau+.4)*(1-t)**4
+            y=-.49+.15*u*u+.025*math.sin(t*math.pi*2+u*3)*math.sin(t*math.pi)
+            verts.append((x,y,z))
+    for row in range(rows):
+        for col in range(columns):
+            a=row*(columns+1)+col
+            faces.append((a,a+1,a+columns+2,a+columns+1))
+    name='Jacket / softly draped front '+str(sign)
+    mesh=bpy.data.meshes.new(name);mesh.from_pydata(verts,[],faces);mesh.update()
+    obj=bpy.data.objects.new(name,mesh);bpy.context.scene.collection.objects.link(obj)
+    finish(obj,name,'sage',body)
+    obj.shape_key_add(name='Basis');sway=obj.shape_key_add(name='Soft fabric sway')
+    for index,point in enumerate(sway.data):
+        t=(index//(columns+1))/rows;u=(index%(columns+1))/columns
+        point.co.y+=.026*math.sin(u*math.pi)*(1-t)**3
+        point.co.z+=.018*math.sin(u*math.tau+sign)*(1-t)**4
+    sub=obj.modifiers.new('Supple jacket surface','SUBSURF');sub.levels=2
+    solid=obj.modifiers.new('Fabric thickness','SOLIDIFY');solid.thickness=.045
+    bevel=obj.modifiers.new('Soft hem edge','BEVEL');bevel.width=.012;bevel.segments=3
 
 
 def hair_cap(head):
@@ -244,13 +378,12 @@ def build():
     oval('Tiny nose', (0,-.887,4.47), (.085,.062,.049), 'nose', head)
     # The reference's tiny, quiet face has no drawn mouth.
     oval('Neck', (0,0,3.71), (.245,.23,.30), 'skin', body)
-    box('Cream T-shirt', (0,-.01,2.85), (1.16,.73,1.68), .22,'cream',body)
+    oval('Cream T-shirt', (0,-.01,2.85), (.59,.38,.86),'cream',body)
     oval('Soft ribbed collar', (0,-.11,3.60), (.31,.31,.09), 'cream',body)
     box('Waistband / warm canvas', (0,-.395,2.26), (.65,.055,.19), .018,'tan',body)
-    box('Jacket / rounded back', (0,.28,2.82), (1.59,.64,1.62), .29,'sage',body)
+    oval('Jacket / soft rounded back', (0,.24,2.84), (.83,.45,.88),'sage',body)
     for side, sign in [('L',-1),('R',1)]:
-        panel('Jacket front '+side, [(sign*.28,-.49,3.57),(sign*.76,-.27,3.38),
-              (sign*.81,-.36,2.03),(sign*.22,-.49,1.99)], .19,'sage',body,.075)
+        jacket_front(sign,body)
         panel('Folded collar '+side, [(sign*.28,-.52,3.58),(sign*.10,-.54,3.18),
               (sign*.35,-.60,3.29),(sign*.56,-.53,3.18)], .07,'sage_dark',body,.035)
         pocket = box('Patch pocket '+side, (sign*.54,-.535,2.33),(.43,.075,.46),.08,'sage_dark',body)
@@ -274,29 +407,36 @@ def build():
     arms, legs = [], []
     for side, sign in [('L',-1),('R',1)]:
         arm = empty('CTRL Arm '+side,(sign*.74,0,3.38),body)
-        sleeve = oval('Jacket upper sleeve '+side,(sign*.10,-.005,-.32),(.31,.35,.52),'sage',arm)
-        sleeve.rotation_euler.y=-sign*.12
         forearm=empty('CTRL Forearm '+side,(sign*.20,0,-.70),arm)
-        oval('Jacket elbow '+side,(0,0,0),(.28,.33,.24),'sage',forearm)
-        sleeve=oval('Jacket fore sleeve '+side,(sign*.06,-.015,-.27),(.29,.33,.43),'sage',forearm)
-        sleeve.rotation_euler.y=-sign*.12
-        box('Sleeve cuff '+side,(sign*.12,-.04,-.60),(.52,.60,.16),.065,'sage_dark',forearm)
+        oval('Jacket / soft shoulder '+side,(sign*.02,0,-.07),(.30,.35,.26),'sage',arm)
+        rolled_hem('Sleeve / rolled hem '+side,(sign*.12,-.04,-.60),(.94,1.08,.95),'sage_dark',forearm)
         oval('Hand '+side,(sign*.12,-.04,-.77),(.155,.18,.19),'skin',forearm)
         oval('Thumb '+side,(0,-.17,-.73),(.075,.08,.115),'skin',forearm)
+        sleeve=garment('Jacket / continuous sleeve '+side,body,'sage',
+            lambda t,s=sign:(s*(.74+.32*t),-.025*t,3.35-1.26*t),
+            lambda t:.24+.045*smoothstep(0,.22,t)-.025*t,
+            lambda t:.27+.07*smoothstep(0,.22,t)-.035*t,1.26,'Upper sleeve '+side,'Lower sleeve '+side)
+        skin_cloth('RIG Sleeve '+side,sleeve,body,[
+            ('Upper sleeve '+side,(sign*.74,0,3.38),(sign*.94,0,2.68),arm),
+            ('Lower sleeve '+side,(sign*.94,0,2.68),(sign*1.06,-.04,1.91),forearm)])
         arms.append(arm)
         leg=empty('CTRL Leg '+side,(sign*.37,0,2.04),root)
-        box('Trouser thigh '+side,(0,0,-.39),(.68,.76,.96),.16,'trouser',leg)
         knee=empty('CTRL Knee '+side,(0,0,-.85),leg)
-        oval('Soft knee fold '+side,(0,0,0),(.34,.38,.18),'trouser',knee)
-        box('Trouser shin '+side,(0,0,-.39),(.68,.76,.98),.15,'trouser',knee)
-        box('Trouser cuff '+side,(0,-.005,-.68),(.73,.80,.14),.045,'cuff',knee)
-        box('Sneaker sole '+side,(0,-.16,-1.03),(.75,1.10,.13),.06,'sole',knee)
-        oval('Sneaker upper '+side,(0,-.12,-.90),(.35,.53,.19),'shoe',knee)
-        oval('Sneaker canvas '+side,(0,-.14,-.81),(.31,.40,.15),'tan',knee)
-        oval('Sneaker toe cap '+side,(0,-.49,-.92),(.34,.24,.12),'shoe',knee)
+        trouser=garment('Trouser / continuous soft leg '+side,root,'trouser',
+            lambda t,s=sign:(s*(.37+.012*math.sin(math.pi*t)),0,2.10-1.65*t),
+            lambda t:.33+.015*math.sin(math.pi*t),lambda t:.37,1.65,'Thigh '+side,'Shin '+side)
+        skin_cloth('RIG Trouser '+side,trouser,root,[
+            ('Thigh '+side,(sign*.37,0,2.04),(sign*.37,0,1.19),leg),
+            ('Shin '+side,(sign*.37,0,1.19),(sign*.37,0,.34),knee)])
+        rolled_hem('Trouser / rolled hem '+side,(0,0,-.72),(1.15,1.29,1),'cuff',knee)
+        foot=empty('CTRL Foot '+side,(0,0,-.85),knee)
+        box('Sneaker sole '+side,(0,-.16,-.18),(.75,1.10,.13),.06,'sole',foot)
+        oval('Sneaker upper '+side,(0,-.12,-.05),(.35,.53,.19),'shoe',foot)
+        oval('Sneaker canvas '+side,(0,-.14,.04),(.31,.40,.15),'tan',foot)
+        oval('Sneaker toe cap '+side,(0,-.49,-.07),(.34,.24,.12),'shoe',foot)
         for i in range(3):
-            line('Cotton lace '+side+str(i),[(-.19,-.24-i*.07,-.70),
-                 (0,-.28-i*.07,-.67),(.19,-.24-i*.07,-.70)],.018,'shoe',knee)
+            line('Cotton lace '+side+str(i),[(-.19,-.24-i*.07,.15),
+                 (0,-.28-i*.07,.18),(.19,-.24-i*.07,.15)],.018,'shoe',foot)
         legs.append(leg)
     hearts=empty('CTRL Hearts',parent=root)
     for i,(x,z,s) in enumerate([(-1.35,4.9,.12),(1.24,5.2,.14),(.7,6.45,.09)]):
@@ -350,9 +490,9 @@ def build():
 
 def pose(rig,clip,index):
     scene,root,body,head,arms,legs,eyes,hearts,gift=rig
-    phase=index/24
+    phase=index/FRAMES
     t=phase*math.tau
-    envelope=math.sin(math.pi*phase)**2
+    envelope=smoothstep(0,.18,phase)*(1-smoothstep(.82,1,phase))
     root.location=(0,0,0)
     root.rotation_euler=(0,0,0)
     body.rotation_euler=(0,0,0)
@@ -370,14 +510,34 @@ def pose(rig,clip,index):
         leg.rotation_euler=(0,0,0)
         leg.location.z=2.04
     for side in ['L','R']: bpy.data.objects['CTRL Knee '+side].rotation_euler=(0,0,0)
+    for side in ['L','R']: bpy.data.objects['CTRL Foot '+side].rotation_euler=(0,0,0)
     if clip=='walk':
-        root.location.z=.035*(1-math.cos(t*2))
-        body.rotation_euler.z=.035*math.sin(t)
-        head.rotation_euler.z=-.012*math.sin(t)
+        # Side-facing stroll on a horizontal trail. Solve two-bone legs to
+        # planted stance / lifted swing targets rather than swinging rigid legs.
+        root.rotation_euler.z=math.pi/2
+        root.location.z=-.06+.010*math.cos(t*2)
+        body.rotation_euler.x=.035
+        body.rotation_euler.z=.018*math.sin(t)
+        head.rotation_euler.x=-.018
         for n,leg in enumerate(legs):
-            leg.rotation_euler.x=.29*math.sin(t+n*math.pi)
-            leg.location.z+=.07*max(0,math.cos(t+n*math.pi))
-            arms[n].rotation_euler.x=-.28*math.sin(t+n*math.pi)
+            p=(phase+n*.5)%1
+            if p<.62:
+                q=p/.62;dy=-.40+.80*q;lift=0
+                roll=-.10*max(0,1-q/.18)+.20*smoothstep(.80,1,q)
+            else:
+                q=(p-.62)/.38;dy=.40-.80*smoothstep(0,1,q)
+                lift=.23*math.sin(math.pi*q)**1.35;roll=-.06*math.sin(math.pi*q)
+            contact=.70*max(0,math.sin(roll))+.38*max(0,-math.sin(roll))
+            dz=.34+lift+contact-(2.04+root.location.z)
+            distance=min(1.699,math.hypot(dy,dz))
+            base=math.atan2(dy,-dz)
+            bend=math.acos(max(-1,min(1,distance/1.7)))
+            leg.rotation_euler.x=base-bend
+            knee=bpy.data.objects['CTRL Knee '+('L' if n==0 else 'R')]
+            knee.rotation_euler.x=2*bend
+            bpy.data.objects['CTRL Foot '+('L' if n==0 else 'R')].rotation_euler.x=-(base+bend)+roll
+            arms[n].rotation_euler.x=-.32*math.sin(t+n*math.pi)
+            forearms[n].rotation_euler.x=-.20+.08*math.sin(t+n*math.pi)
     if clip in ('wave','point','ready','reassure'):
         arms[1].rotation_euler.y=-1.8*envelope if clip=='wave' else -.95*envelope
         arms[1].rotation_euler.x=-.25*envelope
@@ -392,7 +552,7 @@ def pose(rig,clip,index):
         for eye in eyes: eye.scale.z=.073*(1-.65*envelope)
     if clip in ('wait','idle'):
         head.rotation_euler.z=.02*math.sin(t)
-        if index in (16,17):
+        if .66<=phase<.71:
             for eye in eyes: eye.scale.z=.009
     if clip=='love':
         hearts.scale=(envelope,)*3
@@ -430,20 +590,33 @@ def pose(rig,clip,index):
             forearms[n].rotation_euler=Quaternion().slerp(bend,envelope).to_euler()
         head.rotation_euler.y=.05*envelope
         eyes[1].scale.z=.073*(1-.8*envelope)
+    for obj in scene.objects:
+        if obj.type=='MESH' and obj.data.shape_keys:
+            sway=obj.data.shape_keys.key_blocks.get('Soft fabric sway')
+            if sway:
+                sway.value=(.5+.5*math.sin(t+(.9 if 'L' in obj.name else 0)))*(.65 if clip=='walk' else .5*envelope if clip!='rest' else 0)
+    update_cloth()
 
 
 def bake(rig):
     scene=rig[0]
     controls=[obj for obj in scene.objects if obj.name.startswith('CTRL ') or obj.name.startswith('Eye ')]
     for ci,clip in enumerate(CLIPS):
-        start=ci*24+1
+        start=ci*FRAMES+1
         scene.timeline_markers.new(clip,frame=start)
-        for index in range(24):
+        for index in range(FRAMES):
             pose(rig,clip,index)
             for obj in controls:
                 for prop in ('location','rotation_euler','scale'):
                     obj.keyframe_insert(data_path=prop,frame=start+index)
-    scene.frame_end=len(CLIPS)*24
+            for skin,_ in SKINS:
+                for bone in skin.pose.bones:
+                    for prop in ('location','rotation_quaternion','scale'):
+                        bone.keyframe_insert(data_path=prop,frame=start+index)
+            for obj in scene.objects:
+                if obj.type=='MESH' and obj.data.shape_keys:
+                    obj.data.shape_keys.key_blocks['Soft fabric sway'].keyframe_insert(data_path='value',frame=start+index)
+    scene.frame_end=len(CLIPS)*FRAMES
     scene.frame_set(1)
 
 

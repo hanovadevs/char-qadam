@@ -40,3 +40,12 @@ The arm64 profile APK was built and installed on the Redmi Note 11 using `adb in
 Artifact: `mobile/build/app/outputs/flutter-apk/app-profile.apk` (ignored build output). SHA256: `5C26315A8835F337E7EB178859E9448E9B908CFC920A5259A525F3CE3CB747D8`.
 
 The phone disconnected after installation, before a post-install snapshot, APK hash comparison and playback timings could be collected. The owner confirmed all five tabs, tap reactions, live walking and account data were working, then requested smoother clothing, longer reactions and an improved walking posture. Those art refinements are the next change. Do not interpret the successful automated checks or installation as completed physical-device performance acceptance.
+
+
+### Character refinement after owner acceptance
+
+The owner accepted the first cozy UI build, then requested softer/wavier clothes, smoother and longer reactions, and a walk that follows the track. The revision replaces separate elbow/knee primitives with continuous armature-skinned clothing, adds gentle fabric sway, expands each clip to 60 frames, holds one-shot poses for 2.5 seconds and uses a right-facing, foot-planted walk on a clear horizontal trail. Live step counting, server sync, account rules and reward actions remain in their existing services.
+
+The art check passed for all stance samples and four connected garment meshes. All **141 Flutter tests** passed again with the revised assets; Flutter analysis reported no issues. Five selected visual-flow checks also passed and refreshed the primary previews. Packing validated all 721 rendered masters (one rest image plus twelve 60-frame clips), with runtime PNG assets totaling 9,336,276 bytes and 8,847,360 decoded bytes per active atlas.
+
+The revised profile APK was installed with `adb install -r`: **Success**. Local and on-phone APK SHA256 both equal `ccca927e8b6f6629dea706631235b13f2235cd9e6d826690eafea88ad01a6a9b`. The process started (PID 3813 during the check), motion and notification permissions remained granted, and no fatal startup record appeared in the inspected buffer. Native data before/after remained **39 steps for 31 October**, **five local history days**, tracking enabled and not paused. Owner visual acceptance and actual playback metrics for this second build are pending; the phone was not in Stepsy’s foreground during the initial diagnostic check.

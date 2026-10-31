@@ -48,6 +48,12 @@ void main() {
         reason: 'Reduced motion wins over tap reactions',
       );
       await tester.pump(const Duration(milliseconds: 1700));
+      expect(
+        find.byType(Companion),
+        findsOneWidget,
+        reason: 'The longer reaction is still visible',
+      );
+      await tester.pump(const Duration(milliseconds: 1000));
       expect(find.byType(Companion), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
       expect(tester.takeException(), isNull);
@@ -92,7 +98,7 @@ void main() {
             )
             as Map<String, dynamic>;
     for (final clip in ['love', 'peek', 'wiggle', 'gift']) {
-      expect(manifest['clips'][clip]['frames'], 24);
+      expect(manifest['clips'][clip]['frames'], 60);
       final data = await rootBundle.load(
         manifest['clips'][clip]['atlas'] as String,
       );

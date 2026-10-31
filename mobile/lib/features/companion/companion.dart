@@ -6,7 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'experience_provider.dart';
 
-/// One lazily decoded clip per playing widget: 1152x768 RGBA = 3.375 MiB.
+/// One lazily decoded clip per playing widget: 1152x1920 RGBA = 8.4375 MiB.
 /// Static slots share Flutter's small image cache; no perpetual ticker.
 class Companion extends ConsumerStatefulWidget {
   final String clip;
@@ -31,7 +31,7 @@ class _CompanionState extends ConsumerState<Companion>
   late final _controller =
       AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 1500),
+        duration: const Duration(milliseconds: 2500),
       )..addStatusListener((status) {
         if (status == AnimationStatus.completed) _finishMetrics();
       });
@@ -142,7 +142,7 @@ class _CompanionState extends ConsumerState<Companion>
         SchedulerBinding.instance.addTimingsCallback(_record);
       }
       if (widget.repeat) {
-        _controller.repeat(period: const Duration(seconds: 1));
+        _controller.repeat(period: const Duration(milliseconds: 1200));
       } else {
         _controller.forward(from: 0);
       }
@@ -185,7 +185,7 @@ class _CompanionState extends ConsumerState<Companion>
                       : CustomPaint(
                           painter: _SpritePainter(
                             _image!,
-                            (_controller.value * 24).floor().clamp(0, 23),
+                            (_controller.value * 60).floor().clamp(0, 59),
                           ),
                         ),
                 )
