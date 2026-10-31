@@ -10,6 +10,8 @@ import '../../rewards/providers/rewards_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../../activity/providers/activity_provider.dart';
 import '../../../data/auth/auth_state_provider.dart';
+import '../../guided_tour/guided_tour.dart';
+import '../../guided_tour/tour_targets.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -83,76 +85,85 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
   StatefulNavigationShell get navigationShell => widget.navigationShell;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: navigationShell,
-    bottomNavigationBar: NavigationBarTheme(
-      data: NavigationBarThemeData(
-        backgroundColor: AppTheme.surface,
-        surfaceTintColor: Colors.transparent,
-        indicatorColor: AppTheme.mintWash,
-        elevation: 0,
-        height: 76,
-        labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => TextStyle(
-            fontFamily: AppTheme.bodyFont,
-            fontSize: 12,
-            fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w700
-                : FontWeight.w500,
-            color: states.contains(WidgetState.selected)
-                ? AppTheme.accentDeep
-                : AppTheme.inkSecondary,
+  Widget build(BuildContext context) => GuidedTour(
+    currentTab: navigationShell.currentIndex,
+    selectTab: (index) => navigationShell.goBranch(index),
+    child: Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          backgroundColor: AppTheme.surface,
+          surfaceTintColor: Colors.transparent,
+          indicatorColor: AppTheme.mintWash,
+          elevation: 0,
+          height: 76,
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (states) => TextStyle(
+              fontFamily: AppTheme.bodyFont,
+              fontSize: 12,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+              color: states.contains(WidgetState.selected)
+                  ? AppTheme.accentDeep
+                  : AppTheme.inkSecondary,
+            ),
+          ),
+          iconTheme: WidgetStateProperty.resolveWith(
+            (states) => IconThemeData(
+              size: 23,
+              color: states.contains(WidgetState.selected)
+                  ? AppTheme.accentDeep
+                  : AppTheme.inkSecondary,
+            ),
           ),
         ),
-        iconTheme: WidgetStateProperty.resolveWith(
-          (states) => IconThemeData(
-            size: 23,
-            color: states.contains(WidgetState.selected)
-                ? AppTheme.accentDeep
-                : AppTheme.inkSecondary,
-          ),
+        child: NavigationBar(
+          key: tourKey(ref, 'navigation'),
+          selectedIndex: navigationShell.currentIndex,
+          animationDuration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : AppTheme.motion,
+          onDestinationSelected: (index) {
+            if (index != navigationShell.currentIndex) {
+              HapticsService.selection();
+            }
+            navigationShell.goBranch(
+              index,
+              initialLocation: index == navigationShell.currentIndex,
+            );
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _refreshBranch(),
+            );
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.directions_walk_outlined),
+              selectedIcon: Icon(Icons.directions_walk_rounded),
+              label: 'Steps',
+            ),
+            NavigationDestination(
+              icon: Icon(CupertinoIcons.circle_grid_hex),
+              selectedIcon: Icon(CupertinoIcons.circle_grid_hex_fill),
+              label: 'Points',
+            ),
+            NavigationDestination(
+              icon: Icon(CupertinoIcons.gift),
+              selectedIcon: Icon(CupertinoIcons.gift_fill),
+              label: 'Rewards',
+            ),
+            NavigationDestination(
+              icon: Icon(CupertinoIcons.ticket),
+              selectedIcon: Icon(CupertinoIcons.ticket_fill),
+              label: 'Wallet',
+            ),
+            NavigationDestination(
+              icon: Icon(CupertinoIcons.person),
+              selectedIcon: Icon(CupertinoIcons.person_fill),
+              label: 'You',
+            ),
+          ],
         ),
-      ),
-      child: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        animationDuration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : AppTheme.motion,
-        onDestinationSelected: (index) {
-          if (index != navigationShell.currentIndex) HapticsService.selection();
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-          WidgetsBinding.instance.addPostFrameCallback((_) => _refreshBranch());
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.directions_walk_outlined),
-            selectedIcon: Icon(Icons.directions_walk_rounded),
-            label: 'Steps',
-          ),
-          NavigationDestination(
-            icon: Icon(CupertinoIcons.circle_grid_hex),
-            selectedIcon: Icon(CupertinoIcons.circle_grid_hex_fill),
-            label: 'Points',
-          ),
-          NavigationDestination(
-            icon: Icon(CupertinoIcons.gift),
-            selectedIcon: Icon(CupertinoIcons.gift_fill),
-            label: 'Rewards',
-          ),
-          NavigationDestination(
-            icon: Icon(CupertinoIcons.ticket),
-            selectedIcon: Icon(CupertinoIcons.ticket_fill),
-            label: 'Wallet',
-          ),
-          NavigationDestination(
-            icon: Icon(CupertinoIcons.person),
-            selectedIcon: Icon(CupertinoIcons.person_fill),
-            label: 'You',
-          ),
-        ],
       ),
     ),
   );

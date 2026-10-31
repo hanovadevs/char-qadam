@@ -37,6 +37,7 @@ Stepsy connects daily movement to useful partner offers. See live steps, work to
 | --- | --- |
 | **Steps** | Live hardware counts, personal goals, weekly history and diagnostics. Android uses a foreground service, wake-up sensor preference and a wake-lock fallback. |
 | **Companion & theme** | Editable 3D character, 13 pre-rendered clips, illustrated sage/cream screens, tap reactions, live walking and reduced-motion controls. |
+| **Guided first visit** | A replayable 20-stop character tour with thought clouds, real section highlights and saved progress across the five customer tabs. |
 | **Points & rewards** | Server-calculated earnings, ledger history, one claim per account per offer, explicit confirmation and purchase recovery. |
 | **Wallet & merchant POS** | Ready/history vouchers, camera QR validation, explicit redemption, and weekly/monthly PDF ledgers with generation history. |
 | **Account** | Google sign-in, verified email access and separate one-customer/one-merchant device reservations. |

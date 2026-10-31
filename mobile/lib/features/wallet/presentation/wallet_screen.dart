@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../guided_tour/tour_targets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -208,8 +209,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
       body: RefreshIndicator(
         onRefresh: () => ref.read(walletProvider.notifier).refresh(),
         child: ListView(
+          key: tourKey(ref, 'page.3'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            tourBottomPadding(ref, context),
+          ),
           children: [
             const CozyPageHeading(
               title: 'Wallet',
@@ -218,6 +225,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
             ),
             const SizedBox(height: 12),
             FilterPills(
+              key: tourKey(ref, 'wallet.filters'),
               options: const {'active': 'Ready', 'history': 'History'},
               selected: state.selectedStatus == 'active' ? 'active' : 'history',
               onSelected: (status) {
@@ -267,23 +275,29 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                 child: Center(child: CircularProgressIndicator()),
               ),
             ...vouchers.map(
-              (v) => VoucherTicket(
-                key: ValueKey('voucher-${v.id}'),
-                voucher: v,
-                selected: v.id == widget.highlightId,
-                offer: ref
-                    .watch(rewardsProvider)
-                    .offers
-                    .where((o) => o.id == v.offerId)
-                    .firstOrNull,
-                onShow: () => _showQr(v),
-                onShare: () => _share(v),
+              (v) => KeyedSubtree(
+                key: v == vouchers.first
+                    ? tourKey(ref, 'wallet.voucher')
+                    : null,
+                child: VoucherTicket(
+                  key: ValueKey('voucher-${v.id}'),
+                  voucher: v,
+                  selected: v.id == widget.highlightId,
+                  offer: ref
+                      .watch(rewardsProvider)
+                      .offers
+                      .where((o) => o.id == v.offerId)
+                      .firstOrNull,
+                  onShow: () => _showQr(v),
+                  onShare: () => _share(v),
+                ),
               ),
             ),
             if (!state.isLoading &&
                 vouchers.isEmpty &&
                 state.errorMessage == null)
               EmptyState(
+                key: tourKey(ref, 'wallet.voucher'),
                 title: state.selectedStatus == 'active'
                     ? 'A space for your next win.'
                     : 'Nothing here yet.',

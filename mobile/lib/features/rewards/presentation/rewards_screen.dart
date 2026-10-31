@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../guided_tour/tour_targets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -337,8 +338,14 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
       body: RefreshIndicator(
         onRefresh: _refreshAll,
         child: ListView(
+          key: tourKey(ref, 'page.2'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            tourBottomPadding(ref, context),
+          ),
           children: [
             const CozyPageHeading(
               title: 'Rewards',
@@ -355,6 +362,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             ),
             const SizedBox(height: 16),
             FilterPills(
+              key: tourKey(ref, 'rewards.filters'),
               options: const {
                 'all': 'Explore all',
                 'ready': 'Within my points',
@@ -426,6 +434,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               )
             else if (offers.isEmpty)
               EmptyState(
+                key: tourKey(ref, 'rewards.offer'),
                 title: _search.isNotEmpty
                     ? 'No matches yet'
                     : _filter == 'ready'
@@ -440,6 +449,9 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             else
               ...offers.map(
                 (offer) => RewardCard(
+                  key: offer == offers.first
+                      ? tourKey(ref, 'rewards.offer')
+                      : null,
                   offer: offer,
                   balance: balance,
                   busy: state.isRedeeming,

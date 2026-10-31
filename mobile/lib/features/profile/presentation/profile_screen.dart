@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../guided_tour/tour_provider.dart';
+import '../../guided_tour/tour_targets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -285,7 +287,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       appBar: const CozyAppBar(showPoints: false),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+        key: tourKey(ref, 'page.4'),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          tourBottomPadding(ref, context),
+        ),
         children: [
           const CozyPageHeading(
             title: 'You',
@@ -329,6 +337,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 _buildSettingRow(
                   icon: CupertinoIcons.flag,
+                  key: tourKey(ref, 'you.goal'),
                   title: 'Daily goal & companion',
                   trailing: NumberFormat.decimalPattern().format(goal),
                   onTap: () => showExperienceSettings(context),
@@ -392,14 +401,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const Divider(),
                 _buildSettingRow(
                   icon: CupertinoIcons.bell,
+                  key: tourKey(ref, 'you.notifications'),
                   title: 'Notifications & reminders',
                   onTap: () => context.push('/notifications'),
                 ),
                 const Divider(),
                 _buildSettingRow(
                   icon: CupertinoIcons.shield,
+                  key: tourKey(ref, 'you.privacy'),
                   title: 'Privacy & support',
                   onTap: () => showStepsyInformation(context, privacy: true),
+                ),
+                const Divider(),
+                _buildSettingRow(
+                  key: tourKey(ref, 'you.tour'),
+                  icon: CupertinoIcons.sparkles,
+                  title: 'Replay guided tour',
+                  onTap: () {
+                    context.go('/steps');
+                    ref.read(guidedTourProvider.notifier).start();
+                  },
                 ),
                 const Divider(),
                 _buildSettingRow(
@@ -495,6 +516,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildSettingRow({
+    Key? key,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
@@ -503,6 +525,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     Color? iconColor,
   }) {
     return InkWell(
+      key: key,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),

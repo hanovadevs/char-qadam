@@ -326,7 +326,11 @@ Future<void> capture(WidgetTester tester, String name) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(
+    () => SharedPreferences.setMockInitialValues({
+      'stepsy.guided-tour.v1.preview-user': '{"status":"completed","index":0}',
+    }),
+  );
   testWidgets(
     'Home checks native tracking recovery before controls scroll into view',
     (tester) async {

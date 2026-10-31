@@ -19,6 +19,7 @@ import '../../../core/widgets/cozy_scene.dart';
 import 'companion_goal_meter.dart';
 import 'weekly_preview.dart';
 import 'tracking_controls.dart';
+import '../../guided_tour/tour_targets.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -124,8 +125,14 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
       body: RefreshIndicator(
         onRefresh: _sync,
         child: ListView(
+          key: tourKey(ref, 'page.0'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            tourBottomPadding(ref, context),
+          ),
           children: [
             Text(
               DateFormat('EEEE, d MMMM').format(DateTime.now()),
@@ -142,6 +149,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
             ),
             const SizedBox(height: 12),
             Wrap(
+              key: tourKey(ref, 'steps.total'),
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.end,
               spacing: 16,
@@ -162,6 +170,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                   ],
                 ),
                 Semantics(
+                  key: tourKey(ref, 'steps.goal'),
                   label: known
                       ? '${(progress * 100).round()} percent of goal. Edit daily goal'
                       : 'Set daily goal',
@@ -208,6 +217,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               ],
             ),
             CompanionGoalMeter(
+              key: tourKey(ref, 'steps.trail'),
               steps: steps,
               goal: prefs.goal,
               day: DateFormat('yyyy-MM-dd').format(DateTime.now()),
@@ -217,6 +227,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
             ),
             const SizedBox(height: 8),
             Semantics(
+              key: tourKey(ref, 'steps.sync'),
               liveRegion: true,
               child: TextButton(
                 onPressed: state.isSyncing ? null : _sync,
@@ -261,6 +272,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
             ),
             if (reward != null)
               Container(
+                key: tourKey(ref, 'steps.reward'),
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(top: 4),
                 decoration: BoxDecoration(
@@ -370,6 +382,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               )
             else if (!inventory.isLoading)
               ListTile(
+                key: tourKey(ref, 'steps.reward'),
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Your next reward'),
                 subtitle: const Text(
@@ -380,6 +393,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               ),
             SectionHeading(
               'Your week',
+              key: tourKey(ref, 'steps.week'),
               action: 'View trends',
               onAction: () => context.push('/progress'),
             ),
@@ -422,7 +436,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/leaderboard'),
             ),
-            const TrackingControls(),
+            TrackingControls(key: tourKey(ref, 'steps.tracking')),
             const SectionHeading('Synced activity'),
             FilterPills(
               options: const {

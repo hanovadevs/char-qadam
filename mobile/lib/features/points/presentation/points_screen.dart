@@ -8,6 +8,7 @@ import '../../../core/widgets/cozy_scene.dart';
 import '../../activity/providers/activity_provider.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../providers/points_provider.dart';
+import '../../guided_tour/tour_targets.dart';
 
 class PointsScreen extends ConsumerStatefulWidget {
   const PointsScreen({super.key});
@@ -46,13 +47,20 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
       body: RefreshIndicator(
         onRefresh: () => ref.read(pointsProvider.notifier).refresh(),
         child: ListView(
+          key: tourKey(ref, 'page.1'),
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            6,
+            20,
+            tourBottomPadding(ref, context),
+          ),
           children: [
             const Text('Points', style: AppTheme.largeTitleStyle),
             const SizedBox(height: 10),
             SurfaceCard(
+              key: tourKey(ref, 'points.balance'),
               color: AppTheme.sageWash,
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -123,7 +131,7 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                 ],
               ),
             ),
-            const SectionHeading('Your activity'),
+            SectionHeading('Your activity', key: tourKey(ref, 'points.ledger')),
             if (state.errorMessage != null)
               StatusNotice(
                 state.errorMessage!,

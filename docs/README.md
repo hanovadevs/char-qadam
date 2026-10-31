@@ -5,7 +5,7 @@ Start with the [project README](../README.md) for local setup. This index separa
 | Area | Guides |
 | --- | --- |
 | Setup | [Authentication, Google and email](setup/AUTH_SETUP.md) · [API setup](../backend/README.md) |
-| Product | [Requirements](product/REQUIREMENTS.md) · [Device policy](product/DEVICE_POLICY.md) · [One-claim rewards](product/REWARD_CLAIM_POLICY.md) · [Module inventory](product/MODULES.md) |
+| Product | [Requirements](product/REQUIREMENTS.md) · [Guided first-use tour](product/GUIDED_TOUR.md) · [Device policy](product/DEVICE_POLICY.md) · [One-claim rewards](product/REWARD_CLAIM_POLICY.md) · [Module inventory](product/MODULES.md) |
 | Architecture | [Project structure](architecture/PROJECT_STRUCTURE.md) · [Stack](architecture/TECH_STACK.md) |
 | Android tracking | [Idle recovery and Stop/Resume](tracking/ANDROID_TRACKING_RELIABILITY.md) · [Bike/car filtering](tracking/VEHICLE_FILTERING.md) |
 | Notifications | [Walking, tracking-help and welcome-back reminders](operations/NOTIFICATIONS.md) |
