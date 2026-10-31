@@ -1,0 +1,59 @@
+{
+  "video": {
+    "w": 1080,
+    "h": 1920,
+    "duration": 20.625,
+    "loop": false
+  },
+  "fonts": [
+    {
+      "family": "Nunito",
+      "status": "loaded"
+    }
+  ],
+  "centres": [
+    {
+      "t": 18.975,
+      "x": 539.5
+    },
+    {
+      "t": 19.8,
+      "x": 539.5
+    },
+    {
+      "t": 20.604375,
+      "x": 539.5
+    }
+  ],
+  "randomAccess": [
+    {
+      "t": 20.2,
+      "identical": true
+    },
+    {
+      "t": 17,
+      "identical": true
+    },
+    {
+      "t": 14.3,
+      "identical": true
+    },
+    {
+      "t": 11.8,
+      "identical": true
+    },
+    {
+      "t": 7.8,
+      "identical": true
+    },
+    {
+      "t": 4.1,
+      "identical": true
+    },
+    {
+      "t": 0,
+      "identical": true
+    }
+  ],
+  "pageErrors": []
+}

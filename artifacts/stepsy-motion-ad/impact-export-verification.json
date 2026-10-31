@@ -1,0 +1,11 @@
+{
+  "file": "E:\\Personal projects\\Stepsy\\artifacts\\stepsy-motion-ad\\Stepsy-impact-sage-1080x1920.mp4",
+  "bytes": 6547535,
+  "duration_seconds": 20.65,
+  "decoded_frames": 1238,
+  "video": "H.264, yuv420p, 1080x1920, 60 fps",
+  "audio": "AAC, 48000 Hz, stereo",
+  "integrated_lufs": -17.3,
+  "true_peak_dbtp": -1.48,
+  "full_decode": "passed"
+}
