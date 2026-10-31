@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/cozy_scene.dart';
+import 'cozy_auth_frame.dart';
 import '../../../data/auth/auth_state_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
@@ -34,13 +37,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   Future<void> _handleRequestToken() async {
+    if (ref.read(authStateProvider).isLoading) return;
     if (!_emailKey.currentState!.validate()) return;
 
-    final token = await ref.read(authStateProvider.notifier).forgotPassword(
-          email: _emailController.text.trim(),
-        );
+    final token = await ref
+        .read(authStateProvider.notifier)
+        .forgotPassword(email: _emailController.text.trim());
 
     if (!mounted) return;
+    if (ref.read(authStateProvider).errorMessage != null) return;
 
     setState(() {
       _tokenRequested = true;
@@ -51,15 +56,20 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Password reset instructions generated. Please enter your new password below.'),
+        content: Text(
+          'If this email is registered, check your inbox and paste the reset token below.',
+        ),
       ),
     );
   }
 
   Future<void> _handleResetPassword() async {
+    if (ref.read(authStateProvider).isLoading) return;
     if (!_resetKey.currentState!.validate()) return;
 
-    final success = await ref.read(authStateProvider.notifier).resetPassword(
+    final success = await ref
+        .read(authStateProvider.notifier)
+        .resetPassword(
           resetToken: _tokenController.text.trim(),
           newPassword: _passwordController.text,
         );
@@ -69,299 +79,175 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Password reset successfully! Please sign in with your new password.'),
+          content: Text(
+            'Password reset successfully! Please sign in with your new password.',
+          ),
         ),
       );
       context.go('/login');
     } else {
-      final error = ref.read(authStateProvider).errorMessage ?? 'Password reset failed';
+      final error =
+          ref.read(authStateProvider).errorMessage ?? 'Password reset failed';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: AppTheme.accentRed,
-        ),
+        SnackBar(content: Text(error), backgroundColor: AppTheme.accentRed),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-
-    return Scaffold(
-      backgroundColor: AppTheme.white,
-      appBar: AppBar(
-        backgroundColor: AppTheme.white,
-        title: const Text('RECOVER ACCESS'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.go('/login'),
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'PASSWORD RECOVERY',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                    color: AppTheme.black,
+    final state = ref.watch(authStateProvider);
+    return CozyAuthFrame(
+      title: _tokenRequested ? 'A fresh start.' : 'Let’s get you back.',
+      subtitle: _tokenRequested
+          ? 'Check your inbox for reset instructions. Paste the reset token below and choose a new password.'
+          : 'Enter your email to request password reset instructions.',
+      pose: 'letter',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (state.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                state.errorMessage!,
+                style: const TextStyle(color: AppTheme.destructive),
+              ),
+            ),
+          if (!_tokenRequested)
+            Form(
+              key: _emailKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const AuthLabel('Email address'),
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) {
+                      if (!state.isLoading) _handleRequestToken();
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'you@example.com',
+                    ),
+                    validator: (v) =>
+                        v == null ||
+                            !RegExp(
+                              r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                            ).hasMatch(v.trim())
+                        ? 'Please enter a valid email address'
+                        : null,
                   ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Verify your registered email to securely reset your credentials.',
-                  style: TextStyle(color: AppTheme.grey, fontSize: 12),
-                ),
-                const SizedBox(height: 20),
-
-                // Error banner if any
-                if (authState.errorMessage != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.white,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                      border: Border.all(color: AppTheme.accentRed),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: state.isLoading ? null : _handleRequestToken,
+                    child: Text(
+                      state.isLoading ? 'Sending…' : 'Send reset instructions',
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            authState.errorMessage!,
-                            style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
+                  ),
+                ],
+              ),
+            )
+          else
+            Form(
+              key: _resetKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const AuthLabel('Reset token from your email'),
+                  TextFormField(
+                    controller: _tokenController,
+                    minLines: 1,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: 'Paste your reset token',
                     ),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Enter the token from your email'
+                        : null,
                   ),
                   const SizedBox(height: 16),
-                ],
-
-                // Step 1: Email Form
-                if (!_tokenRequested) ...[
-                  Form(
-                    key: _emailKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'REGISTERED EMAIL ADDRESS',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                            color: AppTheme.grey,
-                          ),
+                  const AuthLabel('New password'),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    autofillHints: const [AutofillHints.newPassword],
+                    decoration: InputDecoration(
+                      hintText: 'At least 8 characters',
+                      suffixIcon: IconButton(
+                        tooltip: 'Show or hide new password',
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
                         ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _handleRequestToken(),
-                          decoration: const InputDecoration(
-                            hintText: 'name@domain.com',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                            if (!emailRegex.hasMatch(value.trim())) {
-                              return 'Please enter a valid email address';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: authState.isLoading ? null : _handleRequestToken,
-                          child: authState.isLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
-                                  ),
-                                )
-                              : const Text('SEND RESET INSTRUCTIONS'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  // Step 2: Reset Form
-                  Form(
-                    key: _resetKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'RESET CODE / TOKEN',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                            color: AppTheme.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _tokenController,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            hintText: 'Paste token or verification code',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter the reset token';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-
-                        const Text(
-                          'NEW PASSWORD (MIN 8 CHARS)',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                            color: AppTheme.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            hintText: 'Enter new password',
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                size: 18,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a password';
-                            }
-                            if (value.length < 8) {
-                              return 'Password must be at least 8 characters long';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-
-                        const Text(
-                          'CONFIRM NEW PASSWORD',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                            color: AppTheme.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => _handleResetPassword(),
-                          decoration: InputDecoration(
-                            hintText: 'Re-enter new password',
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                size: 18,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscureConfirmPassword = !_obscureConfirmPassword;
-                                });
-                              },
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please confirm your password';
-                            }
-                            if (value != _passwordController.text) {
-                              return 'Passwords do not match';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 22),
-
-                        ElevatedButton(
-                          onPressed: authState.isLoading ? null : _handleResetPassword,
-                          child: authState.isLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
-                                  ),
-                                )
-                              : const Text('UPDATE PASSWORD'),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () => setState(() => _tokenRequested = false),
-                          child: const Text('RESEND OR CHANGE EMAIL'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'REMEMBERED PASSWORD?',
-                      style: TextStyle(color: AppTheme.grey, fontSize: 11, letterSpacing: 0.5),
-                    ),
-                    TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text(
-                        'SIGN IN',
-                        style: TextStyle(
-                          color: AppTheme.black,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          letterSpacing: 0.8,
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
+                    validator: (v) => v == null || v.length < 8
+                        ? 'Use at least 8 characters'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  const AuthLabel('Confirm new password'),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    obscureText: _obscureConfirmPassword,
+                    decoration: InputDecoration(
+                      suffixIcon: IconButton(
+                        tooltip: 'Show or hide confirmation',
+                        onPressed: () => setState(
+                          () => _obscureConfirmPassword =
+                              !_obscureConfirmPassword,
+                        ),
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                      ),
+                    ),
+                    validator: (v) => v != _passwordController.text
+                        ? 'Passwords do not match'
+                        : null,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: state.isLoading ? null : _handleResetPassword,
+                    child: Text(
+                      state.isLoading ? 'Updating…' : 'Update password',
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: state.isLoading
+                        ? null
+                        : () => setState(() => _tokenRequested = false),
+                    child: const Text('Resend or change email'),
+                  ),
+                ],
+              ),
             ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: state.isLoading ? null : () => context.go('/login'),
+            child: const Text('Back to sign in'),
           ),
-        ),
+          const SizedBox(height: 8),
+          const ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(24)),
+            child: CozyScene(height: 160, pose: 'sit'),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'A little help. A fresh start.',
+            textAlign: TextAlign.center,
+            style: AppTheme.captionStyle,
+          ),
+        ],
       ),
     );
   }

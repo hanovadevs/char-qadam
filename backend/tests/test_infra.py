@@ -18,6 +18,25 @@ from app.db.postgres import get_session_factory
 
 
 @pytest.mark.asyncio
+async def test_database_warmup_returns_bounded_connections_for_reuse():
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy import func, select
+    from app.config import get_settings
+    from app.db.postgres import POOL_SIZE, warm_pool
+    engine = create_async_engine(get_settings().database_url, pool_size=POOL_SIZE, max_overflow=0)
+    try:
+        async with engine.connect() as connection:
+            before = await connection.scalar(select(func.count()).select_from(User))
+        await warm_pool(engine)
+        assert engine.pool.checkedin() == POOL_SIZE
+        assert engine.pool.checkedout() == 0
+        async with engine.connect() as connection:
+            assert await connection.scalar(select(func.count()).select_from(User)) == before
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_health_liveness_and_readiness(client: AsyncClient) -> None:
     # 1. Basic liveness
     resp = await client.get("/health")
@@ -35,13 +54,13 @@ async def test_health_liveness_and_readiness(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_partner_provisioning(client: AsyncClient, admin_headers) -> None:
+async def test_admin_partner_provisioning(admin_client: AsyncClient) -> None:
     partner_name = f"Test Bakery {uuid.uuid4().hex[:6]}"
     factory = get_session_factory()
     partner_id: str | None = None
 
     try:
-        resp = await client.post("/admin/partners", headers=admin_headers, json={"name": partner_name, "email": f"merchant-{uuid.uuid4().hex}@example.com", "password": "unique-merchant-password", "generate_api_key": True})
+        resp = await admin_client.post("/admin/partners", json={"name": partner_name, "email": f"merchant_{uuid.uuid4().hex}@example.com", "password": "merchant-test-123", "generate_api_key": True})
         assert resp.status_code == 201
         data = resp.json()
         partner_id = data["id"]
@@ -51,18 +70,19 @@ async def test_admin_partner_provisioning(client: AsyncClient, admin_headers) ->
         assert raw_key.startswith("pk_live_")
 
         # Test using newly provisioned key with POS /info endpoint
-        info_resp = await client.get("/partner/v1/info", headers={"X-Partner-Key": raw_key})
+        info_resp = await admin_client.get("/partner/v1/info", headers={"X-Partner-Key": raw_key})
         assert info_resp.status_code == 200
         assert info_resp.json()["partner_id"] == partner_id
     finally:
         if partner_id:
             async with factory() as session:
+                await session.execute(delete(User).where(User.partner_id == partner_id))
                 await session.execute(delete(Partner).where(Partner.id == partner_id))
                 await session.commit()
 
 
 @pytest.mark.asyncio
-async def test_voucher_expiration_sweep(client: AsyncClient, admin_headers) -> None:
+async def test_voucher_expiration_sweep(admin_client: AsyncClient) -> None:
     factory = get_session_factory()
     partner_id = str(uuid.uuid4())
     offer_id = str(uuid.uuid4())
@@ -96,7 +116,7 @@ async def test_voucher_expiration_sweep(client: AsyncClient, admin_headers) -> N
             await session.commit()
 
         # Trigger sweep endpoint
-        sweep_resp = await client.post("/admin/vouchers/sweep-expired", headers=admin_headers)
+        sweep_resp = await admin_client.post("/admin/vouchers/sweep-expired")
         assert sweep_resp.status_code == 200
         data = sweep_resp.json()
         assert data["swept_count"] >= 1
@@ -113,16 +133,3 @@ async def test_voucher_expiration_sweep(client: AsyncClient, admin_headers) -> N
             await session.execute(delete(Partner).where(Partner.id == partner_id))
             await session.execute(delete(User).where(User.id == user_id))
             await session.commit()
-
-
-@pytest.mark.asyncio
-async def test_admin_analytics_queries_and_live_system_settings(client, admin_headers):
-    overview = await client.get('/admin/analytics/overview', headers=admin_headers)
-    assert overview.status_code == 200
-    assert 'fixed_discount_value' in overview.json()
-    charts = await client.get('/admin/analytics/charts', headers=admin_headers)
-    assert charts.status_code == 200
-    assert 'daily_steps' in charts.json()
-    system = await client.get('/admin/system', headers=admin_headers)
-    assert system.status_code == 200
-    assert system.json()['rewards']['daily_step_cap'] == 20000

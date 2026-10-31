@@ -1,6 +1,6 @@
 """Activity sync business logic.
 
-Core invariants (from MVP_PLAN.md §1):
+Core invariants (from docs/history/MVP_PLAN.md §1):
   - Server clamps eligible_steps to ``daily_step_cap``.
   - Upsert activity_daily by (user_id, local_date); append a STEP_EARN
     ledger entry for the **delta only** when the day's total increases.
@@ -14,10 +14,12 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.db.models import ActivityDaily, LedgerReason, PointsLedger, User
+from app.db.models import ActivityDaily, DeviceActivityDaily, DeviceBinding, LedgerReason, PointsLedger, User, UserStatus
 from app.services.points import get_balance
 
 
@@ -32,6 +34,8 @@ class SyncResult:
 async def sync_activity(
     *,
     user_id: str,
+    device_id: str,
+    auth_version: int,
     local_date: str,
     eligible_steps: int,
     source: str,
@@ -44,12 +48,22 @@ async def sync_activity(
     Called inside an already-open session; the caller must NOT commit before
     receiving the result (we commit here to keep the ledger write atomic).
     """
-    # Lock a row that always exists, including the first sync of a new day.
-    # Matches the per-user lock used by offer redemption.
-    await session.execute(select(User.id).where(User.id == user_id).with_for_update())
-
     # ------------------------------------------------------------------ clamp
     clamped = min(eligible_steps, settings.daily_step_cap)
+
+    # A missing daily row cannot be row-locked. Serialize on the existing user
+    # first so simultaneous foreground/background first syncs cannot both insert.
+    user = await session.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
+    if user is None or user.status != UserStatus.ACTIVE or user.auth_version != auth_version:
+        raise HTTPException(401, 'Please sign in again.')
+    if user.role == 'MERCHANT':
+        raise HTTPException(403, 'Use your personal customer account to earn walking points.')
+    binding = await session.scalar(select(DeviceBinding).where(DeviceBinding.id == device_id).with_for_update().execution_options(populate_existing=True))
+    if binding is None or binding.user_id != user_id:
+        raise HTTPException(401, 'Device access has changed. Please sign in again.')
+    await session.execute(insert(DeviceActivityDaily).values(device_id=device_id, local_date=local_date, eligible_steps=0).on_conflict_do_nothing())
+    device_day = await session.scalar(select(DeviceActivityDaily).where(
+        DeviceActivityDaily.device_id == device_id, DeviceActivityDaily.local_date == local_date).with_for_update())
 
     # ------------------------------------------------ fetch existing day row
     result = await session.execute(
@@ -102,10 +116,19 @@ async def sync_activity(
     # in small increments (e.g. every few seconds) loses those partial steps and
     # can earn far fewer — often zero — points despite walking thousands of steps.
     # Deriving from totals makes the remainder carry across syncs and guarantees
-    # lifetime points == floor(total_steps / steps_per_point).
+    # cumulative user awards cannot exceed floor(total_steps / steps_per_point).
+    # Device consumption below can further limit a replacement account's awards.
     old_points = old_steps // settings.steps_per_point
     new_points = new_steps // settings.steps_per_point
     delta_points = new_points - old_points
+    # A replacement account cannot mint points from physical steps already
+    # consumed on this phone. The device cap and fractional remainder survive
+    # logout, deactivation, and ownership transfer.
+    device_old = device_day.eligible_steps
+    device_new = max(device_old, clamped)
+    device_points = device_new // settings.steps_per_point - device_old // settings.steps_per_point
+    delta_points = min(delta_points, device_points)
+    device_day.eligible_steps = device_new
 
     # ------------------------------------------ mint ledger entry if warranted
     if delta_points > 0:

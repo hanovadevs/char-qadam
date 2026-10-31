@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/voucher_models.dart';
-import '../../../core/services/notification_service.dart';
 import '../../../data/wallet/wallet_repository.dart';
 
 class WalletState {
@@ -31,42 +30,57 @@ class WalletState {
   }
 }
 
-final walletProvider =
-    StateNotifierProvider<WalletNotifier, WalletState>((ref) {
+final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((
+  ref,
+) {
   final walletRepository = ref.watch(walletRepositoryProvider);
   return WalletNotifier(walletRepository: walletRepository);
 });
 
 class WalletNotifier extends StateNotifier<WalletState> {
+  int _request = 0;
   final WalletRepository walletRepository;
+  final _inFlight = <String, Future<List<VoucherModel>>>{};
+  final _pages = <String, List<VoucherModel>>{};
 
   WalletNotifier({required this.walletRepository})
-      : super(const WalletState()) {
+    : super(const WalletState()) {
     fetchVouchers(state.selectedStatus);
   }
 
-  int _requestVersion = 0;
-
   Future<void> fetchVouchers(String status) async {
-    final version = ++_requestVersion;
+    final request = ++_request;
     state = state.copyWith(
       selectedStatus: status,
+      vouchers: status == state.selectedStatus
+          ? state.vouchers
+          : (_pages[status] ?? const []),
       isLoading: true,
       errorMessage: null,
     );
     try {
-      final list = await walletRepository.getVouchers(status: status);
-      if (!mounted || version != _requestVersion) return;
-      state = state.copyWith(vouchers: list, isLoading: false);
-      if (status == 'active') {
-        for (final voucher in list) {
-          final remaining = voucher.expiresAt.difference(DateTime.now());
-          if (remaining.isNegative) continue;
-          await NotificationService.showVoucherExpiring(offerTitle: voucher.offerTitle, shortCode: voucher.shortCode, daysLeft: remaining.inDays);
-        }
+      if (!_pages.containsKey(status)) {
+        try {
+          final cached = await walletRepository.getCachedVouchers(status);
+          if (!mounted || request != _request) return;
+          if (cached != null) {
+            _pages[status] = cached;
+            state = state.copyWith(vouchers: cached);
+          }
+        } catch (_) {}
       }
+      final future = _inFlight.putIfAbsent(
+        status,
+        () => walletRepository.getVouchers(status: status).whenComplete(() {
+          _inFlight.remove(status);
+        }),
+      );
+      final list = await future;
+      _pages[status] = list;
+      if (!mounted || request != _request) return;
+      state = state.copyWith(vouchers: list, isLoading: false);
     } catch (e) {
-      if (!mounted || version != _requestVersion) return;
+      if (!mounted || request != _request) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }
@@ -74,5 +88,15 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
   Future<void> refresh() async {
     await fetchVouchers(state.selectedStatus);
+  }
+
+  Future<void> refreshAfterMutation() async {
+    final pending = _inFlight[state.selectedStatus];
+    if (pending != null) {
+      try {
+        await pending;
+      } catch (_) {}
+    }
+    if (mounted) await refresh();
   }
 }

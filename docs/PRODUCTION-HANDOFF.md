@@ -1,3 +1,5 @@
+> Integration update: this report describes validation before discovering the newer upstream application. The push merge preserves upstream verified-email/device/merchant/reminder implementations, integrates support as migration `0012`, and supersedes the earlier proposed `0003`/`0004` migrations. Use current upstream deployment docs and the post-merge test results; do not apply the earlier migration advice verbatim.
+
 # Production and Play Store handoff
 
 Implemented October 31, 2026. These repository changes have not been deployed to the VPS. A Play Store upload bundle has not been built on this machine: the Linux Android SDK currently has platform-tools only and no JDK/platform/build-tools toolchain.

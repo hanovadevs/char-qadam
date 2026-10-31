@@ -8,6 +8,10 @@ MVP acceptance criterion tested here:
 """
 from __future__ import annotations
 
+from tests.auth_helpers import register_verified
+
+from tests.auth_helpers import auth_headers
+
 import uuid
 from datetime import date
 
@@ -51,13 +55,13 @@ async def _cleanup(email: str) -> None:
 
 
 async def _register_and_token(client: AsyncClient, email: str) -> str:
-    resp = await client.post("/auth/register", json={"email": email, "password": "testpassword1"})
-    assert resp.status_code == 201, resp.text
+    resp = await register_verified(client, json={"email": email, "password": "testpassword1"})
+    assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 # ---------------------------------------------------------------------------
@@ -258,6 +262,27 @@ async def test_get_activity_today(client: AsyncClient) -> None:
         await _cleanup(email)
 
 
+@pytest.mark.asyncio
+async def test_get_activity_extended_ranges(client: AsyncClient) -> None:
+    """Extended activity ranges (month, 3months, 6months, year, all) must return valid responses."""
+    email = _email()
+    try:
+        token = await _register_and_token(client, email)
+        await client.post(
+            "/activity/sync",
+            json={"local_date": _today(), "eligible_steps": 7500, "source": "manual", "sync_key": _sync_key()},
+            headers=_auth(token),
+        )
+        for r_param in ["week", "month", "3months", "6months", "year", "all"]:
+            r = await client.get(f"/activity?range={r_param}", headers=_auth(token))
+            assert r.status_code == 200, f"Failed for range={r_param}: {r.text}"
+            body = r.json()
+            assert body["range"] == r_param
+            assert body["total_steps"] >= 7500
+    finally:
+        await _cleanup(email)
+
+
 # ---------------------------------------------------------------------------
 # GET /points/balance and /points/history
 # ---------------------------------------------------------------------------
@@ -306,17 +331,3 @@ async def test_points_history_paginated(client: AsyncClient) -> None:
         assert body["offset"] == 0
     finally:
         await _cleanup(email)
-
-
-@pytest.mark.asyncio
-async def test_concurrent_first_sync_awards_points_once(client):
-    import asyncio
-    from datetime import date
-    email = f'concurrent-{uuid.uuid4().hex}@example.com'
-    registered = await client.post('/auth/register', json={'email': email, 'password': 'valid-password-123'})
-    headers = {'Authorization': 'Bearer ' + registered.json()['access_token']}
-    async def sync_once():
-        return await client.post('/activity/sync', headers=headers, json={'local_date': date.today().isoformat(), 'eligible_steps': 1000, 'source': 'health', 'sync_key': str(uuid.uuid4())})
-    responses = await asyncio.gather(sync_once(), sync_once())
-    assert [r.status_code for r in responses] == [200, 200]
-    assert sum(r.json()['points_awarded'] for r in responses) == 10

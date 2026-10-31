@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/env_config.dart';
 import '../auth/token_storage.dart';
+import '../auth/device_identity.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final tokenStorage = ref.watch(tokenStorageProvider);
@@ -17,10 +18,12 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 class ApiClient {
   late final Dio _dio;
   final TokenStorage tokenStorage;
+  final DeviceIdentity deviceIdentity;
 
   void Function()? onUnauthorized;
 
-  ApiClient({required this.tokenStorage}) {
+  ApiClient({required this.tokenStorage, DeviceIdentity? deviceIdentity})
+    : deviceIdentity = deviceIdentity ?? DeviceIdentity() {
     _dio = Dio(
       BaseOptions(
         baseUrl: EnvConfig.baseUrl,
@@ -36,6 +39,17 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          try {
+            options.headers['X-Device-ID'] = await this.deviceIdentity.getKey();
+          } catch (_) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                error: 'Device identity unavailable. Please restart Stepsy.',
+              ),
+            );
+            return;
+          }
           final token = await tokenStorage.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -43,10 +57,12 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) async {
-          final sentAuthorization = error.requestOptions.headers['Authorization'];
           final currentToken = await tokenStorage.getToken();
-          if (error.response?.statusCode == 401 &&
-              sentAuthorization == 'Bearer $currentToken') {
+          if ((error.response?.statusCode == 401 ||
+                  error.response?.statusCode == 426) &&
+              currentToken != null &&
+              error.requestOptions.headers['Authorization'] ==
+                  'Bearer $currentToken') {
             // Token expired or invalid — clear token, cached user, and invoke callback
             await tokenStorage.clearAll();
             onUnauthorized?.call();
@@ -65,7 +81,11 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.get<T>(path, queryParameters: queryParameters, options: options);
+    return _dio.get<T>(
+      path,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response<T>> post<T>(
@@ -74,7 +94,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return _dio.post<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response<T>> patch<T>(
@@ -83,7 +108,12 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.patch<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return _dio.patch<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
   Future<Response<T>> delete<T>(
@@ -92,6 +122,11 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.delete<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return _dio.delete<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 }

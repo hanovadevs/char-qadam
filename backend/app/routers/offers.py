@@ -9,16 +9,17 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.config import get_settings
-from app.db.models import Offer, OfferStatus, User, Partner, PartnerStatus
+from app.db.models import Offer, OfferStatus, Partner, PartnerStatus, User
 from app.db.postgres import get_session
 from app.deps import get_current_user
-from app.schemas.offers import OfferOut, RedeemOut
-from app.services.offers import redeem_offer
+from app.schemas.offers import OfferOut, RedeemIn, RedeemOut
+from app.services.offers import offer_claimed_by, redeem_offer
 
 router = APIRouter(prefix="/offers", tags=["offers"])
 
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/offers", tags=["offers"])
 )
 async def list_offers(
     session: AsyncSession = Depends(get_session),
-    _: User = Depends(get_current_user),   # auth required, user not used in query
+    current_user: User = Depends(get_current_user),
 ) -> list[OfferOut]:
     """Return all currently active, in-date, in-stock offers.
 
@@ -43,18 +44,32 @@ async def list_offers(
     now = datetime.now(timezone.utc)
 
     result = await session.execute(
-        select(Offer).join(Partner, Partner.id == Offer.partner_id)
+        select(Offer, offer_claimed_by(current_user.id, Offer.id))
+        .join(Partner, Offer.partner_id == Partner.id)
+        .options(joinedload(Offer.partner))
         .where(
-            Partner.status == PartnerStatus.ACTIVE,
             Offer.status == OfferStatus.ACTIVE,
+            Offer.archived_at.is_(None),
+            Partner.status == PartnerStatus.ACTIVE,
+            Partner.archived_at.is_(None),
             or_(Offer.starts_at.is_(None), Offer.starts_at <= now),
             or_(Offer.ends_at.is_(None), Offer.ends_at >= now),
             or_(Offer.inventory.is_(None), Offer.inventory > 0),
         )
         .order_by(Offer.points_cost)
     )
-    offers = result.scalars().all()
-    return [OfferOut.model_validate(o) for o in offers]
+    offers = result.all()
+    items = []
+    for o, already_redeemed in offers:
+        out = OfferOut.model_validate(o)
+        out.already_redeemed = already_redeemed
+        if o.partner:
+            out.partner_name = o.partner.name
+            out.partner_location = o.partner.location
+            out.partner_google_maps_url = getattr(o.partner, "google_maps_url", None)
+            out.partner_cover_image_url = o.partner.cover_image_url
+        items.append(out)
+    return items
 
 
 @router.post(
@@ -65,6 +80,8 @@ async def list_offers(
 )
 async def redeem(
     offer_id: str,
+    body: RedeemIn | None = None,
+    idempotency_key: str | None = Header(default=None, min_length=16, max_length=128, pattern=r'^[A-Za-z0-9_-]+$'),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> RedeemOut:
@@ -84,6 +101,8 @@ async def redeem(
         user=current_user,
         session=session,
         settings=settings,
+        request_key=idempotency_key,
+        expected_points_cost=body.expected_points_cost if body else None,
     )
     return RedeemOut(
         voucher_id=result.voucher_id,
@@ -92,4 +111,5 @@ async def redeem(
         expires_at=result.expires_at,
         points_spent=result.points_spent,
         balance=result.balance,
+        is_replay=result.is_replay,
     )

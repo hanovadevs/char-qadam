@@ -9,6 +9,11 @@ MVP acceptance criteria tested:
     ✅ Expired voucher blocks validate and redeem.
 """
 from __future__ import annotations
+from zoneinfo import ZoneInfo
+
+from tests.auth_helpers import register_verified
+
+from tests.auth_helpers import auth_headers
 
 import asyncio
 import uuid
@@ -42,7 +47,7 @@ def _email() -> str:
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 def _partner_header(key: str) -> dict:
@@ -84,12 +89,12 @@ async def _create_offer_for_partner(partner_id: str, points_cost: int = 50) -> s
 
 
 async def _register_and_earn(client: AsyncClient, email: str, steps: int = 10_000) -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": "testpass123"})
+    r = await register_verified(client, json={"email": email, "password": "testpass123"})
     token = r.json()["access_token"]
     await client.post(
         "/activity/sync",
         json={
-            "local_date": datetime.now(timezone.utc).date().isoformat(),
+            "local_date": datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat(),
             "eligible_steps": steps,
             "source": "manual",
             "sync_key": str(uuid.uuid4()),
@@ -389,3 +394,46 @@ async def test_validate_already_redeemed_voucher(client: AsyncClient) -> None:
         assert r.status_code == 409
     finally:
         await _cleanup(email, pid, oid)
+
+
+@pytest.mark.asyncio
+async def test_partner_cannot_validate_another_stores_voucher(client):
+    first, first_key = await _create_partner_with_key()
+    other, other_key = await _create_partner_with_key()
+    email = _email()
+    offer = await _create_offer_for_partner(first)
+    try:
+        token = await _register_and_earn(client, email)
+        voucher = await _redeem_offer(client, token, offer)
+        for code in (voucher['token'], voucher['short_code']):
+            denied = await client.post('/partner/v1/vouchers/validate', headers=_partner_header(other_key), json={'token': code})
+            assert denied.status_code == 404
+        allowed = await client.post('/partner/v1/vouchers/validate', headers=_partner_header(first_key), json={'token': voucher['short_code']})
+        assert allowed.status_code == 200
+    finally:
+        await _cleanup(email, first, offer)
+        async with get_session_factory()() as session:
+            await session.execute(delete(Partner).where(Partner.id == other))
+            await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_inactive_store_cannot_issue_new_rewards(client):
+    partner, _ = await _create_partner_with_key()
+    offer = await _create_offer_for_partner(partner)
+    email = _email()
+    try:
+        token = await _register_and_earn(client, email)
+        async with get_session_factory()() as session:
+            store = await session.get(Partner, partner)
+            store.status = PartnerStatus.INACTIVE
+            await session.commit()
+        catalog = await client.get('/offers', headers=_auth(token))
+        assert catalog.status_code == 200
+        assert offer not in [item['id'] for item in catalog.json()]
+        issued = await client.post(f'/offers/{offer}/redeem', headers=_auth(token))
+        assert issued.status_code == 409
+        balance = await client.get('/points/balance', headers=_auth(token))
+        assert balance.json()['balance'] == 100
+    finally:
+        await _cleanup(email, partner, offer)

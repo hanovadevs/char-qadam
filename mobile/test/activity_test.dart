@@ -39,5 +39,23 @@ void main() {
       expect(rangeModel.days[0].date, equals('2026-08-14'));
       expect(rangeModel.days[0].eligibleSteps, equals(10000));
     });
+
+    test('ActivityRangeModel.fromJson parses extended ranges (month, 3months, year)', () {
+      for (final r in ['month', '3months', '6months', 'year', 'all']) {
+        final json = {
+          'range': r,
+          'total_steps': 120000,
+          'days': [
+            {'date': '2026-07-01', 'eligible_steps': 8000},
+            {'date': '2026-07-02', 'eligible_steps': 9500},
+          ],
+        };
+
+        final rangeModel = ActivityRangeModel.fromJson(json);
+        expect(rangeModel.range, equals(r));
+        expect(rangeModel.totalSteps, equals(120000));
+        expect(rangeModel.days.length, equals(2));
+      }
+    });
   });
 }

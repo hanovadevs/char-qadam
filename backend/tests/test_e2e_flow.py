@@ -15,6 +15,9 @@ Executes the complete user & merchant lifecycle in a single deterministic sequen
 12. Soft-delete user account (DELETE /users/me) -> JWT revoked
 """
 from __future__ import annotations
+from zoneinfo import ZoneInfo
+
+from tests.auth_helpers import register_verified
 
 import uuid
 from datetime import datetime, timezone
@@ -41,7 +44,6 @@ from app.services.partner_auth import hash_api_key
 @pytest.mark.asyncio
 async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
     factory = get_session_factory()
-    user_id = None
     email = f"e2e_{uuid.uuid4().hex[:8]}@example.com"
     password = "E2EPassword123!"
     raw_partner_key = f"e2e-key-{uuid.uuid4().hex}"
@@ -76,18 +78,16 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
 
     try:
         # --- STEP 1: Register User ---
-        reg_resp = await client.post(
-            "/auth/register",
+        reg_resp = await register_verified(client,
             json={"email": email, "password": password, "country": "PK", "timezone": "Asia/Karachi"},
         )
-        assert reg_resp.status_code == 201, reg_resp.text
+        assert reg_resp.status_code == 200, reg_resp.text
         user_token = reg_resp.json()["access_token"]
         user_headers = {"Authorization": f"Bearer {user_token}"}
-        user_id = (await client.get('/auth/me', headers=user_headers)).json()['id']
         partner_headers = {"X-Partner-Key": raw_partner_key}
 
         # --- STEP 2: Sync Steps (15,000 steps -> 150 points) ---
-        today_str = datetime.now(timezone.utc).date().isoformat()
+        today_str = datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat()
         sync_resp = await client.post(
             "/activity/sync",
             json={
@@ -194,7 +194,7 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
     finally:
         # --- CLEANUP ---
         async with factory() as session:
-            res = await session.execute(select(User).where(User.id == user_id))
+            res = await session.execute(select(User).where(User.email == email))
             user = res.scalar_one_or_none()
             if user:
                 await session.execute(delete(Redemption).where(Redemption.partner_id == partner_id))

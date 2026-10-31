@@ -40,6 +40,9 @@ void main() {
       final json = {
         'id': 'offer-1',
         'partner_id': 'partner-1',
+        'partner_name': 'Nike Gulberg',
+        'partner_location': 'Gulberg III, Lahore',
+        'partner_google_maps_url': 'https://maps.google.com/?q=Nike+Gulberg',
         'title': '10% Off Shoes',
         'description': 'Valid on sports shoes',
         'discount_type': 'PERCENT',
@@ -52,6 +55,9 @@ void main() {
       final offer = OfferModel.fromJson(json);
 
       expect(offer.id, equals('offer-1'));
+      expect(offer.partnerName, equals('Nike Gulberg'));
+      expect(offer.partnerLocation, equals('Gulberg III, Lahore'));
+      expect(offer.partnerGoogleMapsUrl, equals('https://maps.google.com/?q=Nike+Gulberg'));
       expect(offer.title, equals('10% Off Shoes'));
       expect(offer.discountType, equals('PERCENT'));
       expect(offer.pointsCost, equals(500));

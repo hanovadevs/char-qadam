@@ -30,10 +30,22 @@ class _SwissSkeletonBoxState extends State<SwissSkeletonBox>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.35, end: 0.85).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+    _animation = Tween<double>(
+      begin: 0.35,
+      end: 0.85,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+      _controller.value = 0.5;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
   }
 
   @override
@@ -77,10 +89,7 @@ class SwissSkeletonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SwissSkeletonBox(
-      height: height,
-      margin: margin,
-    );
+    return SwissSkeletonBox(height: height, margin: margin);
   }
 }
 

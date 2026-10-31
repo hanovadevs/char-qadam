@@ -16,23 +16,23 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 # Requests
 # ---------------------------------------------------------------------------
 
-class PasswordInput(BaseModel):
-    @field_validator("password", "new_password", check_fields=False)
+class EmailIn(BaseModel):
+    email: EmailStr
+
+    @field_validator('email')
     @classmethod
-    def validate_password_bytes(cls, value):
-        if value is not None and len(value.encode("utf-8")) > 72:
-            raise ValueError("Password must be at most 72 UTF-8 bytes")
-        return value
+    def normalize_email(cls, value):
+        return str(value).lower()
 
 
-class RegisterIn(PasswordInput):
+class RegisterIn(EmailIn):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     country: str | None = Field(default=None, max_length=2)
     timezone: str | None = Field(default=None, max_length=64)
 
 
-class LoginIn(PasswordInput):
+class LoginIn(EmailIn):
     email: EmailStr
     password: str
 
@@ -53,6 +53,24 @@ class TokenOut(BaseModel):
     role: str = "USER"
     partner_id: str | None = None
     partner_name: str | None = None
+    user: UserOut | None = None
+
+
+class VerificationOut(BaseModel):
+    verification_required: bool = True
+    verification_token: str
+    email: EmailStr
+    message: str = 'Enter the six-digit code sent to your email. It expires in 10 minutes.'
+    resend_after_seconds: int = 60
+
+
+class VerifyEmailIn(BaseModel):
+    verification_token: str = Field(min_length=10, max_length=4096)
+    code: str = Field(pattern=r'^\d{6}$')
+
+
+class ResendVerificationIn(BaseModel):
+    verification_token: str = Field(min_length=10, max_length=4096)
 
 
 class UserOut(BaseModel):
@@ -65,20 +83,21 @@ class UserOut(BaseModel):
     country: str | None = None
     timezone: str | None = None
     created_at: datetime
+    email_verified: bool = True
 
     model_config = {"from_attributes": True}
 
 
-class ForgotPasswordIn(BaseModel):
+class ForgotPasswordIn(EmailIn):
     email: EmailStr
 
 
 class ForgotPasswordOut(BaseModel):
     message: str
-    reset_token: str | None = None  # Populated in debug/dev mode
+    reset_token: str | None = None  # Always empty; delivery is through verified email access.
 
 
-class ResetPasswordIn(PasswordInput):
+class ResetPasswordIn(BaseModel):
     reset_token: str = Field(min_length=10)
     new_password: str = Field(min_length=8, max_length=128)
 

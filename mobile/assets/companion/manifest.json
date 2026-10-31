@@ -1,0 +1,337 @@
+{
+  "version": 3,
+  "authoring": "Blender 5.2.1 continuous skinned cloth",
+  "character": "Cozy walking companion",
+  "runtimeFrameSize": [
+    192,
+    192
+  ],
+  "masterFrameSize": [
+    384,
+    384
+  ],
+  "columns": 6,
+  "rows": 10,
+  "cropOffset": [
+    0,
+    0
+  ],
+  "footAnchor": [
+    192,
+    350
+  ],
+  "clips": {
+    "rest": {
+      "frames": 1,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": null,
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        123,
+        35,
+        260,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 147456,
+      "sha256": "eeb633649fe720966b0aac2f13d3961badd006766b0ad782bca0e2eeb2067f5f"
+    },
+    "walk": {
+      "frames": 60,
+      "fps": 50,
+      "loop": true,
+      "columns": 6,
+      "atlas": "assets/companion/animations/walk.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        131,
+        38,
+        258,
+        355
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "38034ae681d6808736227cd74b22fa0692e9ebb594b39e5c3ecb096bf2c3da8c"
+    },
+    "wave": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/wave.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        123,
+        35,
+        280,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "835a3e806c47a97a4e7f2c27b1fcebec76f98e3cc7d8dd1a79d05ad47e1f350a"
+    },
+    "point": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/point.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        123,
+        35,
+        302,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "991f03d46b4c881925a7a20c38e3e3f64720bf1cf3e944e185d09a8cf7c58922"
+    },
+    "cheer": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/cheer.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        81,
+        24,
+        303,
+        345
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "9c4fcdb5936b26b2eb9d62616253d2430a2ef7bbdb2cf1e4aab92eef273ccee4"
+    },
+    "ready": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/ready.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        123,
+        35,
+        302,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "991f03d46b4c881925a7a20c38e3e3f64720bf1cf3e944e185d09a8cf7c58922"
+    },
+    "wait": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/wait.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        123,
+        35,
+        260,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "bf33eb75be42940dd62c798bc86f5404fead7c1c3c788bc32d091df10fabc5e3"
+    },
+    "reassure": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/reassure.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        123,
+        35,
+        302,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "991f03d46b4c881925a7a20c38e3e3f64720bf1cf3e944e185d09a8cf7c58922"
+    },
+    "idle": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/idle.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        123,
+        35,
+        260,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "bf33eb75be42940dd62c798bc86f5404fead7c1c3c788bc32d091df10fabc5e3"
+    },
+    "wiggle": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/wiggle.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        81,
+        24,
+        303,
+        345
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "9c4fcdb5936b26b2eb9d62616253d2430a2ef7bbdb2cf1e4aab92eef273ccee4"
+    },
+    "love": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/love.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        95,
+        29,
+        288,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "c78a50d467abcf635885fd76cd1553e2bb4c7755dc9645cd52c83ee64b5e6044"
+    },
+    "gift": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/gift.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        109,
+        35,
+        260,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "3e3c0930953e1cede6b4216b70c3f02c649d0a1b044a6c0a93d669397de1217a"
+    },
+    "peek": {
+      "frames": 60,
+      "fps": 24,
+      "loop": false,
+      "columns": 6,
+      "atlas": "assets/companion/animations/peek.png",
+      "canvas": [
+        384,
+        384
+      ],
+      "bounds": [
+        118,
+        35,
+        264,
+        356
+      ],
+      "anchor": [
+        192,
+        350
+      ],
+      "fallback": "assets/companion/static/rest.png",
+      "decodedBytes": 8847360,
+      "sha256": "e4cefa791dd2646d30a5aefa71a897dca30dd3d102ace477988fd3f8e2f6cfcd"
+    }
+  }
+}

@@ -9,6 +9,11 @@ MVP acceptance criteria tested:
     ✅ Lazy expiry marks stale vouchers EXPIRED on next read.
 """
 from __future__ import annotations
+from zoneinfo import ZoneInfo
+
+from tests.auth_helpers import register_verified
+
+from tests.auth_helpers import auth_headers
 
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -40,12 +45,12 @@ def _email() -> str:
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 async def _register(client: AsyncClient, email: str) -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": "testpass123"})
-    assert r.status_code == 201, r.text
+    r = await register_verified(client, json={"email": email, "password": "testpass123"})
+    assert r.status_code == 200, r.text
     return r.json()["access_token"]
 
 
@@ -54,7 +59,7 @@ async def _sync_steps(client: AsyncClient, token: str, steps: int) -> None:
     r = await client.post(
         "/activity/sync",
         json={
-            "local_date": datetime.now(timezone.utc).date().isoformat(),
+            "local_date": datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat(),
             "eligible_steps": steps,
             "source": "manual",
             "sync_key": str(uuid.uuid4()),

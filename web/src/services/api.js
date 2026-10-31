@@ -1,82 +1,81 @@
 // Stepsy Admin API Client
+import { apiErrorMessage } from './store-location.js';
+import { ReadCache } from './read-cache.js';
 
 const BASE_URL = import.meta.env?.VITE_API_URL || '';
 
-class ApiClient {
-  constructor() {
-    this.inflight = new Map();
-    this.token = localStorage.getItem('stepsy_admin_token') || null;
+export class ApiClient {
+  constructor({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch.bind(globalThis), onUnauthorized } = {}) {
+    this.storage = storage;
+    this.fetchImpl = fetchImpl;
+    this.onUnauthorized = onUnauthorized || (() => {
+      if (globalThis.window && !window.location.pathname.includes('/login')) window.location.href = '/login';
+    });
+    this.token = storage?.getItem('stepsy_admin_token') || null;
+    this.sessionVersion = 0;
+    this.cache = new ReadCache();
   }
 
   setToken(token) {
+    if (token === this.token) return;
     this.token = token;
+    this.sessionVersion++;
     if (token) {
-      localStorage.setItem('stepsy_admin_token', token);
+      this.storage?.setItem('stepsy_admin_token', token);
     } else {
-      localStorage.removeItem('stepsy_admin_token');
+      this.storage?.removeItem('stepsy_admin_token');
     }
+    this.cache.invalidate();
   }
 
-  getHeaders() {
+  getHeaders(token = this.token) {
     const headers = {
       'Content-Type': 'application/json',
     };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
     return headers;
   }
 
   request(path, options = {}) {
-    const key = `${this.token || ''}:${path}`;
-    const share = (!options.method || options.method === 'GET') && !options.signal;
-    if (share && this.inflight.has(key)) return this.inflight.get(key);
-    const request = this.performRequest(path, options);
-    if (share) {
-      this.inflight.set(key, request);
-      const clear = () => {
-        if (this.inflight.get(key) === request) this.inflight.delete(key);
-      };
-      request.then(clear, clear);
-    }
-    return request;
+    const sessionVersion = this.sessionVersion;
+    const token = this.token;
+    const method = (options.method || 'GET').toUpperCase();
+    const load = () => this.send(path, options, token, sessionVersion);
+    if (method === 'GET') return this.cache.fetch(path, load);
+    return load().then((data) => {
+      if (!path.startsWith('/admin/auth/')) this.cache.invalidate();
+      return data;
+    });
   }
 
-  async performRequest(path, options = {}) {
-    const requestToken = this.token;
+  async send(path, options, token, sessionVersion) {
     const url = `${BASE_URL}${path}`;
-    const headers = { ...this.getHeaders(), ...options.headers };
+    const headers = { ...this.getHeaders(token), ...options.headers };
+    if (options.body instanceof FormData) delete headers['Content-Type'];
 
-    const controller = new AbortController();
-    const abort = () => controller.abort();
-    options.signal?.addEventListener('abort', abort, { once: true });
-    if (options.signal?.aborted) controller.abort();
-    const timeout = setTimeout(abort, 15000);
     try {
-      const response = await fetch(url, { ...options, headers, signal: controller.signal });
-      if (response.status === 401 && this.token === requestToken) {
+      if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
+      const response = await this.fetchImpl(url, { ...options, headers });
+      if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
+      if (response.status === 401 && token) {
         this.setToken(null);
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
+        this.onUnauthorized();
         throw new Error('Session expired. Please log in again.');
       }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const detail = Array.isArray(errorData.detail)
-          ? errorData.detail.map(item => item.msg).join('; ')
-          : errorData.detail || errorData.message;
-        throw new Error(detail || `Request failed with status ${response.status}`);
+        throw new Error(apiErrorMessage(errorData, response.status));
       }
 
-      return response.status === 204 ? null : await response.json();
+      const data = await response.json();
+      if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
+      return data;
     } catch (err) {
       console.error(`[API Error] ${path}:`, err);
       throw err;
-    } finally {
-      clearTimeout(timeout);
-      options.signal?.removeEventListener('abort', abort);
     }
   }
 
@@ -94,6 +93,10 @@ class ApiClient {
 
   async getMe() {
     return this.request('/admin/auth/me');
+  }
+
+  async getConfig() {
+    return this.request('/admin/config');
   }
 
   logout() {
@@ -137,6 +140,16 @@ class ApiClient {
     });
   }
 
+  async uploadPartnerCover(partnerId, file) {
+    const body = new FormData();
+    body.append('file', file);
+    return this.request(`/admin/partners/${partnerId}/cover`, { method: 'POST', body });
+  }
+
+  async removePartnerCover(partnerId) {
+    return this.request(`/admin/partners/${partnerId}/cover`, { method: 'DELETE' });
+  }
+
   async regeneratePartnerKey(partnerId) {
     return this.request(`/admin/partners/${partnerId}/regenerate-key`, {
       method: 'POST',
@@ -147,6 +160,12 @@ class ApiClient {
     return this.request(`/admin/partners/${partnerId}/reset-password`, {
       method: 'POST',
       body: JSON.stringify({ password }),
+    });
+  }
+
+  async deletePartner(partnerId) {
+    return this.request(`/admin/partners/${partnerId}`, {
+      method: 'DELETE',
     });
   }
 
@@ -183,7 +202,7 @@ class ApiClient {
   // Vouchers & POS
   async listVouchers({ search, status } = {}) {
     const params = new URLSearchParams();
-    if (search) params.append('short_code', search);
+    if (search) params.append('search', search);
     if (status && status !== 'ALL') params.append('status', status);
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/vouchers${query}`);
@@ -203,17 +222,43 @@ class ApiClient {
     });
   }
 
-  async listRedemptions({ limit = 50 } = {}) {
-    return this.request(`/admin/redemptions?limit=${limit}`);
+  async listRedemptions() {
+    return this.request('/admin/redemptions');
+  }
+
+  async updateVoucher(voucherId, payload) {
+    return this.request(`/admin/vouchers/${voucherId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteVoucher(voucherId) {
+    return this.request(`/admin/vouchers/${voucherId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Users
-  async listUsers({ search, status, limit = 51, offset = 0 } = {}) {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  async listUsers({ search, status } = {}) {
+    const params = new URLSearchParams();
     if (search) params.append('search', search);
     if (status && status !== 'ALL') params.append('status', status);
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/users${query}`);
+  }
+
+  async updateUser(userId, payload) {
+    return this.request(`/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteUser(userId) {
+    return this.request(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
   }
 
   async updateUserStatus(userId, status) {
@@ -234,23 +279,21 @@ class ApiClient {
     return this.request(`/admin/users/${userId}/ledger`);
   }
 
+  async getUserActivity(userId, range = 'month') {
+    return this.request(`/admin/users/${userId}/activity?range=${range}`);
+  }
+
   // Ledger & Audit
-  async getGlobalLedger({ reason, limit = 51, offset = 0 } = {}) {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  async getGlobalLedger({ reason } = {}) {
+    const params = new URLSearchParams();
     if (reason && reason !== 'ALL') params.append('reason', reason);
-    return this.request(`/admin/ledger?${params}`);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/admin/ledger${query}`);
   }
 
-  async getAuditLogs({ action, actor, limit = 51, offset = 0 } = {}) {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    if (action) params.append('action', action);
-    if (actor) params.append('actor', actor);
-    return this.request(`/admin/audit-logs?${params}`);
+  async getAuditLogs() {
+    return this.request('/admin/audit-logs');
   }
-
-  getSystemStatus() { return this.request('/admin/system'); }
-  getLedgerSummary() { return this.request('/admin/ledger/summary'); }
-  expireVouchers() { return this.request('/admin/vouchers/sweep-expired', { method: 'POST' }); }
 }
 
 export const api = new ApiClient();

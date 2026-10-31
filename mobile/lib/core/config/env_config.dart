@@ -27,8 +27,8 @@ class EnvConfig {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const String _envGoogleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
 
-  /// Production live API URL on Hostinger VPS (Nginx Port 80)
-  static const String productionBaseUrl = 'http://72.62.250.191';
+  /// Production API served through Stepsy's verified HTTPS domain.
+  static const String productionBaseUrl = 'https://api.stepsyapp.com';
 
   static String get baseUrl {
     if (kReleaseMode) {
@@ -48,6 +48,6 @@ class EnvConfig {
     if (_envGoogleClientId.isNotEmpty) {
       return _envGoogleClientId;
     }
-    return '762647497862-fskb3lmbg5hkuqee4cb0hmjv7goelf92.apps.googleusercontent.com';
+    return '98556293307-3mrudhprtrgadopvjjfucclb22hoq6ls.apps.googleusercontent.com';
   }
 }

@@ -10,11 +10,32 @@ final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
   return ActivityRepository(apiClient: apiClient, cacheService: cacheService);
 });
 
+class ActivitySummaryUnavailable implements Exception {}
+
 class ActivityRepository {
   final ApiClient apiClient;
   final CacheService cacheService;
 
   ActivityRepository({required this.apiClient, required this.cacheService});
+
+  Future<SyncResponse?> getCachedTodaySummary() async {
+    final cached = await cacheService.getCachedData('activity_today');
+    return cached is Map<String, dynamic>
+        ? SyncResponse.fromJson(cached)
+        : null;
+  }
+
+  Future<SyncResponse> getTodaySummary() async {
+    final Response response;
+    try {
+      response = await apiClient.get('/activity/today');
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) throw ActivitySummaryUnavailable();
+      rethrow;
+    }
+    await cacheService.cacheData('activity_today', response.data);
+    return SyncResponse.fromJson(response.data as Map<String, dynamic>);
+  }
 
   /// Post a daily step count to the backend server.
   /// Idempotent via [syncKey].
@@ -34,9 +55,11 @@ class ActivityRepository {
           'sync_key': syncKey,
         },
       );
+      await cacheService.cacheData('activity_today', response.data);
       return SyncResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      final detail = e.response?.data?['detail']?.toString() ?? 'Failed to sync steps';
+      final detail =
+          e.response?.data?['detail']?.toString() ?? 'Failed to sync steps';
       throw Exception(detail);
     } catch (e) {
       throw Exception('Unexpected sync error: $e');
@@ -44,8 +67,10 @@ class ActivityRepository {
   }
 
   /// Get aggregated step history for range: 'today' | 'week' | 'month' (with offline cache fallback).
-  Future<ActivityRangeModel> getActivityHistory({String range = 'today'}) async {
-    final cacheKey = await cacheService.scopedKey('activity_history_$range');
+  Future<ActivityRangeModel> getActivityHistory({
+    String range = 'today',
+  }) async {
+    final cacheKey = 'activity_history_$range';
     try {
       final response = await apiClient.get(
         '/activity',
@@ -55,15 +80,14 @@ class ActivityRepository {
       await cacheService.cacheData(cacheKey, data);
       return ActivityRangeModel.fromJson(data);
     } catch (e) {
-      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
-        throw Exception('Please sign in again to access this data.');
-      }
       final cached = await cacheService.getCachedData(cacheKey);
       if (cached != null && cached is Map<String, dynamic>) {
         return ActivityRangeModel.fromJson(cached);
       }
       if (e is DioException) {
-        final detail = e.response?.data?['detail']?.toString() ?? 'Failed to load activity history';
+        final detail =
+            e.response?.data?['detail']?.toString() ??
+            'Failed to load activity history';
         throw Exception(detail);
       }
       throw Exception('Unexpected error loading activity: $e');

@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
+import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import Badge from '../components/Badge';
-import { Search, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 
 export default function Vouchers() {
-  // POS State
+  // POS Simulator State
   const [shortCode, setShortCode] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
   const [lookingUp, setLookingUp] = useState(false);
@@ -13,37 +15,21 @@ export default function Vouchers() {
   const [redeeming, setRedeeming] = useState(false);
 
   // Vouchers Table State
-  const [vouchers, setVouchers] = useState([]);
   const [search, setSearch] = useState('');
-  const requestVersion = useRef(0);
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
+  const searchQuery = useDebouncedValue(search.trim());
+  const { data: vouchers, loading, error, refresh: fetchVouchers } = useAdminQuery(
+    queryPath('/admin/vouchers', { search: searchQuery, status: statusFilter }), []);
 
-  const fetchVouchers = async () => {
-    const version = ++requestVersion.current;
-    setLoading(true);
+  const handleCancelVoucher = async (voucher) => {
+    if (!window.confirm(`Cancel voucher "${voucher.short_code}"? It will remain in history. Points are not refunded automatically.`)) return;
     try {
-      const data = await api.listVouchers({
-        search: search.trim() || undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-      });
-      if (version !== requestVersion.current) return;
-      setVouchers(data || []);
+      await api.updateVoucher(voucher.id, { status: 'CANCELLED' });
+      fetchVouchers();
     } catch (err) {
-      if (version !== requestVersion.current) return;
-      console.error('Error fetching vouchers:', err);
-    } finally {
-      if (version === requestVersion.current) setLoading(false);
+      alert(err.message || 'Failed to cancel voucher.');
     }
   };
-
-  useEffect(() => {
-    const timer = setTimeout(fetchVouchers, search ? 300 : 0);
-    return () => {
-      clearTimeout(timer);
-      requestVersion.current += 1;
-    };
-  }, [search, statusFilter]);
 
   const handleLookup = async (e) => {
     e.preventDefault();
@@ -89,6 +75,7 @@ export default function Vouchers() {
 
   return (
     <div className="container-main">
+      {error && <p role="alert" style={{ color: 'var(--status-danger)' }}>{error}</p>}
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: '800', color: 'var(--brand-dark)' }}>
@@ -132,6 +119,7 @@ export default function Vouchers() {
             type="text"
             required
             className="input-control font-mono"
+            placeholder="Enter short code (e.g. ST-ABCD)"
             value={shortCode}
             onChange={(e) => setShortCode(e.target.value.toUpperCase())}
             style={{ textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em' }}
@@ -264,6 +252,7 @@ export default function Vouchers() {
                 type="text"
                 className="input-control"
                 style={{ paddingLeft: '32px', fontSize: '12px', padding: '6px 12px 6px 32px' }}
+                placeholder="Search code or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -293,12 +282,13 @@ export default function Vouchers() {
               <th>Discount</th>
               <th>Issued At</th>
               <th>Status</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                   Loading vouchers...
                 </td>
               </tr>
@@ -326,11 +316,27 @@ export default function Vouchers() {
                   <td>
                     <Badge status={v.status} />
                   </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                      {v.status === 'ISSUED' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelVoucher(v)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                          title="Cancel Voucher"
+                        >
+                          <XCircle size={12} />
+                          <span>Cancel</span>
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                   No vouchers match the criteria.
                 </td>
               </tr>

@@ -1,16 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
+import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
+import { googleMapsLink } from '../services/store-location';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
-import { Search, Plus, Copy, Check } from 'lucide-react';
+import ArchiveActions from '../components/ArchiveActions';
+import StoreCover from '../components/StoreCover';
+import StoreCoverEditor from '../components/StoreCoverEditor';
+import { Search, Plus, Copy, Check, MapPin, Edit, ExternalLink } from 'lucide-react';
 
 export default function Stores() {
-  const [stores, setStores] = useState([]);
   const [search, setSearch] = useState('');
-  const requestVersion = useRef(0);
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Modals state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -18,13 +20,28 @@ export default function Stores() {
   const [storeDetails, setStoreDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  // Edit Store State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingStore, setEditingStore] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    category: '',
+    location: '',
+    google_maps_url: '',
+    status: 'ACTIVE',
+  });
+  const [isUpdatingStore, setIsUpdatingStore] = useState(false);
+
   // New Store Form
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
+    use_existing_account: false,
     category: '',
     location: '',
+    google_maps_url: '',
     status: 'ACTIVE',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,37 +68,14 @@ export default function Stores() {
   });
   const [isSubmittingDeal, setIsSubmittingDeal] = useState(false);
 
-  const fetchStores = async () => {
-    const version = ++requestVersion.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.listPartners({
-        search: search.trim() || undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-      });
-      if (version !== requestVersion.current) return;
-      setStores(data || []);
-    } catch (err) {
-      if (version !== requestVersion.current) return;
-      setError(err.message || 'Error loading partner stores.');
-    } finally {
-      if (version === requestVersion.current) setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(fetchStores, search ? 300 : 0);
-    return () => {
-      clearTimeout(timer);
-      requestVersion.current += 1;
-    };
-  }, [search, statusFilter]);
+  const searchQuery = useDebouncedValue(search.trim());
+  const { data: stores, loading, error, refresh: fetchStores } = useAdminQuery(
+    queryPath('/admin/partners', { search: searchQuery, status: statusFilter }), []);
 
   const handleCreateStore = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-      alert('Please fill in Store Name, Merchant Email, and Initial Password.');
+    if (!formData.name.trim() || !formData.email.trim() || (!formData.use_existing_account && !formData.password.trim())) {
+      alert('Please fill in Store Name, Merchant Email, and an Initial Password for a new account.');
       return;
     }
 
@@ -90,9 +84,11 @@ export default function Stores() {
       const data = await api.createPartner({
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
-        password: formData.password,
+        password: formData.use_existing_account ? undefined : formData.password,
+        use_existing_account: formData.use_existing_account,
         category: formData.category.trim() || undefined,
         location: formData.location.trim() || undefined,
+        google_maps_url: formData.google_maps_url.trim() || undefined,
         status: formData.status,
       });
       setCreatedPassword(formData.password);
@@ -103,6 +99,57 @@ export default function Stores() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const openEditStore = (store, e) => {
+    if (e) e.stopPropagation();
+    setEditingStore(store);
+    setEditFormData({
+      name: store.name || '',
+      email: store.email || '',
+      category: store.category || '',
+      location: store.location || '',
+      google_maps_url: store.google_maps_url || '',
+      status: store.status || 'ACTIVE',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateStore = async (e) => {
+    e.preventDefault();
+    if (!editingStore || !editFormData.name.trim()) {
+      alert('Store name cannot be empty.');
+      return;
+    }
+
+    setIsUpdatingStore(true);
+    try {
+      await api.updatePartner(editingStore.id, {
+        name: editFormData.name.trim(),
+        email: editFormData.email.trim() || undefined,
+        category: editFormData.category.trim(),
+        location: editFormData.location.trim(),
+        google_maps_url: editFormData.google_maps_url.trim(),
+        status: editFormData.status,
+      });
+      setIsEditOpen(false);
+      if (selectedStore === editingStore.id) {
+        openStoreDetails(editingStore.id);
+      }
+      fetchStores();
+    } catch (err) {
+      alert(err.message || 'Failed to update partner store.');
+    } finally {
+      setIsUpdatingStore(false);
+    }
+  };
+
+  const onLifecycleChanged = (storeId, action) => {
+    if (selectedStore === storeId) {
+      if (action === 'delete') { setSelectedStore(null); setStoreDetails(null); }
+      else openStoreDetails(storeId);
+    }
+    fetchStores();
   };
 
   const handleResetPassword = async (e) => {
@@ -189,7 +236,7 @@ export default function Stores() {
         discount_value: Number(dealForm.discount_value),
         points_cost: Number(dealForm.points_cost),
         min_basket: dealForm.min_basket ? Number(dealForm.min_basket) : undefined,
-        inventory: dealForm.inventory ? Number(dealForm.inventory) : undefined,
+        inventory: dealForm.inventory === '' ? null : Number(dealForm.inventory),
         status: dealForm.status,
       });
       setIsAddDealOpen(false);
@@ -225,7 +272,7 @@ export default function Stores() {
           onClick={() => {
             setCreatedPartner(null);
             setCreatedPassword('');
-            setFormData({ name: '', email: '', password: '', category: '', location: '', status: 'ACTIVE' });
+            setFormData({ name: '', email: '', password: '', use_existing_account: false, category: '', location: '', google_maps_url: '', status: 'ACTIVE' });
             setIsRegisterOpen(true);
           }}
           className="btn btn-primary"
@@ -257,6 +304,7 @@ export default function Stores() {
             type="text"
             className="input-control"
             style={{ paddingLeft: '36px' }}
+            placeholder="Search stores by brand or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -264,7 +312,7 @@ export default function Stores() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginRight: '6px' }}>Status:</span>
-          {['ALL', 'ACTIVE', 'INACTIVE'].map((status) => (
+          {['ALL', 'ACTIVE', 'INACTIVE', 'ARCHIVED'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -319,6 +367,7 @@ export default function Stores() {
               }}
             >
               <div>
+                <StoreCover src={s.cover_image_url} name={s.name} />
                 {/* Header: Initial Avatar & Name */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -345,10 +394,38 @@ export default function Stores() {
                       <p style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.email || 'No login email'}
                       </p>
+                      {(s.location || s.category) && (
+                        <p style={{ fontSize: '11px', color: 'var(--text-subtle)', marginTop: '2px' }}>
+                          {[s.category, s.location].filter(Boolean).join(' • ')}
+                        </p>
+                      )}
+                      {googleMapsLink(s.google_maps_url) && (
+                        <a
+                          href={googleMapsLink(s.google_maps_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            color: 'var(--brand-teal)',
+                            fontWeight: '600',
+                            textDecoration: 'none',
+                            marginTop: '4px',
+                          }}
+                          title="Open in Google Maps"
+                        >
+                          <MapPin size={11} />
+                          <span>View on Map</span>
+                          <ExternalLink size={9} />
+                        </a>
+                      )}
                     </div>
                   </div>
 
-                  <Badge status={s.status} />
+                  <Badge status={s.archived_at ? 'ARCHIVED' : s.status} />
                 </div>
 
                 {/* Metrics 3-Col Bar */}
@@ -382,7 +459,7 @@ export default function Stores() {
                   </div>
                   <div>
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: '600' }}>
-                      Fixed discounts
+                      Discounts
                     </span>
                     <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--brand-dark)', fontFamily: 'monospace' }}>
                       ${(s.total_discount_value || 0).toFixed(0)}
@@ -393,11 +470,21 @@ export default function Stores() {
 
               {/* Card Footer */}
               <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '500' }}>
-                  Merchant POS Ready
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => openEditStore(s, e)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                    title="Edit Store"
+                  >
+                    <Edit size={11} />
+                    <span>Edit</span>
+                  </button>
+                  <ArchiveActions kind="partners" record={s} onChanged={(action) => onLifecycleChanged(s.id, action)} />
+                </div>
                 <span style={{ color: 'var(--brand-teal)', fontWeight: '600' }}>
-                  Manage Store &rarr;
+                  Manage &rarr;
                 </span>
               </div>
             </div>
@@ -418,6 +505,9 @@ export default function Stores() {
       >
         {createdPartner ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <StoreCoverEditor store={createdPartner} onSaved={(url) => {
+              setCreatedPartner((previous) => ({ ...previous, cover_image_url: url })); fetchStores();
+            }} />
             <div style={{ padding: '16px', background: 'var(--tint-mint)', border: '1px solid rgba(0, 210, 160, 0.4)', borderRadius: 'var(--radius-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--brand-teal)' }}>
@@ -463,7 +553,7 @@ export default function Stores() {
               </div>
 
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.4' }}>
-                The store manager will use this email and password to log in through the standard Stepsy mobile app. Their account has been automatically configured with the Merchant POS role.
+                {createdPassword ? 'Use the email and initial password above to sign in.' : 'The existing password and Google sign-in are kept.'} The account is now linked to this store and opens its Merchant POS terminal in the Stepsy app.
               </p>
             </div>
 
@@ -479,6 +569,14 @@ export default function Stores() {
           </div>
         ) : (
           <form onSubmit={handleCreateStore} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+              <input type="checkbox" checked={Boolean(formData.use_existing_account)}
+                onChange={(e) => setFormData({ ...formData, use_existing_account: e.target.checked, password: '' })} />
+              Use existing account
+            </label>
+            {formData.use_existing_account && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Enter the existing account’s email. Its password, Google sign-in and history are kept. It must be active and not already linked to a store. The user will need to sign in again.
+            </p>}
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                 Store / Brand Name *
@@ -487,6 +585,7 @@ export default function Stores() {
                 type="text"
                 required
                 className="input-control"
+                placeholder="e.g. Apex Cafe & Bakery, Nike Gulberg"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
@@ -501,24 +600,26 @@ export default function Stores() {
                   type="email"
                   required
                   className="input-control"
+                  placeholder="merchant@brand.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
 
-              <div>
+              {!formData.use_existing_account && <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                   Initial Password *
                 </label>
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={8}
                   className="input-control"
+                  placeholder="Min. 8 characters"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
-              </div>
+              </div>}
             </div>
 
             <div className="grid-cols-2" style={{ gap: '12px' }}>
@@ -529,6 +630,7 @@ export default function Stores() {
                 <input
                   type="text"
                   className="input-control"
+                  placeholder="e.g. Cafe, Retail, Dining"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 />
@@ -541,14 +643,31 @@ export default function Stores() {
                 <input
                   type="text"
                   className="input-control"
+                  placeholder="e.g. Downtown Mall, Floor 1"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 />
               </div>
             </div>
 
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Google Maps place link (optional)
+              </label>
+              <input
+                type="url"
+                className="input-control"
+                placeholder="https://maps.app.goo.gl/…"
+                value={formData.google_maps_url}
+                onChange={(e) => setFormData({ ...formData, google_maps_url: e.target.value })}
+                aria-describedby="create-maps-help"
+                maxLength={2048}
+              />
+              <p id="create-maps-help" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Open the brand’s branch in Google Maps, choose Share, then Copy link. This appears on its reward cards in the app.</p>
+            </div>
+
             <div style={{ padding: '10px 12px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-muted)' }}>
-              A linked merchant user account will be created. The merchant can log in from the exact same mobile login screen and will be automatically presented with the POS Terminal.
+              {formData.use_existing_account ? 'The existing account will be linked to this store as its merchant.' : 'A linked merchant user account will be created.'} The merchant can sign in through the Stepsy mobile app to open the POS Terminal.
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
@@ -588,9 +707,10 @@ export default function Stores() {
           </div>
         ) : storeDetails ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <StoreCover src={storeDetails.cover_image_url} name={storeDetails.name} />
             {/* Header info */}
             <div style={{ padding: '16px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h4 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--brand-dark)' }}>
                     {storeDetails.name}
@@ -598,8 +718,47 @@ export default function Stores() {
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     {storeDetails.email || 'No contact email configured'}
                   </p>
+                  {(storeDetails.category || storeDetails.location) && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      {[storeDetails.category, storeDetails.location].filter(Boolean).join(' • ')}
+                    </p>
+                  )}
+                  {googleMapsLink(storeDetails.google_maps_url) && (
+                    <a
+                      href={googleMapsLink(storeDetails.google_maps_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        fontSize: '12px',
+                        color: 'var(--brand-teal)',
+                        fontWeight: '600',
+                        textDecoration: 'none',
+                        marginTop: '6px',
+                      }}
+                    >
+                      <MapPin size={13} />
+                      <span>View Location on Google Maps</span>
+                      <ExternalLink size={11} />
+                    </a>
+                  )}
                 </div>
-                <Badge status={storeDetails.status} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Badge status={storeDetails.archived_at ? 'ARCHIVED' : storeDetails.status} />
+                  <button
+                    type="button"
+                    onClick={() => openEditStore(storeDetails)}
+                    className="btn btn-secondary btn-sm"
+                    title="Edit Store Information"
+                  >
+                    <Edit size={13} />
+                    <span>Edit</span>
+                  </button>
+                  <ArchiveActions kind="partners" record={storeDetails} onChanged={(action) => onLifecycleChanged(storeDetails.id, action)} />
+                </div>
               </div>
 
               {/* Merchant Mobile POS Login Account Section */}
@@ -633,6 +792,7 @@ export default function Stores() {
                   <form onSubmit={handleResetPassword} style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed var(--border-light)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
                       type="password"
+                      placeholder="Set new merchant password..."
                       value={resetPwd}
                       onChange={(e) => setResetPwd(e.target.value)}
                       className="input-control"
@@ -659,6 +819,7 @@ export default function Stores() {
                 <button
                   type="button"
                   onClick={() => setIsAddDealOpen(true)}
+                  disabled={Boolean(storeDetails.archived_at)}
                   className="btn btn-secondary btn-sm"
                 >
                   <Plus size={14} />
@@ -769,6 +930,7 @@ export default function Stores() {
               type="text"
               required
               className="input-control"
+              placeholder="e.g. 20% Off Entire Summer Menu"
               value={dealForm.title}
               onChange={(e) => setDealForm({ ...dealForm, title: e.target.value })}
             />
@@ -781,6 +943,7 @@ export default function Stores() {
             <input
               type="text"
               className="input-control"
+              placeholder="Valid on dine-in and takeaway orders"
               value={dealForm.description}
               onChange={(e) => setDealForm({ ...dealForm, description: e.target.value })}
             />
@@ -839,6 +1002,7 @@ export default function Stores() {
                 type="number"
                 min="0"
                 className="input-control"
+                placeholder="Unlimited"
                 value={dealForm.inventory}
                 onChange={(e) => setDealForm({ ...dealForm, inventory: e.target.value })}
               />
@@ -859,6 +1023,128 @@ export default function Stores() {
               className="btn btn-primary"
             >
               {isSubmittingDeal ? 'Publishing...' : 'Publish Deal'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Store Modal */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingStore(null);
+        }}
+        title={`Edit Store: ${editingStore?.name || ''}`}
+        subtitle="Update store metadata, merchant login email, location, or Google Maps link."
+      >
+        <form onSubmit={handleUpdateStore} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {editingStore && <StoreCoverEditor key={editingStore.id} store={editingStore} onSaved={(url) => {
+            setEditingStore((previous) => ({ ...previous, cover_image_url: url }));
+            setStoreDetails((previous) => previous?.id === editingStore.id ? { ...previous, cover_image_url: url } : previous);
+            fetchStores();
+          }} />}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Store / Brand Name *
+            </label>
+            <input
+              type="text"
+              required
+              className="input-control"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Merchant Login Email
+            </label>
+            <input
+              type="email"
+              className="input-control"
+              placeholder="merchant@brand.com"
+              value={editFormData.email}
+              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+            />
+          </div>
+
+          <div className="grid-cols-2" style={{ gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Category
+              </label>
+              <input
+                type="text"
+                className="input-control"
+                placeholder="e.g. Cafe, Retail"
+                value={editFormData.category}
+                onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Status
+              </label>
+              <select
+                className="input-control"
+                value={editFormData.status}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Location / Branch
+            </label>
+            <input
+              type="text"
+              className="input-control"
+              placeholder="e.g. Downtown Mall, Floor 1"
+              value={editFormData.location}
+              onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              Google Maps place link
+            </label>
+            <input
+              type="url"
+              className="input-control"
+              placeholder="https://maps.app.goo.gl/…"
+              value={editFormData.google_maps_url}
+              onChange={(e) => setEditFormData({ ...editFormData, google_maps_url: e.target.value })}
+              aria-describedby="edit-maps-help"
+              maxLength={2048}
+            />
+            <p id="edit-maps-help" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>Paste the branch’s Google Maps Share link. Changes appear on its reward cards after refresh. Clear this field to remove the saved pin; the address is used for a Maps search when available.</p>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditOpen(false);
+                setEditingStore(null);
+              }}
+              className="btn btn-ghost"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdatingStore}
+              className="btn btn-primary"
+            >
+              {isUpdatingStore ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

@@ -1,11 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/cache_service.dart';
+import '../../core/services/background_sync_service.dart';
+import '../../core/services/notification_service.dart';
+import '../activity/health_service.dart';
 import '../api/api_client.dart';
 import '../models/user_model.dart';
 import 'auth_repository.dart';
 import 'token_storage.dart';
-import '../../core/services/cache_service.dart';
-import '../../core/services/notification_service.dart';
+import 'email_verification.dart';
+import 'google_auth_service.dart';
 
 // SharedPreferences keys for the client-only cached Google profile (name/photo).
 // These are not stored server-side; they only decorate the local profile UI.
@@ -16,6 +20,7 @@ enum AuthStatus {
   initial,
   authenticated,
   unauthenticated,
+  verificationRequired,
 }
 
 class AuthState {
@@ -27,6 +32,7 @@ class AuthState {
   // Client-only cached Google profile (not persisted server-side).
   final String? googleName;
   final String? googlePhotoUrl;
+  final EmailVerificationRequired? verification;
 
   const AuthState({
     required this.status,
@@ -36,6 +42,7 @@ class AuthState {
     this.errorMessage,
     this.googleName,
     this.googlePhotoUrl,
+    this.verification,
   });
 
   factory AuthState.initial() => const AuthState(status: AuthStatus.initial);
@@ -48,6 +55,7 @@ class AuthState {
     String? errorMessage,
     String? googleName,
     String? googlePhotoUrl,
+    EmailVerificationRequired? verification,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -57,6 +65,7 @@ class AuthState {
       errorMessage: errorMessage,
       googleName: googleName ?? this.googleName,
       googlePhotoUrl: googlePhotoUrl ?? this.googlePhotoUrl,
+      verification: verification ?? this.verification,
     );
   }
 }
@@ -88,9 +97,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> checkAuthStatus() async {
     state = state.copyWith(isLoading: true);
-    final token = await tokenStorage.getToken();
-    final cachedUser = await tokenStorage.getUser();
-    final (googleName, googlePhoto) = await _loadGoogleProfile();
+    final (token, cachedUser, profile) = await (
+      tokenStorage.getToken(),
+      tokenStorage.getUser(),
+      _loadGoogleProfile(),
+    ).wait;
+    final (googleName, googlePhoto) = profile;
 
     if (token != null && token.isNotEmpty) {
       // Immediately restore authenticated state from local storage so the user stays
@@ -107,6 +119,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Attempt to refresh the profile in the background if online
       try {
         final user = await authRepository.getMe();
+        if (!mounted || await tokenStorage.getToken() != token) return;
         await tokenStorage.saveUser(user);
         state = state.copyWith(user: user);
       } catch (_) {
@@ -124,9 +137,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login({required String email, required String password}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final token = await authRepository.login(email: email, password: password);
+      final token = await authRepository.login(
+        email: email,
+        password: password,
+      );
       await tokenStorage.saveToken(token);
-      final user = await authRepository.getMe();
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
       await tokenStorage.saveUser(user);
       state = AuthState(
         status: AuthStatus.authenticated,
@@ -134,6 +151,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         user: user,
         isLoading: false,
       );
+      return true;
+    } on EmailVerificationRequired catch (challenge) {
+      await _requireVerification(challenge);
       return true;
     } catch (e) {
       final msg = e.toString().replaceAll('Exception: ', '');
@@ -157,7 +177,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         timezone: timezone,
       );
       await tokenStorage.saveToken(token);
-      final user = await authRepository.getMe();
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
       await tokenStorage.saveUser(user);
       state = AuthState(
         status: AuthStatus.authenticated,
@@ -165,6 +186,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         user: user,
         isLoading: false,
       );
+      return true;
+    } on EmailVerificationRequired catch (challenge) {
+      await _requireVerification(challenge);
       return true;
     } catch (e) {
       final msg = e.toString().replaceAll('Exception: ', '');
@@ -188,7 +212,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         timezone: timezone,
       );
       await tokenStorage.saveToken(token);
-      final user = await authRepository.getMe();
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
       await tokenStorage.saveUser(user);
       // Cache the Google name/photo locally so the profile screen can show them
       // (the backend does not store these).
@@ -202,9 +227,100 @@ class AuthNotifier extends StateNotifier<AuthState> {
         googlePhotoUrl: photoUrl,
       );
       return true;
+    } on EmailVerificationRequired catch (challenge) {
+      await _requireVerification(challenge);
+      return true;
     } catch (e) {
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
+      return false;
+    }
+  }
+
+  Future<void> _requireVerification(EmailVerificationRequired challenge) async {
+    await tokenStorage.clearAll();
+    if (!mounted) return;
+    state = AuthState(
+      status: AuthStatus.verificationRequired,
+      verification: challenge,
+    );
+  }
+
+  Future<bool> signInWithGoogle({String? country, String? timezone}) async {
+    if (state.isLoading) return false;
+    state = state.copyWith(isLoading: true);
+    try {
+      final result = await GoogleAuthService.signIn();
+      if (!mounted) return false;
+      if (result == null) {
+        state = state.copyWith(isLoading: false);
+        return false;
+      }
+      return await loginWithGoogle(
+        idToken: result.token,
+        country: country,
+        timezone: timezone,
+        displayName: result.name,
+        photoUrl: result.photo,
+      );
+    } catch (e) {
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<bool> verifyEmail(String code) async {
+    final challenge = state.verification;
+    if (challenge == null || state.isLoading) return false;
+    state = state.copyWith(isLoading: true);
+    try {
+      final token = await authRepository.verifyEmail(
+        token: challenge.token,
+        code: code,
+      );
+      await tokenStorage.saveToken(token);
+      final user =
+          authRepository.authenticatedUser ?? await authRepository.getMe();
+      await tokenStorage.saveUser(user);
+      if (!mounted) return false;
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        token: token,
+        user: user,
+      );
+      return true;
+    } catch (e) {
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<bool> resendVerification() async {
+    final challenge = state.verification;
+    if (challenge == null || state.isLoading) return false;
+    state = state.copyWith(isLoading: true);
+    try {
+      final next = await authRepository.resendVerification(challenge.token);
+      if (!mounted) return false;
+      state = state.copyWith(isLoading: false, verification: next);
+      return true;
+    } catch (e) {
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
       return false;
     }
   }
@@ -252,20 +368,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    final userId = state.user?.id;
     await tokenStorage.clearAll();
-    await CacheService.clearAllPersonalCaches();
-    await NotificationService.setUser(null);
     await _saveGoogleProfile(null, null); // clear cached Google profile
     state = const AuthState(
       status: AuthStatus.unauthenticated,
       isLoading: false,
     );
+    await HealthService.stopTracking();
+    await BackgroundSyncService.cancel();
+    await NotificationService.cancelAll();
+    await CacheService(userId: userId).clearAccountCache();
   }
 
   Future<(String?, String?)> _loadGoogleProfile() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return (prefs.getString(_kGoogleNameKey), prefs.getString(_kGooglePhotoKey));
+      return (
+        prefs.getString(_kGoogleNameKey),
+        prefs.getString(_kGooglePhotoKey),
+      );
     } catch (_) {
       return (null, null);
     }

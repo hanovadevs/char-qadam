@@ -1,344 +1,179 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../../../core/config/env_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/stepsy_information.dart';
 import '../../../data/auth/auth_state_provider.dart';
+import 'cozy_auth_frame.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
-
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  final _countryController = TextEditingController(text: 'PK');
-  final _timezoneController = TextEditingController(text: 'Asia/Karachi');
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
-
+  final _form = GlobalKey<FormState>();
+  final _email = TextEditingController(), _password = TextEditingController();
+  bool _hidden = true;
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _countryController.dispose();
-    _timezoneController.dispose();
+    _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final googleSignIn = GoogleSignIn(
-        serverClientId: EnvConfig.googleClientId,
-        scopes: const ['email', 'profile'],
-      );
-      // Sign out first so the account picker always appears.
-      await googleSignIn.signOut();
-
-      final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return; // user cancelled the picker
-
-      final googleAuth = await googleUser.authentication;
-      final token = googleAuth.idToken;
-      if (token == null || token.isEmpty) {
-        throw Exception('Google did not return a verified sign-in token. Please contact support.');
-      }
-      final idToken = token;
-
-      await ref.read(authStateProvider.notifier).loginWithGoogle(
-            idToken: idToken,
-            country: _countryController.text.trim().toUpperCase(),
-            timezone: _timezoneController.text.trim(),
-            displayName: googleUser.displayName,
-            photoUrl: googleUser.photoUrl,
-          );
-    } catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Google sign-in failed: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: AppTheme.accentRed,
-        ),
-      );
-    }
-  }
-
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final success = await ref.read(authStateProvider.notifier).register(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          country: _countryController.text.trim().toUpperCase(),
-          timezone: _timezoneController.text.trim(),
+    if (ref.read(authStateProvider).isLoading) return;
+    if (!_form.currentState!.validate()) return;
+    await ref
+        .read(authStateProvider.notifier)
+        .register(
+          email: _email.text.trim(),
+          password: _password.text,
+          country: 'PK',
+          timezone: 'Asia/Karachi',
         );
-
-    if (!mounted) return;
-
-    if (!success) {
-      final error = ref.read(authStateProvider).errorMessage;
-      if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: AppTheme.accentRed,
-          ),
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-
-    return Scaffold(
-      backgroundColor: AppTheme.white,
-      appBar: AppBar(
-        backgroundColor: AppTheme.white,
-        title: const Text('CREATE ACCOUNT'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.go('/login'),
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    final state = ref.watch(authStateProvider);
+    return CozyAuthFrame(
+      title: 'Your first step.',
+      subtitle: 'Create an account to start your journey.',
+      pose: 'wave',
+      child: AutofillGroup(
+        child: Form(
+          key: _form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (state.errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    state.errorMessage!,
+                    style: const TextStyle(color: AppTheme.destructive),
+                  ),
+                ),
+              const AuthLabel('Email address'),
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                decoration: const InputDecoration(hintText: 'you@example.com'),
+                validator: (v) =>
+                    v == null ||
+                        !RegExp(
+                          r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                        ).hasMatch(v.trim())
+                    ? 'Please enter a valid email address'
+                    : null,
+              ),
+              const SizedBox(height: 18),
+              const AuthLabel('Create password'),
+              TextFormField(
+                controller: _password,
+                obscureText: _hidden,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.newPassword],
+                onFieldSubmitted: (_) {
+                  if (!state.isLoading) _submit();
+                },
+                decoration: InputDecoration(
+                  hintText: 'At least 8 characters',
+                  suffixIcon: IconButton(
+                    tooltip: _hidden ? 'Show password' : 'Hide password',
+                    onPressed: () => setState(() => _hidden = !_hidden),
+                    icon: Icon(
+                      _hidden
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                validator: (v) => v == null || v.length < 8
+                    ? 'Use at least 8 characters'
+                    : null,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Use a strong, unique password.',
+                style: AppTheme.captionStyle,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Text(
-                    'NEW MEMBERSHIP',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.0,
-                      color: AppTheme.black,
-                    ),
+                    'By creating an account, you agree to the ',
+                    style: AppTheme.captionStyle,
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Convert daily steps to verifiable network points and partner perks.',
-                    style: TextStyle(color: AppTheme.grey, fontSize: 12),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Error banner if any
-                  if (authState.errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.white,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                        border: Border.all(color: AppTheme.accentRed),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              authState.errorMessage!,
-                              style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Email Field
-                  const Text(
-                    'EMAIL ADDRESS',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: AppTheme.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      hintText: 'name@domain.com',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                      if (!emailRegex.hasMatch(value.trim())) {
-                        return 'Please enter a valid email address';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Password Field
-                  const Text(
-                    'PASSWORD (MIN 8 CHARS)',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: AppTheme.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      hintText: 'At least 8 characters',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          size: 18,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a password';
-                      }
-                      if (value.length < 8) {
-                        return 'Password must be at least 8 characters long';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Confirm Password Field
-                  const Text(
-                    'CONFIRM PASSWORD',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: AppTheme.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: _obscureConfirmPassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
-                    decoration: InputDecoration(
-                      hintText: 'Re-enter your password',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          size: 18,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Submit Button
-                  ElevatedButton(
-                    onPressed: authState.isLoading ? null : _submit,
-                    child: authState.isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
-                            ),
-                          )
-                        : const Text('CREATE ACCOUNT'),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Divider
-                  const Row(
-                    children: [
-                      Expanded(child: Divider(color: AppTheme.border)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'OR',
-                          style: TextStyle(fontSize: 10, fontFamily: AppTheme.monoFont, color: AppTheme.grey),
+                  InkWell(
+                    onTap: () => showStepsyInformation(context),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Terms.',
+                        style: TextStyle(
+                          color: AppTheme.accentSolid,
+                          decoration: TextDecoration.underline,
                         ),
                       ),
-                      Expanded(child: Divider(color: AppTheme.border)),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Google Sign-In Button
-                  OutlinedButton.icon(
-                    onPressed: authState.isLoading ? null : _handleGoogleSignIn,
-                    icon: const Icon(Icons.account_circle_outlined, size: 18),
-                    label: const Text('CONTINUE WITH GOOGLE'),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Navigation to Login
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'ALREADY REGISTERED?',
-                        style: TextStyle(color: AppTheme.grey, fontSize: 11, letterSpacing: 0.5),
-                      ),
-                      TextButton(
-                        onPressed: () => context.go('/login'),
-                        child: const Text(
-                          'SIGN IN',
-                          style: TextStyle(
-                            color: AppTheme.black,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            letterSpacing: 0.8,
-                          ),
+                  const Text(' Read our ', style: AppTheme.captionStyle),
+                  InkWell(
+                    onTap: () => showStepsyInformation(context, privacy: true),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Privacy Policy.',
+                        style: TextStyle(
+                          color: AppTheme.accentSolid,
+                          decoration: TextDecoration.underline,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: state.isLoading ? null : _submit,
+                child: Text(
+                  state.isLoading ? 'Creating account…' : 'Create account',
+                ),
+              ),
+              const AuthDivider(),
+              GoogleAuthButton(
+                onPressed: state.isLoading
+                    ? null
+                    : () => ref
+                          .read(authStateProvider.notifier)
+                          .signInWithGoogle(
+                            country: 'PK',
+                            timezone: 'Asia/Karachi',
+                          ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text('Already have an account?'),
+                  TextButton(
+                    onPressed: state.isLoading
+                        ? null
+                        : () => context.go('/login'),
+                    child: const Text('Sign in'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

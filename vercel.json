@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/admin/:path*",
-      "destination": "http://72.62.250.191/admin/:path*"
+      "destination": "https://api.stepsyapp.com/admin/:path*"
     },
     {
       "source": "/health",
-      "destination": "http://72.62.250.191/health"
+      "destination": "https://api.stepsyapp.com/health"
     },
     {
       "source": "/(.*)",

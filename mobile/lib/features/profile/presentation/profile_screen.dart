@@ -1,13 +1,21 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../guided_tour/tour_provider.dart';
+import '../../guided_tour/tour_targets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/cozy_scene.dart';
+import '../../../core/widgets/stepsy_ui.dart';
+import '../../companion/experience_provider.dart';
+import '../../activity/providers/activity_provider.dart';
+import '../../companion/experience_sheet.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../data/auth/auth_state_provider.dart';
+import '../../auth/presentation/sign_out_confirmation.dart';
 import '../../../data/profile/profile_repository.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -22,15 +30,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _showEditProfileBottomSheet(BuildContext context) {
     final user = ref.read(authStateProvider).user;
-    final countryController = TextEditingController(text: user?.country ?? 'PK');
-    final timezoneController = TextEditingController(text: user?.timezone ?? 'Asia/Karachi');
+    final countryController = TextEditingController(
+      text: user?.country ?? 'PK',
+    );
+    final timezoneController = TextEditingController(
+      text: user?.timezone ?? 'Asia/Karachi',
+    );
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (context) {
         return Padding(
@@ -67,19 +81,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 18),
               const Text(
                 'Country code (ISO-2)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.inkSecondary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.inkSecondary,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: countryController,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. PK, US, GB',
-                ),
+                decoration: const InputDecoration(hintText: 'e.g. PK, US, GB'),
               ),
               const SizedBox(height: 16),
               const Text(
                 'Timezone',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.inkSecondary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.inkSecondary,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
@@ -96,7 +116,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMd,
+                          ),
                         ),
                       ),
                       child: const Text('Cancel'),
@@ -113,12 +135,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         try {
                           final repo = ref.read(profileRepositoryProvider);
                           await repo.updateProfile(
-                            country: countryController.text.trim().toUpperCase(),
+                            country: countryController.text
+                                .trim()
+                                .toUpperCase(),
                             timezone: timezoneController.text.trim(),
                           );
-                          await ref.read(authStateProvider.notifier).refreshProfile();
+                          await ref
+                              .read(authStateProvider.notifier)
+                              .refreshProfile();
                           messenger.showSnackBar(
-                            const SnackBar(content: Text('Preferences updated successfully')),
+                            const SnackBar(
+                              content: Text('Preferences updated successfully'),
+                            ),
                           );
                         } catch (e) {
                           messenger.showSnackBar(
@@ -133,7 +161,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMd,
+                          ),
                         ),
                       ),
                       child: const Text('Save changes'),
@@ -154,7 +184,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -174,7 +206,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Delete account',
+              'Deactivate account',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -184,8 +216,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Are you sure you want to delete your account? Your profile details, step history, and support conversations will be erased, and active vouchers will be cancelled. Anonymized transaction records may be retained for accounting and abuse prevention.',
-              style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
+              'Your account will be deactivated and you will be signed out. This phone can then use a different account. Activity and reward records stay with this account; steps already rewarded on this phone cannot earn points again.',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.inkSecondary,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -230,7 +266,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         if (mounted) setState(() => _isUpdating = false);
                       }
                     },
-                    child: const Text('Delete account'),
+                    child: const Text('Deactivate account'),
                   ),
                 ),
               ],
@@ -243,230 +279,221 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final user = authState.user;
-    final isMerchant = user?.role == 'MERCHANT';
-
+    final auth = ref.watch(authStateProvider);
+    final user = auth.user;
+    final goal = ref.watch(experienceProvider).goal;
+    final connected = ref.watch(activityProvider).hasPermission;
     return Scaffold(
-      backgroundColor: AppTheme.surfaceMuted,
-      appBar: AppBar(
-        backgroundColor: AppTheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-            color: AppTheme.inkPrimary,
-          ),
-        ),
-      ),
+      appBar: const CozyAppBar(showPoints: false),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        key: tourKey(ref, 'page.4'),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          tourBottomPadding(ref, context),
+        ),
         children: [
-          if (_isUpdating)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12.0),
-              child: LinearProgressIndicator(
-                color: AppTheme.accentSolid,
-                backgroundColor: AppTheme.hairline,
-                minHeight: 2,
-              ),
-            ),
-
-          // User Card Block (Apple Squircle Profile Card)
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.hairline),
-            ),
-            padding: const EdgeInsets.all(18.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const CozyPageHeading(
+            title: 'You',
+            subtitle: 'Your pace.\nYour space.',
+            pose: 'wave',
+          ),
+          const SizedBox(height: 10),
+          SurfaceCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildAvatar(authState.googlePhotoUrl, authState.googleName, user?.email),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (authState.googleName != null && authState.googleName!.isNotEmpty)
-                            Text(
-                              authState.googleName!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.3,
-                                color: AppTheme.inkPrimary,
-                              ),
-                            ),
-                          Text(
-                            user?.email ?? 'User',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: (authState.googleName != null && authState.googleName!.isNotEmpty) ? 13 : 17,
-                              fontWeight: (authState.googleName != null && authState.googleName!.isNotEmpty)
-                                  ? FontWeight.w400
-                                  : FontWeight.w600,
-                              color: (authState.googleName != null && authState.googleName!.isNotEmpty)
-                                  ? AppTheme.inkSecondary
-                                  : AppTheme.inkPrimary,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ],
+                _buildAvatar(auth.googlePhotoUrl, auth.googleName, user?.email),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        auth.googleName?.isNotEmpty == true
+                            ? auth.googleName!
+                            : 'Stepsy member',
+                        style: AppTheme.headlineStyle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(color: AppTheme.hairline, height: 1),
-                const SizedBox(height: 14),
-                _buildDetailRow('Country', user?.country ?? 'PK'),
-                const SizedBox(height: 8),
-                _buildDetailRow('Timezone', user?.timezone ?? 'Asia/Karachi'),
-                const SizedBox(height: 8),
-                _buildDetailRow(
-                  'Member since',
-                  user != null
-                      ? DateFormat('MMMM yyyy').format(user.createdAt.toLocal())
-                      : '—',
+                      const Text(
+                        'Walking member',
+                        style: AppTheme.captionStyle,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Grouped Inset List: Preferences & Sensors
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.hairline),
-            ),
+          const SizedBox(height: 12),
+          if (_isUpdating) const LinearProgressIndicator(),
+          SurfaceCard(
+            padding: EdgeInsets.zero,
             child: Column(
               children: [
                 _buildSettingRow(
-                  icon: CupertinoIcons.slider_horizontal_3,
-                  title: 'Edit preferences',
-                  onTap: () => _showEditProfileBottomSheet(context),
+                  icon: CupertinoIcons.flag,
+                  key: tourKey(ref, 'you.goal'),
+                  title: 'Daily goal & companion',
+                  trailing: NumberFormat.decimalPattern().format(goal),
+                  onTap: () => showExperienceSettings(context),
                 ),
-                const Divider(height: 1, color: AppTheme.hairline),
+                const Divider(),
                 _buildSettingRow(
-                  icon: CupertinoIcons.waveform_path,
-                  title: 'Motion & fitness access',
+                  icon: CupertinoIcons.chart_bar,
+                  title: 'Progress & activity',
+                  onTap: () => context.push('/progress'),
+                ),
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.link,
+                  title: 'Activity connection',
+                  trailing: connected ? 'Connected' : 'Connect',
                   onTap: () async {
                     HapticsService.light();
-                    final healthService = ref.read(healthServiceProvider);
-                    await healthService.requestPermissions();
+                    await ref.read(healthServiceProvider).requestPermissions();
                     if (context.mounted) {
-                      showModalBottomSheet(
+                      showModalBottomSheet<void>(
                         context: context,
-                        backgroundColor: AppTheme.surface,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
-                        ),
-                        builder: (ctx) => Padding(
-                          padding: const EdgeInsets.all(22),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Motion & fitness access',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.3,
-                                  color: AppTheme.inkPrimary,
+                        useSafeArea: true,
+                        isScrollControlled: true,
+                        builder: (ctx) => SafeArea(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Motion & fitness access',
+                                  style: AppTheme.titleStyle,
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Stepsy runs in the background to count your steps throughout the day without using GPS tracking.\n\nMake sure "Physical Activity", "Sensors", and "Notifications" permissions are enabled.',
-                                style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Allow physical activity, notifications and background activity so Stepsy can count your walks. You can stop tracking from its notification and resume in Steps.',
+                                  style: AppTheme.bodyStyle,
+                                ),
+                                const SizedBox(height: 20),
+                                ElevatedButton(
                                   onPressed: () {
                                     openAppSettings();
                                     Navigator.pop(ctx);
                                   },
-                                  style: ElevatedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                    ),
-                                  ),
                                   child: const Text('Open device settings'),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );
                     }
                   },
                 ),
-                if (isMerchant) ...[
-                  const Divider(height: 1, color: AppTheme.hairline),
-                  _buildSettingRow(
-                    icon: CupertinoIcons.creditcard,
-                    title: 'Merchant POS terminal',
-                    onTap: () => context.push('/merchant-pos'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Grouped Inset List: Account Actions
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.hairline),
-            ),
-            child: Column(
-              children: [
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.slider_horizontal_3,
+                  title: 'Preferences',
+                  onTap: () => _showEditProfileBottomSheet(context),
+                ),
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.bell,
+                  key: tourKey(ref, 'you.notifications'),
+                  title: 'Notifications & reminders',
+                  onTap: () => context.push('/notifications'),
+                ),
+                const Divider(),
                 _buildSettingRow(
                   icon: CupertinoIcons.lock_shield,
                   title: 'Privacy & your data',
                   onTap: () => context.push('/privacy'),
                 ),
-                const Divider(height: 1, color: AppTheme.hairline),
+                const Divider(),
                 _buildSettingRow(
-                  icon: CupertinoIcons.bell,
-                  title: 'Notifications & walking goal',
-                  onTap: () => context.push('/notification-settings'),
-                ),
-                const Divider(height: 1, color: AppTheme.hairline),
-                _buildSettingRow(
-                  icon: CupertinoIcons.question_circle,
+                  icon: CupertinoIcons.shield,
+                  key: tourKey(ref, 'you.privacy'),
                   title: 'Help, FAQs & support',
                   onTap: () => context.push('/support'),
                 ),
-                const Divider(height: 1, color: AppTheme.hairline),
+                const Divider(),
+                _buildSettingRow(
+                  key: tourKey(ref, 'you.tour'),
+                  icon: CupertinoIcons.sparkles,
+                  title: 'Replay guided tour',
+                  onTap: () {
+                    context.go('/steps');
+                    ref.read(guidedTourProvider.notifier).start();
+                  },
+                ),
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.doc_text,
+                  title: 'Account details',
+                  onTap: () => showModalBottomSheet<void>(
+                    context: context,
+                    useSafeArea: true,
+                    isScrollControlled: true,
+                    builder: (context) => SafeArea(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Account details',
+                              style: AppTheme.titleStyle,
+                            ),
+                            const SizedBox(height: 16),
+                            SelectableText(
+                              user?.email ?? 'Email unavailable',
+                              style: AppTheme.bodyStyle,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildDetailRow('Country', user?.country ?? 'PK'),
+                            const SizedBox(height: 12),
+                            _buildDetailRow(
+                              'Timezone',
+                              user?.timezone ?? 'Asia/Karachi',
+                            ),
+                            const SizedBox(height: 12),
+                            _buildDetailRow(
+                              'Member since',
+                              user == null
+                                  ? '—'
+                                  : DateFormat(
+                                      'MMMM yyyy',
+                                    ).format(user.createdAt.toLocal()),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Done'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SurfaceCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
                 _buildSettingRow(
                   icon: CupertinoIcons.square_arrow_right,
                   title: 'Sign out',
-                  onTap: () => ref.read(authStateProvider.notifier).logout(),
+                  onTap: () => confirmSignOut(context, ref),
                 ),
-                const Divider(height: 1, color: AppTheme.hairline),
+                const Divider(),
                 _buildSettingRow(
                   icon: CupertinoIcons.trash,
-                  title: 'Delete account',
+                  title: 'Deactivate account',
                   titleColor: AppTheme.destructive,
                   iconColor: AppTheme.destructive,
                   onTap: () => _confirmDeleteAccount(context),
@@ -474,44 +501,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           Center(
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/icon/Stepsy_Icon1.png',
-                  width: 32,
-                  height: 32,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Stepsy v1.0.0',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.inkTertiary,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ],
+            child: Image.asset(
+              'assets/icon/Stepsy_Icon1.png',
+              width: 28,
+              height: 28,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 8),
+          const Text(
+            'Stepsy · By Hanova Devs',
+            style: AppTheme.captionStyle,
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
   }
 
   Widget _buildSettingRow({
+    Key? key,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    String? trailing,
     Color? titleColor,
     Color? iconColor,
   }) {
     return InkWell(
+      key: key,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
@@ -530,7 +549,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
-            const Icon(CupertinoIcons.chevron_forward, size: 14, color: AppTheme.inkTertiary),
+            if (trailing != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: Text(trailing, style: AppTheme.captionStyle),
+              ),
+            const Icon(
+              CupertinoIcons.chevron_forward,
+              size: 14,
+              color: AppTheme.inkTertiary,
+            ),
           ],
         ),
       ),
@@ -549,7 +577,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppTheme.surfaceMuted,
+        color: AppTheme.sageWash,
         shape: BoxShape.circle,
         border: Border.all(color: AppTheme.hairline, width: 1),
         image: hasPhoto
@@ -571,15 +599,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildDetailRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      spacing: 16,
+      runSpacing: 6,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppTheme.inkSecondary,
-          ),
+          style: const TextStyle(fontSize: 13, color: AppTheme.inkSecondary),
         ),
         Text(
           value,

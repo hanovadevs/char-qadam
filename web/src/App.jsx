@@ -1,17 +1,17 @@
-import React, { lazy, Suspense, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { api } from './services/api';
 import Navbar from './components/Navbar';
-const Login = lazy(() => import('./pages/Login'));
-const Overview = lazy(() => import('./pages/Overview'));
-const Stores = lazy(() => import('./pages/Stores'));
-const Deals = lazy(() => import('./pages/Deals'));
-const Vouchers = lazy(() => import('./pages/Vouchers'));
-const Users = lazy(() => import('./pages/Users'));
-const Ledger = lazy(() => import('./pages/Ledger'));
-const Audit = lazy(() => import('./pages/Audit'));
-const Support = lazy(() => import('./pages/Support'));
-const Settings = lazy(() => import('./pages/Settings'));
+import Login from './pages/Login';
+import Overview from './pages/Overview';
+import Stores from './pages/Stores';
+import Deals from './pages/Deals';
+import Vouchers from './pages/Vouchers';
+import Users from './pages/Users';
+import Ledger from './pages/Ledger';
+import Audit from './pages/Audit';
+import Settings from './pages/Settings';
+import Support from './pages/Support';
 
 function ProtectedLayout({ user, children }) {
   if (!api.token) {
@@ -29,7 +29,6 @@ function ProtectedLayout({ user, children }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     const initAuth = async () => {
@@ -38,7 +37,9 @@ export default function App() {
           const profile = await api.getMe();
           setUser(profile);
         } catch (err) {
-          if (api.token) setAuthError(err.message || 'Unable to reach the API.');
+          // The client clears an invalid session on 401. A transient network
+          // failure must not discard a still-valid admin login.
+          console.warn('Could not refresh admin profile:', err);
         }
       }
       setLoading(false);
@@ -66,11 +67,8 @@ export default function App() {
     );
   }
 
-  if (authError) return <div className="container-main" role="alert"><h1>Unable to connect</h1><p>{authError}</p><button className="btn btn-primary" onClick={() => window.location.reload()}>Retry connection</button></div>;
-
   return (
     <BrowserRouter>
-      <Suspense fallback={<div role="status" className="container-main">Loading page...</div>}>
       <Routes>
         <Route
           path="/login"
@@ -78,7 +76,7 @@ export default function App() {
             api.token ? (
               <Navigate to="/" replace />
             ) : (
-              <Login onLoginSuccess={(data) => setUser(data?.user || { email: 'Administrator' })} />
+              <Login onLoginSuccess={(data) => setUser(data?.user || { email: 'admin@stepsy.app' })} />
             )
           }
         />
@@ -158,7 +156,6 @@ export default function App() {
         <Route path="/support" element={<ProtectedLayout user={user}><Support /></ProtectedLayout>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      </Suspense>
     </BrowserRouter>
   );
 }

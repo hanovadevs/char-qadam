@@ -23,6 +23,9 @@ class SyncOut(BaseModel):
     points_awarded: int           # points earned in *this* sync (0 = no change / replay)
     balance: int                  # new running balance after this sync
     is_replay: bool               # True when sync_key was already processed (no-op)
+    points_earned_today: int = 0
+    steps_per_point: int = 100
+    daily_step_cap: int = 20000
 
 
 class ActivityPeriod(BaseModel):

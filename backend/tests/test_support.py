@@ -10,9 +10,15 @@ from app.services.support import reserve_ai_allowance, RESERVED_TOKENS
 
 
 async def account(client):
-    response = await client.post('/auth/register', json={'email': f'support-{uuid.uuid4().hex}@example.com', 'password': 'test-password-123'})
-    assert response.status_code == 201
-    return {'Authorization': 'Bearer ' + response.json()['access_token']}
+    from tests.auth_helpers import register_verified, auth_headers
+    response = await register_verified(client, json={'email': f'support-{uuid.uuid4().hex}@example.com', 'password': 'test-password-123'})
+    return auth_headers(response.json()['access_token'])
+
+
+@pytest.fixture
+def admin_headers():
+    from app.services.security import create_access_token
+    return {'Authorization': 'Bearer ' + create_access_token(subject='admin_user_root', extra_claims={'role': 'ADMIN'})}
 
 
 @pytest.mark.asyncio

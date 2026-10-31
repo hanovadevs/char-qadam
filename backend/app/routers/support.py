@@ -9,11 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.models import AuditLog, SupportAISettings, SupportAIUsage, SupportMessage, SupportTicket, User
 from app.db.postgres import get_session
-from app.deps import get_current_user, require_admin
+from app.deps import get_current_user, get_current_admin
 from app.services.support import faqs, support_question_allowed, reserve_ai_allowance, ask_ai, RESERVED_TOKENS
 
 router = APIRouter(prefix='/support', tags=['support'])
-admin_router = APIRouter(prefix='/admin/support', tags=['support-admin'], dependencies=[Depends(require_admin)])
+admin_router = APIRouter(prefix='/admin/support', tags=['support-admin'], dependencies=[Depends(get_current_admin)])
 Category = Literal['steps', 'points', 'vouchers', 'account', 'technical']
 
 class MessageIn(BaseModel):

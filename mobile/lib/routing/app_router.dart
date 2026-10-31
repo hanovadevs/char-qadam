@@ -6,20 +6,26 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/app_theme.dart';
 import '../data/auth/auth_state_provider.dart';
 import '../features/activity/presentation/activity_screen.dart';
+import '../features/activity/presentation/progress_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/welcome_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
+import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/home/presentation/main_scaffold.dart';
 import '../features/leaderboard/presentation/leaderboard_screen.dart';
 import '../features/merchant/presentation/merchant_pos_screen.dart';
+import '../features/merchant/presentation/merchant_ledgers_screen.dart';
+import '../features/merchant/presentation/merchant_scanner_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/points/presentation/points_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
+import '../features/notifications/notification_settings_screen.dart';
+import '../features/notifications/tracking_help_screen.dart';
+import '../features/support/presentation/support_screen.dart';
+import '../features/profile/presentation/privacy_screen.dart';
 import '../features/rewards/presentation/rewards_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
-import '../features/support/presentation/support_screen.dart';
-import '../features/profile/presentation/notification_settings_screen.dart';
-import '../features/profile/presentation/privacy_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -31,10 +37,8 @@ final onboardingCompleteProvider = FutureProvider<bool>((ref) async {
 });
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final onboardingAsync = ref.watch(onboardingCompleteProvider);
-  final onboardingComplete = onboardingAsync.valueOrNull ?? true;
-
-  final refresh = _RiverpodRefreshListenable(ref, authStateProvider);
+  final refresh = _RiverpodRefreshListenable(ref);
+  ref.onDispose(refresh.dispose);
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
@@ -42,32 +46,59 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       if (state.matchedLocation == '/privacy') return null;
       final authState = ref.read(authStateProvider);
+      final onboardingAsync = ref.read(onboardingCompleteProvider);
+      final onboardingComplete = onboardingAsync.valueOrNull ?? false;
       final status = authState.status;
       final isSplash = state.matchedLocation == '/splash';
-      final isAuthRoute = state.matchedLocation == '/login' ||
+      final isAuthRoute =
+          state.matchedLocation == '/welcome' ||
+          state.matchedLocation == '/verify-email' ||
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
-          state.matchedLocation == '/forgot-password' || state.matchedLocation == '/privacy';
+          state.matchedLocation == '/forgot-password';
       final isOnboarding = state.matchedLocation == '/onboarding';
 
-      if (status == AuthStatus.initial) {
+      if (status == AuthStatus.initial ||
+          (status == AuthStatus.authenticated && onboardingAsync.isLoading)) {
         return isSplash ? null : '/splash';
       }
 
       if (status == AuthStatus.unauthenticated) {
-        return isAuthRoute ? null : '/login';
+        if (state.matchedLocation == '/verify-email') return '/login';
+        return isAuthRoute
+            ? null
+            : isSplash
+            ? '/welcome'
+            : '/login';
+      }
+
+      if (status == AuthStatus.verificationRequired) {
+        return state.matchedLocation == '/verify-email'
+            ? null
+            : '/verify-email';
       }
 
       if (status == AuthStatus.authenticated) {
         // If the authenticated user is a Merchant, route directly to /merchant-pos!
         if (authState.user?.isMerchant == true) {
-          if (state.matchedLocation != '/merchant-pos' && state.matchedLocation != '/support' && state.matchedLocation != '/privacy') {
+          if (!{
+            '/merchant-pos',
+            '/merchant-ledgers',
+            '/merchant-scan',
+            '/support',
+            '/privacy',
+          }.contains(state.matchedLocation)) {
             return '/merchant-pos';
           }
           return null;
         }
 
         // Customer users should not view merchant POS screen
-        if (state.matchedLocation == '/merchant-pos') {
+        if ({
+          '/merchant-pos',
+          '/merchant-ledgers',
+          '/merchant-scan',
+        }.contains(state.matchedLocation)) {
           return '/steps';
         }
 
@@ -88,13 +119,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(path: '/support', parentNavigatorKey: _rootNavigatorKey, builder: (_, _) => const SupportScreen()),
+      GoRoute(path: '/privacy', parentNavigatorKey: _rootNavigatorKey, builder: (_, _) => const PrivacyScreen()),
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
       ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        path: '/welcome',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) => const VerifyEmailScreen(),
       ),
       GoRoute(
         path: '/register',
@@ -108,18 +146,38 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
-      GoRoute(path: '/privacy', parentNavigatorKey: _rootNavigatorKey, builder: (context, state) => const PrivacyScreen()),
-      GoRoute(path: '/notification-settings', parentNavigatorKey: _rootNavigatorKey, builder: (context, state) => const NotificationSettingsScreen()),
-      GoRoute(path: '/support', parentNavigatorKey: _rootNavigatorKey, builder: (context, state) => const SupportScreen()),
       GoRoute(
         path: '/leaderboard',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const LeaderboardScreen(),
       ),
       GoRoute(
+        path: '/progress',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ProgressScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/tracking-help',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TrackingHelpScreen(),
+      ),
+      GoRoute(
         path: '/merchant-pos',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const MerchantPosScreen(),
+      ),
+      GoRoute(
+        path: '/merchant-ledgers',
+        builder: (context, state) => const MerchantLedgersScreen(),
+      ),
+      GoRoute(
+        path: '/merchant-scan',
+        builder: (context, state) => const MerchantScannerScreen(),
       ),
       GoRoute(
         path: '/v/:code',
@@ -162,7 +220,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/wallet',
-                builder: (context, state) => const WalletScreen(),
+                builder: (context, state) => WalletScreen(
+                  highlightId: state.uri.queryParameters['highlight'],
+                  offerId: state.uri.queryParameters['offer'],
+                  recovered: state.uri.queryParameters['recovered'] == 'true',
+                ),
               ),
             ],
           ),
@@ -178,7 +240,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-  ref.onDispose(() { router.dispose(); refresh.dispose(); });
+  ref.onDispose(router.dispose);
   return router;
 });
 
@@ -190,10 +252,10 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.surfaceMuted,
-      body: Center(
+      body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Spacer(),
             Container(
               width: 84,
               height: 84,
@@ -233,6 +295,40 @@ class SplashScreen extends StatelessWidget {
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentSolid),
+              ),
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Powered by',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.inkSecondary,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Image.asset(
+                    'assets/icon/Software_Agency_bg.png',
+                    height: 28,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (context, error, stackTrace) => const Text(
+                      'Hanova Devs',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.inkSecondary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -304,7 +400,10 @@ class VoucherDeepLinkScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.surfaceMuted,
                         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -359,7 +458,11 @@ class VoucherDeepLinkScreen extends StatelessWidget {
 
 /// Listenable bridge connecting Riverpod state changes to GoRouter's refreshListenable.
 class _RiverpodRefreshListenable extends ChangeNotifier {
-  _RiverpodRefreshListenable(Ref ref, ProviderBase<dynamic> provider) {
-    ref.listen(provider, (previous, next) => notifyListeners());
+  _RiverpodRefreshListenable(Ref ref) {
+    ref.listen(authStateProvider, (previous, next) => notifyListeners());
+    ref.listen(
+      onboardingCompleteProvider,
+      (previous, next) => notifyListeners(),
+    );
   }
 }

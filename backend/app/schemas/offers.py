@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
@@ -24,6 +24,11 @@ class OfferOut(BaseModel):
     starts_at: datetime | None
     ends_at: datetime | None
     status: str
+    partner_name: str | None = None
+    partner_location: str | None = None
+    partner_google_maps_url: str | None = None
+    partner_cover_image_url: str | None = None
+    already_redeemed: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -31,6 +36,10 @@ class OfferOut(BaseModel):
 # ---------------------------------------------------------------------------
 # Vouchers
 # ---------------------------------------------------------------------------
+
+class RedeemIn(BaseModel):
+    expected_points_cost: int = Field(ge=0)
+
 
 class RedeemOut(BaseModel):
     """Response when a user redeems an offer."""
@@ -40,6 +49,7 @@ class RedeemOut(BaseModel):
     expires_at: datetime
     points_spent: int
     balance: int                # remaining balance after spend
+    is_replay: bool = False     # same completed purchase, no new deduction
 
 
 class VoucherOut(BaseModel):

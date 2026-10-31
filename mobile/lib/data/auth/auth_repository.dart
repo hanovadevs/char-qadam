@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../models/user_model.dart';
+import 'email_verification.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -10,6 +11,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 class AuthRepository {
   final ApiClient apiClient;
+  UserModel? authenticatedUser;
 
   AuthRepository({required this.apiClient});
 
@@ -23,21 +25,17 @@ class AuthRepository {
     String? timezone,
   }) async {
     try {
-      final body = <String, dynamic>{
-        'email': email,
-        'password': password,
-      };
+      final body = <String, dynamic>{'email': email, 'password': password};
       if (country != null) body['country'] = country;
       if (timezone != null) body['timezone'] = timezone;
 
-      final response = await apiClient.post(
-        '/auth/register',
-        data: body,
-      );
+      final response = await apiClient.post('/auth/register', data: body);
       final data = response.data as Map<String, dynamic>;
-      return data['access_token'] as String;
+      return _accessToken(data);
     } on DioException catch (e) {
       throw _handleDioError(e);
+    } on EmailVerificationRequired {
+      rethrow;
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -52,15 +50,14 @@ class AuthRepository {
     try {
       final response = await apiClient.post(
         '/auth/login',
-        data: {
-          'email': email,
-          'password': password,
-        },
+        data: {'email': email, 'password': password},
       );
       final data = response.data as Map<String, dynamic>;
-      return data['access_token'] as String;
+      return _accessToken(data);
     } on DioException catch (e) {
       throw _handleDioError(e);
+    } on EmailVerificationRequired {
+      rethrow;
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -73,22 +70,60 @@ class AuthRepository {
     String? timezone,
   }) async {
     try {
-      final body = <String, dynamic>{
-        'id_token': idToken,
-      };
+      final body = <String, dynamic>{'id_token': idToken};
       if (country != null) body['country'] = country;
       if (timezone != null) body['timezone'] = timezone;
 
-      final response = await apiClient.post(
-        '/auth/google',
-        data: body,
-      );
+      final response = await apiClient.post('/auth/google', data: body);
       final data = response.data as Map<String, dynamic>;
-      return data['access_token'] as String;
+      return _accessToken(data);
     } on DioException catch (e) {
       throw _handleDioError(e);
+    } on EmailVerificationRequired {
+      rethrow;
     } catch (e) {
       throw Exception('Unexpected Google authentication error: $e');
+    }
+  }
+
+  String _accessToken(Map<String, dynamic> data) {
+    authenticatedUser = null;
+    if (data['verification_required'] == true) {
+      throw EmailVerificationRequired.fromJson(data);
+    }
+    final user = data['user'];
+    if (user is Map<String, dynamic>) {
+      authenticatedUser = UserModel.fromJson(user);
+    }
+    return data['access_token'] as String;
+  }
+
+  Future<String> verifyEmail({
+    required String token,
+    required String code,
+  }) async {
+    try {
+      final response = await apiClient.post(
+        '/auth/verify-email',
+        data: {'verification_token': token, 'code': code},
+      );
+      return _accessToken(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  Future<EmailVerificationRequired> resendVerification(String token) async {
+    try {
+      final response = await apiClient.post(
+        '/auth/resend-verification',
+        data: {'verification_token': token},
+      );
+      return EmailVerificationRequired.fromJson(
+        response.data as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
     }
   }
 
@@ -129,10 +164,7 @@ class AuthRepository {
     try {
       final response = await apiClient.post(
         '/auth/reset-password',
-        data: {
-          'reset_token': resetToken,
-          'new_password': newPassword,
-        },
+        data: {'reset_token': resetToken, 'new_password': newPassword},
       );
       final data = response.data as Map<String, dynamic>;
       return data['message'] as String? ?? 'Password updated successfully';
@@ -144,6 +176,11 @@ class AuthRepository {
   }
 
   Exception _handleDioError(DioException error) {
+    if (error.response == null &&
+        error.error is String &&
+        (error.error as String).startsWith('Device identity unavailable')) {
+      return Exception(error.error);
+    }
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError) {
@@ -160,13 +197,15 @@ class AuthRepository {
         return Exception(msg.toString());
       }
     }
-    
+
     if (error.response?.statusCode == 401) {
       return Exception('Invalid email or password');
     } else if (error.response?.statusCode == 409) {
       return Exception('An account with this email already exists');
     }
 
-    return Exception('Server error (${error.response?.statusCode ?? "Unknown"})');
+    return Exception(
+      'Server error (${error.response?.statusCode ?? "Unknown"})',
+    );
   }
 }

@@ -1,27 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const storage = new Map();
-globalThis.localStorage = { getItem: key => storage.get(key), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) };
-globalThis.window = { location: { pathname: '/login' } };
-const { api } = await import('../src/services/api.js');
-test('identical concurrent GETs share one request and subsequent reads stay fresh', async () => {
+import { ApiClient } from '../src/services/api.js';
+const storage = () => { const entries = new Map(); return { getItem: key => entries.get(key), setItem: (key, value) => entries.set(key, value), removeItem: key => entries.delete(key) }; };
+test('concurrent GETs share a request and account changes invalidate cached reads', async () => {
   let calls = 0;
-  globalThis.fetch = async () => { calls++; await new Promise(resolve => setTimeout(resolve, 5)); return { status: 200, ok: true, json: async () => ({ calls }) }; };
-  const responses = await Promise.all([api.getMe(), api.getMe()]);
+  const client = new ApiClient({ storage: storage(), fetchImpl: async () => { calls++; await new Promise(resolve => setTimeout(resolve, 5)); return { status: 200, ok: true, json: async () => ({ calls }) }; } });
+  const responses = await Promise.all([client.getMe(), client.getMe()]);
   assert.equal(calls, 1);
   assert.deepEqual(responses[0], responses[1]);
-  await api.getMe();
+  client.setToken('new-account');
+  await client.getMe();
   assert.equal(calls, 2);
 });
-test('failed requests are evicted rather than poisoning the inflight map', async () => {
-  globalThis.fetch = async () => { throw new Error('offline'); };
-  await assert.rejects(api.getMe(), /offline/);
-  globalThis.fetch = async () => ({ status: 200, ok: true, json: async () => ({ recovered: true }) });
-  assert.deepEqual(await api.getMe(), { recovered: true });
-});
-test('GET sharing never crosses an account change', async () => {
-  let calls = 0;
-  globalThis.fetch = async () => { calls++; return { status: 200, ok: true, json: async () => ({}) }; };
-  api.setToken('first'); const first = api.getMe(); api.setToken('second'); const second = api.getMe();
-  await Promise.all([first, second]); assert.equal(calls, 2);
+test('failed requests do not poison future reads', async () => {
+  const client = new ApiClient({ storage: storage(), fetchImpl: async () => { throw new Error('offline'); } });
+  await assert.rejects(client.getMe(), /offline/);
+  client.fetchImpl = async () => ({ status: 200, ok: true, json: async () => ({ recovered: true }) });
+  assert.deepEqual(await client.getMe(), { recovered: true });
 });

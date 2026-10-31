@@ -6,6 +6,10 @@
 """
 from __future__ import annotations
 
+from tests.auth_helpers import register_verified
+
+from tests.auth_helpers import auth_headers
+
 import uuid
 from datetime import date, datetime, timezone
 import pytest
@@ -27,7 +31,7 @@ from app.services.partner_auth import hash_api_key
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 def _partner_header(key: str) -> dict:
@@ -83,7 +87,7 @@ async def test_validate_and_redeem_by_short_code(client: AsyncClient) -> None:
     email = f"pos_user_{uuid.uuid4().hex[:6]}@example.com"
     try:
         # 1. Register user and earn points
-        reg = await client.post("/auth/register", json={"email": email, "password": "password123"})
+        reg = await register_verified(client, json={"email": email, "password": "password123"})
         token = reg.json()["access_token"]
         await client.post(
             "/activity/sync",

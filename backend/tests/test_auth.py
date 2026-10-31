@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import uuid
 
+from tests.auth_helpers import register_verified
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import delete, select
@@ -47,8 +49,9 @@ async def test_register_success(client: AsyncClient) -> None:
         )
         assert resp.status_code == 201, resp.text
         body = resp.json()
-        assert "access_token" in body
-        assert body["token_type"] == "bearer"
+        assert "access_token" not in body
+        assert body["verification_required"] is True
+        assert body["email"] == email
     finally:
         await _delete_user_by_email(email)
 
@@ -82,10 +85,15 @@ async def test_login_success(client: AsyncClient) -> None:
     email = _email()
     password = "strongpass1"
     try:
-        await client.post("/auth/register", json={"email": email, "password": password})
+        await register_verified(client, json={"email": email, "password": password})
         resp = await client.post("/auth/login", json={"email": email, "password": password})
         assert resp.status_code == 200, resp.text
         assert "access_token" in resp.json()
+        profile = await client.get('/auth/me', headers={
+            'Authorization': f"Bearer {resp.json()['access_token']}"})
+        assert profile.status_code == 200
+        assert resp.json()['user'] == profile.json()
+        assert 'password_hash' not in resp.json()['user']
     finally:
         await _delete_user_by_email(email)
 
@@ -118,9 +126,7 @@ async def test_login_unknown_email(client: AsyncClient) -> None:
 async def test_me_with_valid_token(client: AsyncClient) -> None:
     email = _email()
     try:
-        reg = await client.post(
-            "/auth/register", json={"email": email, "password": "strongpass1"}
-        )
+        reg = await register_verified(client, json={"email": email, "password": "strongpass1"})
         token = reg.json()["access_token"]
         resp = await client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200, resp.text
@@ -150,8 +156,8 @@ async def test_register_login_me_full_flow(client: AsyncClient) -> None:
     email = _email()
     password = "endtoend99"
     try:
-        reg = await client.post("/auth/register", json={"email": email, "password": password})
-        assert reg.status_code == 201
+        reg = await register_verified(client, json={"email": email, "password": password})
+        assert reg.status_code == 200
 
         login = await client.post("/auth/login", json={"email": email, "password": password})
         assert login.status_code == 200

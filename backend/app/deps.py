@@ -9,16 +9,16 @@ from __future__ import annotations
 
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import jwt
 from jwt import InvalidTokenError as JWTError
-from app.config import get_settings
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Partner, PartnerStatus, User, UserStatus
+from app.db.models import DeviceBinding, Partner, PartnerStatus, User, UserStatus
 from app.db.postgres import get_session
 from app.services.partner_auth import hash_api_key
-from app.services.security import decode_access_token, validate_user_token
+from app.services.security import decode_access_claims
+from app.services.device_binding import validate_binding, validate_device
+from app.services.email_verification import requires_email_verification
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -29,8 +29,23 @@ _401 = HTTPException(
 )
 
 
+async def get_current_admin(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> dict:
+    if credentials is None:
+        raise _401
+    try:
+        claims = decode_access_claims(credentials.credentials)
+    except JWTError:
+        raise _401
+    if claims.get('role') != 'ADMIN' or claims['sub'] != 'admin_user_root':
+        raise HTTPException(status_code=403, detail='Admin access required')
+    return claims
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    x_device_id: str | None = Header(default=None, alias='X-Device-ID'),
     session: AsyncSession = Depends(get_session),
 ) -> User:
     """Validate Bearer JWT and return the authenticated User ORM object.
@@ -45,25 +60,32 @@ async def get_current_user(
         raise _401
 
     try:
-        user_id = decode_access_token(credentials.credentials)
+        claims = decode_access_claims(credentials.credentials)
+        user_id = claims['sub']
     except JWTError:
         raise _401
 
-    result = await session.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # Read both revocable authorization records in one database round trip.
+    # Do not cache these: deactivation/device transfer must apply immediately.
+    result = await session.execute(select(User, DeviceBinding).outerjoin(
+        DeviceBinding, DeviceBinding.id == (x_device_id or '').lower()
+    ).where(User.id == user_id))
+    row = result.one_or_none()
+    user, binding = row if row is not None else (None, None)
 
     if user is None:
         raise _401
-    try:
-        validate_user_token(credentials.credentials, user)
-    except JWTError:
+    if claims.get('ver', 0) != user.auth_version:
         raise _401
+    if requires_email_verification(user):
+        raise HTTPException(status_code=401, detail='Please sign in and verify your email.', headers={'WWW-Authenticate': 'Bearer'})
     if user.status != UserStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is suspended or deleted",
         )
 
+    validate_binding(x_device_id, user, claims, binding)
     return user
 
 
@@ -77,6 +99,7 @@ _401_partner = HTTPException(
 async def get_current_partner(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     x_partner_key: str | None = Header(default=None, alias="X-Partner-Key"),
+    x_device_id: str | None = Header(default=None, alias='X-Device-ID'),
     session: AsyncSession = Depends(get_session),
 ) -> Partner:
     """Validate Bearer JWT (for authenticated merchant users) OR ``X-Partner-Key`` header.
@@ -86,11 +109,16 @@ async def get_current_partner(
     # 1. Try Bearer JWT authentication (Primary login flow)
     if credentials is not None:
         try:
-            user_id = decode_access_token(credentials.credentials)
+            claims = decode_access_claims(credentials.credentials)
+            user_id = claims['sub']
             user_res = await session.execute(select(User).where(User.id == user_id))
             user = user_res.scalar_one_or_none()
-            if user is not None and user.status == UserStatus.ACTIVE and user.role == "MERCHANT" and user.partner_id:
-                validate_user_token(credentials.credentials, user)
+            if user is not None and not requires_email_verification(user) and user.status == UserStatus.ACTIVE and claims.get('ver', 0) == user.auth_version:
+                await validate_device(x_device_id, user, claims, session)
+                if user.role != 'MERCHANT':
+                    raise HTTPException(403, 'A merchant store account is required for this terminal.')
+                if not user.partner_id:
+                    raise HTTPException(403, 'No store is linked to this merchant account. Ask an administrator to link a store in the admin panel.')
                 partner = await session.get(Partner, user.partner_id)
                 if partner is not None:
                     if partner.status != PartnerStatus.ACTIVE:
@@ -99,6 +127,7 @@ async def get_current_partner(
                             detail="Partner store account is inactive",
                         )
                     return partner
+                raise HTTPException(403, 'The linked merchant store is unavailable. Please contact an administrator.')
         except JWTError:
             pass  # Fall through to check X-Partner-Key if any
 
@@ -118,18 +147,3 @@ async def get_current_partner(
             return partner
 
     raise _401_partner
-
-
-async def require_admin(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-) -> None:
-    if credentials is None:
-        raise _401
-    settings = get_settings()
-    try:
-        subject = decode_access_token(credentials.credentials)
-        claims = jwt.decode(credentials.credentials, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-    except JWTError:
-        raise _401
-    if subject != "admin_user_root" or claims.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")

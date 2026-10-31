@@ -6,11 +6,12 @@ services:
     container_name: qadam_backend
     restart: unless-stopped
     ports:
-      # Map host port 8001 (or custom PORT from .env) to container port 8000
-      # Change 8001 if your existing container already uses it
-      - "${HOST_PORT:-8001}:8000"
+      # The host's Nginx proxy is the public ingress. Keep the API port private.
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT:-8001}:8000"
     env_file:
       - .env
+    volumes:
+      - stepsy_media:/app/uploads
     # Run database migrations before starting the uvicorn server
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -35,5 +36,6 @@ services:
   #   ports:
   #     - "127.0.0.1:5433:5432" # Bind to host localhost on 5433 if needed
 
-# volumes:
+volumes:
+  stepsy_media:
 #   qadam_pgdata:

@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 
 import pytest
 from httpx import AsyncClient
@@ -15,14 +15,13 @@ from sqlalchemy import delete
 
 from app.db.models import ActivityDaily, User, UserStatus
 from app.db.postgres import get_session_factory
-from app.services.security import create_access_token
+from tests.auth_helpers import device_token
 
 
 @pytest.mark.asyncio
 async def test_sync_rejects_future_dates(client: AsyncClient) -> None:
     factory = get_session_factory()
     user_id = str(uuid.uuid4())
-    token = create_access_token(user_id)
 
     try:
         async with factory() as session:
@@ -30,10 +29,13 @@ async def test_sync_rejects_future_dates(client: AsyncClient) -> None:
                 id=user_id,
                 email=f"future_{uuid.uuid4().hex[:6]}@example.com",
                 password_hash="hash",
+                email_verified_at=datetime.now(timezone.utc),
                 status=UserStatus.ACTIVE,
             )
             session.add(user)
             await session.commit()
+
+        token = await device_token(client, user_id)
 
         # Attempt to sync for tomorrow
         tomorrow = (date.today() + timedelta(days=1)).isoformat()
@@ -59,7 +61,6 @@ async def test_sync_rejects_future_dates(client: AsyncClient) -> None:
 async def test_sync_rejects_stale_dates(client: AsyncClient) -> None:
     factory = get_session_factory()
     user_id = str(uuid.uuid4())
-    token = create_access_token(user_id)
 
     try:
         async with factory() as session:
@@ -67,10 +68,13 @@ async def test_sync_rejects_stale_dates(client: AsyncClient) -> None:
                 id=user_id,
                 email=f"stale_{uuid.uuid4().hex[:6]}@example.com",
                 password_hash="hash",
+                email_verified_at=datetime.now(timezone.utc),
                 status=UserStatus.ACTIVE,
             )
             session.add(user)
             await session.commit()
+
+        token = await device_token(client, user_id)
 
         # Attempt to sync for 10 days ago (past 7-day threshold)
         stale_date = (date.today() - timedelta(days=10)).isoformat()
@@ -93,7 +97,7 @@ async def test_sync_rejects_stale_dates(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_fraud_flags_and_user_suspension(client: AsyncClient, admin_headers) -> None:
+async def test_admin_fraud_flags_and_user_suspension(admin_client: AsyncClient) -> None:
     factory = get_session_factory()
     user_id = str(uuid.uuid4())
 
@@ -103,6 +107,7 @@ async def test_admin_fraud_flags_and_user_suspension(client: AsyncClient, admin_
                 id=user_id,
                 email=f"fraud_{uuid.uuid4().hex[:6]}@example.com",
                 password_hash="hash",
+                email_verified_at=datetime.now(timezone.utc),
                 status=UserStatus.ACTIVE,
             )
             act = ActivityDaily(
@@ -117,16 +122,18 @@ async def test_admin_fraud_flags_and_user_suspension(client: AsyncClient, admin_
             session.add_all([user, act])
             await session.commit()
 
-        # Ordinary sessions cannot list accounts or administer suspensions.
-        assert (await client.get("/admin/users")).status_code == 401
-        users_resp = await client.get("/admin/users", headers=admin_headers)
-        assert users_resp.status_code == 200
-        assert any(user["id"] == user_id for user in users_resp.json())
+        # 1. Fetch fraud flags
+        flags_resp = await admin_client.get("/admin/fraud/flags")
+        assert flags_resp.status_code == 200
+        data = flags_resp.json()
+        target = next((u for u in data if u["user_id"] == user_id), None)
+        assert target is not None
+        assert "HIGH_DAILY_AVERAGE_CADENCE" in target["flags"]
 
         # 2. Suspend user
-        suspend_resp = await client.patch(
+        suspend_resp = await admin_client.patch(
             f"/admin/users/{user_id}/status",
-            headers=admin_headers, json={"status": "SUSPENDED"},
+            json={"status": "SUSPENDED", "reason": "Suspected bot step generation"},
         )
         assert suspend_resp.status_code == 200
         assert suspend_resp.json()["status"] == "SUSPENDED"

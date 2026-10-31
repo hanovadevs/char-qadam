@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/auth/auth_state_provider.dart';
+import '../../auth/presentation/sign_out_confirmation.dart';
 import '../../../data/models/merchant_models.dart';
 import '../providers/merchant_provider.dart';
 
@@ -39,9 +41,16 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
     HapticsService.light();
     final data = await Clipboard.getData('text/plain');
     if (data?.text != null && data!.text!.isNotEmpty) {
-      _codeController.text = data.text!.trim().toUpperCase();
+      _codeController.text = data.text!.trim();
       _validateCode();
     }
+  }
+
+  Future<void> _scanVoucher() async {
+    final value = await context.push<String>('/merchant-scan');
+    if (!mounted || value == null) return;
+    _codeController.text = value;
+    await _validateCode();
   }
 
   Future<void> _validateCode() async {
@@ -54,9 +63,9 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
 
   Future<void> _confirmRedemption() async {
     final orderRef = _orderRefController.text.trim();
-    final success = await ref.read(merchantProvider.notifier).confirmRedeem(
-          orderReference: orderRef.isNotEmpty ? orderRef : null,
-        );
+    final success = await ref
+        .read(merchantProvider.notifier)
+        .confirmRedeem(orderReference: orderRef.isNotEmpty ? orderRef : null);
 
     if (success) {
       HapticsService.heavy();
@@ -81,6 +90,8 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
           children: [
             Text(
               partner?.name.toUpperCase() ?? 'MERCHANT POS TERMINAL',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -90,6 +101,8 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
             ),
             Text(
               authState.user?.email ?? 'VOUCHER VALIDATION & REDEMPTION',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 10,
                 color: AppTheme.grey,
@@ -101,12 +114,24 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, size: 18, color: AppTheme.black),
-            tooltip: 'Sign Out',
-            onPressed: () {
-              HapticsService.light();
-              ref.read(authStateProvider.notifier).logout();
+            tooltip: 'Merchant ledgers',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: () => context.push('/merchant-ledgers'),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Account options',
+            onSelected: (value) async {
+              if (value == 'customer' || value == 'signout') {
+                await confirmSignOut(context, ref);
+              }
             },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'customer',
+                child: Text('Use customer account'),
+              ),
+              const PopupMenuItem(value: 'signout', child: Text('Sign out')),
+            ],
           ),
           const SizedBox(width: 8),
         ],
@@ -122,7 +147,9 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                       height: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.black,
+                        ),
                       ),
                     ),
                     SizedBox(height: 14),
@@ -140,17 +167,17 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                 ),
               )
             : partner == null && state.errorMessage != null
-                ? _buildErrorView(state)
-                : _buildTerminalView(
-                    state,
-                    partner ??
-                        PartnerInfoModel(
-                          partnerId: authState.user?.partnerId ?? '',
-                          name: authState.user?.partnerName ?? 'Merchant Store',
-                          status: 'ACTIVE',
-                        ),
-                    validation,
-                  ),
+            ? _buildErrorView(state)
+            : _buildTerminalView(
+                state,
+                partner ??
+                    PartnerInfoModel(
+                      partnerId: authState.user?.partnerId ?? '',
+                      name: authState.user?.partnerName ?? 'Merchant Store',
+                      status: 'ACTIVE',
+                    ),
+                validation,
+              ),
       ),
     );
   }
@@ -162,21 +189,30 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 36, color: AppTheme.accentRed),
+            const Icon(
+              Icons.error_outline,
+              size: 36,
+              color: AppTheme.accentRed,
+            ),
             const SizedBox(height: 14),
             Text(
               state.errorMessage ?? 'Merchant terminal error',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.black),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.black,
+              ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => ref.read(merchantProvider.notifier).loadPartnerInfo(),
+              onPressed: () =>
+                  ref.read(merchantProvider.notifier).loadPartnerInfo(),
               child: const Text('RETRY'),
             ),
             const SizedBox(height: 10),
             OutlinedButton(
-              onPressed: () => ref.read(authStateProvider.notifier).logout(),
+              onPressed: () => confirmSignOut(context, ref),
               child: const Text('SIGN OUT'),
             ),
           ],
@@ -266,12 +302,20 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline, color: AppTheme.accentRed, size: 18),
+                const Icon(
+                  Icons.error_outline,
+                  color: AppTheme.accentRed,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     state.errorMessage!,
-                    style: const TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppTheme.accentRed,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -290,7 +334,11 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle_outline, color: AppTheme.black, size: 18),
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: AppTheme.black,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -310,6 +358,12 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
         ],
 
         // Voucher Code Entry Section
+        FilledButton.icon(
+          onPressed: state.isLoading ? null : _scanVoucher,
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('Scan customer QR'),
+        ),
+        const SizedBox(height: 12),
         const Text(
           'SCAN OR ENTER CUSTOMER VOUCHER CODE',
           style: TextStyle(
@@ -332,9 +386,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                   fontSize: 14,
                   letterSpacing: 1.5,
                 ),
-                decoration: const InputDecoration(
-                  hintText: 'SR-XXXX-XXXX',
-                ),
+                decoration: const InputDecoration(hintText: 'SR-XXXX-XXXX'),
                 onFieldSubmitted: (_) => _validateCode(),
               ),
             ),
@@ -344,9 +396,7 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
               width: 48,
               child: OutlinedButton(
                 onPressed: _pasteFromClipboard,
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                ),
+                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
                 child: const Icon(Icons.content_paste, size: 18),
               ),
             ),
@@ -385,7 +435,10 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.black,
                         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -463,14 +516,18 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.white,
+                            ),
                           ),
                         )
                       : const Text('CONFIRM REDEMPTION AT POS'),
                 ),
                 const SizedBox(height: 6),
                 TextButton(
-                  onPressed: () => ref.read(merchantProvider.notifier).clearActiveValidation(),
+                  onPressed: () => ref
+                      .read(merchantProvider.notifier)
+                      .clearActiveValidation(),
                   child: const Text(
                     'CANCEL VALIDATION',
                     style: TextStyle(color: AppTheme.grey, fontSize: 11),
@@ -522,7 +579,9 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                       Text(
                         item.orderReference != null
                             ? 'REF: ${item.orderReference} • ${DateFormat('hh:mm a').format(item.redeemedAt)}'
-                            : DateFormat('dd MMM, hh:mm a').format(item.redeemedAt),
+                            : DateFormat(
+                                'dd MMM, hh:mm a',
+                              ).format(item.redeemedAt),
                         style: const TextStyle(
                           fontSize: 10,
                           fontFamily: AppTheme.monoFont,
@@ -532,7 +591,10 @@ class _MerchantPosScreenState extends ConsumerState<MerchantPosScreen> {
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.offWhite,
                       borderRadius: BorderRadius.circular(AppTheme.radiusSm),

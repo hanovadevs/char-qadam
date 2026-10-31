@@ -116,6 +116,7 @@ async def validate_voucher(
         select(Voucher, Offer)
         .join(Offer, Voucher.offer_id == Offer.id)
         .where(
+            Offer.partner_id == partner.id,
             (Voucher.token_hash == token_hash)
             | (Voucher.short_code == input_str.upper())
         )

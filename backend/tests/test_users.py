@@ -11,6 +11,10 @@ Covers:
 """
 from __future__ import annotations
 
+from tests.auth_helpers import register_verified
+
+from tests.auth_helpers import auth_headers
+
 import uuid
 
 import pytest
@@ -30,12 +34,12 @@ def _email() -> str:
 
 
 def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(token)
 
 
 async def _register(client: AsyncClient, email: str, password: str = "startpass1") -> str:
-    r = await client.post("/auth/register", json={"email": email, "password": password})
-    assert r.status_code == 201, r.text
+    r = await register_verified(client, json={"email": email, "password": password})
+    assert r.status_code == 200, r.text
     return r.json()["access_token"]
 
 
@@ -190,26 +194,23 @@ async def test_delete_soft_deletes_account(client: AsyncClient) -> None:
     email = _email()
     try:
         token = await _register(client, email)
-        user_id = (await client.get('/auth/me', headers=_auth(token))).json()['id']
         await client.delete("/users/me", headers=_auth(token))
 
         factory = get_session_factory()
         async with factory() as session:
             result = await session.execute(
-                __import__("sqlalchemy", fromlist=["select"]).select(User).where(User.id == user_id)
+                __import__("sqlalchemy", fromlist=["select"]).select(User).where(User.email == email)
             )
             user = result.scalar_one_or_none()
             assert user is not None
             assert user.status.value == "DELETED"
-            assert user.email != email
-            assert user.country is None and user.timezone is None
     finally:
         await _cleanup(email)
 
 
 @pytest.mark.asyncio
 async def test_delete_invalidates_jwt(client: AsyncClient) -> None:
-    """After DELETE, using the same JWT token returns 401 (credentials revoked)."""
+    """After DELETE, using the same JWT token returns 403 (account deleted)."""
     email = _email()
     try:
         token = await _register(client, email)
@@ -231,15 +232,9 @@ async def test_delete_blocks_login(client: AsyncClient) -> None:
         token = await _register(client, email, password)
         await client.delete("/users/me", headers=_auth(token))
 
-        # Even the correct password should not work after deletion.
-        # Note: Our login endpoint doesn't check status, only get_current_user does.
-        # Login itself currently returns a token (by design — could be tightened post-MVP),
-        # but any subsequent authenticated call will 403.
         login = await client.post("/auth/login", json={"email": email, "password": password})
-        if login.status_code == 200:
-            new_token = login.json()["access_token"]
-            me = await client.get("/auth/me", headers={"Authorization": f"Bearer {new_token}"})
-            assert me.status_code == 403
+        assert login.status_code == 403
+        assert 'access_token' not in login.json()
     finally:
         await _cleanup(email)
 

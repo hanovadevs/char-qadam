@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -9,8 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:workmanager/workmanager.dart';
 import '../config/env_config.dart';
-import 'health_consent.dart';
-import 'notification_service.dart';
+import '../../data/auth/device_identity.dart';
 
 /// Unique identifiers for the WorkManager job.
 const String _kPeriodicSyncTask = 'com.stepsy.run.periodicStepSync';
@@ -48,9 +48,27 @@ void callbackDispatcher() {
 /// even when the app process has been killed, so points keep accruing without
 /// the user opening the app.
 class BackgroundSyncService {
+  static Future<bool> _merchantSession() async {
+    final raw = await const FlutterSecureStorage().read(
+      key: 'qadam_cached_user',
+    );
+    if (raw == null) return false;
+    try {
+      final profile = jsonDecode(raw);
+      return profile is Map && profile['role'] == 'MERCHANT';
+    } on FormatException {
+      return false;
+    }
+  }
+
   /// Register the WorkManager engine + periodic task. Call once from `main()`.
   static Future<void> initialize() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      if (prefs.getBool('stepsy_tracking_paused') == true) return;
+      if (await _merchantSession()) return;
       await Workmanager().initialize(callbackDispatcher);
 
       await Workmanager().registerPeriodicTask(
@@ -70,25 +88,38 @@ class BackgroundSyncService {
   /// Read today's step total (Health Connect first, stored pedometer fallback)
   /// and sync it to the backend. Returns true on success / nothing-to-do.
   static Future<bool> performSync() async {
-    if (!await HealthConsent.hasConsent()) return true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    if (prefs.getBool('stepsy_tracking_paused') == true) return true;
     // 1. Auth — bail quietly if the user isn't logged in.
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: _kTokenKey);
     if (token == null || token.isEmpty) {
       return true; // not logged in; nothing to sync, not a failure
     }
+    if (await _merchantSession()) return true;
+    final deviceKey = await DeviceIdentity.getBackgroundKey();
+    if (deviceKey == null) {
+      return true; // foreground app must establish identity first
+    }
 
-    final claims = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(token.split('.')[1])))) as Map<String, dynamic>;
-    await NotificationService.setUser(claims['sub'] as String, clearExisting: false);
     final now = DateTime.now();
     final todayStr = DateFormat('yyyy-MM-dd').format(now);
 
     // 2. Resolve today's step total.
-    final steps = await _resolveTodaySteps(now, todayStr);
-    await NotificationService.checkProgress(stepsToday: steps);
-    await _checkVoucherExpiry(token, claims['sub'] as String, todayStr);
+    var steps = await _resolveTodaySteps(now, todayStr);
+    // Stop may have been pressed while Health Connect was reading.
+    await prefs.reload();
+    if (prefs.getBool('stepsy_tracking_paused') == true) return true;
+    if (prefs.getString('stepsy_health_excluded_date') == todayStr) {
+      steps = await _resolveTodaySteps(now, todayStr);
+    }
     if (steps <= 0) {
       return true; // no steps recorded yet today
+    }
+    if (await storage.read(key: _kTokenKey) != token ||
+        await _merchantSession()) {
+      return true;
     }
 
     // 3. Sync to backend. Idempotent server-side via sync_key.
@@ -101,23 +132,28 @@ class BackgroundSyncService {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
+            'X-Device-ID': deviceKey,
           },
         ),
       );
 
-      await dio.post(
-        '/activity/sync',
-        data: {
-          'local_date': todayStr,
-          'eligible_steps': steps,
-          'source': 'background_workmanager',
-          'sync_key': const Uuid().v4(),
-        },
-      );
-      return true;
+      try {
+        await dio.post(
+          '/activity/sync',
+          data: {
+            'local_date': todayStr,
+            'eligible_steps': steps,
+            'source': 'background_workmanager',
+            'sync_key': const Uuid().v4(),
+          },
+        );
+        return true;
+      } finally {
+        dio.close();
+      }
     } on DioException catch (e) {
       // 401 = expired token: nothing we can refresh here, don't hammer retries.
-      if (e.response?.statusCode == 401) return true;
+      if ([401, 426].contains(e.response?.statusCode)) return true;
       debugPrint('Background sync HTTP error: ${e.message}');
       return false; // transient (network/5xx) → let WorkManager retry
     } catch (e) {
@@ -128,52 +164,44 @@ class BackgroundSyncService {
 
   /// Prefer the OS health store (updates while the app is closed); fall back to
   /// the last pedometer total the foreground app persisted for today.
-  static Future<void> _checkVoucherExpiry(String token, String userId, String today) async {
-    final settings = await NotificationService.preferences();
-    if (!settings.enabled || !settings.voucherExpiry || NotificationService.isQuietHour(DateTime.now().hour)) return;
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'expiry_check_${userId}_$today';
-    if (prefs.getBool(key) == true) return;
-    final dio = Dio(BaseOptions(baseUrl: EnvConfig.baseUrl, connectTimeout: const Duration(seconds: 15), receiveTimeout: const Duration(seconds: 15), headers: {'Authorization': 'Bearer $token'}));
-    try {
-      final response = await dio.get('/vouchers', queryParameters: {'status': 'active'});
-      for (final voucher in response.data as List<dynamic>) {
-        final expiry = DateTime.parse(voucher['expires_at'] as String).difference(DateTime.now());
-        if (expiry.isNegative) continue;
-        await NotificationService.showVoucherExpiring(offerTitle: voucher['offer_title'] as String,
-          shortCode: voucher['short_code'] as String, daysLeft: expiry.inDays);
-      }
-      await prefs.setBool(key, true);
-    } catch (_) {
-      // Optional reminders must never make step syncing fail.
-    } finally { dio.close(); }
-  }
-
   static Future<int> _resolveTodaySteps(DateTime now, String todayStr) async {
-    // Health Connect / HealthKit — the reliable background source.
+    var storedSteps = 0;
+    var excludeHealth = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // The foreground service writes outside this isolate's preference cache.
+      await prefs.reload();
+      excludeHealth =
+          prefs.getString('stepsy_health_excluded_date') == todayStr;
+      final raw = prefs.getString('stepsy_native_steps_v1');
+      if (raw != null) {
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        if (data['date'] == todayStr) storedSteps = data['steps'] as int? ?? 0;
+      } else if (prefs.getString(_kPrefBaselineDate) == todayStr) {
+        storedSteps = prefs.getInt(_kPrefLastStepsToday) ?? 0;
+      }
+    } catch (e) {
+      debugPrint('Background snapshot unavailable: $e');
+    }
+    if (excludeHealth) return storedSteps;
     try {
       final health = Health();
       await health.configure();
-      final midnight = DateTime(now.year, now.month, now.day);
-      final hcSteps = await health.getTotalStepsInInterval(midnight, now);
-      if (hcSteps != null && hcSteps > 0) {
-        return hcSteps;
+      if (await health.isHealthDataInBackgroundAuthorized()) {
+        final midnight = DateTime(now.year, now.month, now.day);
+        final healthSteps =
+            await health.getTotalStepsInInterval(
+              midnight,
+              now,
+              includeManualEntry: false,
+            ) ??
+            0;
+        return max(storedSteps, healthSteps);
       }
     } catch (e) {
-      debugPrint('Background Health Connect read failed: $e');
+      debugPrint('Background health read unavailable: $e');
     }
-
-    // Fallback: last value the foreground pedometer stored for today.
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getString(_kPrefBaselineDate) == todayStr) {
-        return prefs.getInt(_kPrefLastStepsToday) ?? 0;
-      }
-    } catch (e) {
-      debugPrint('Background prefs read failed: $e');
-    }
-
-    return 0;
+    return storedSteps;
   }
 
   /// Cancel the periodic job (e.g. on logout).

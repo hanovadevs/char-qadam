@@ -7,29 +7,48 @@ GET  /activity?range=...       Aggregated step totals (today | week | month).
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import ActivityDaily, User
+from app.db.models import ActivityDaily, LedgerReason, PointsLedger, User
 from app.db.postgres import get_session
 from app.deps import get_current_user
 from app.schemas.activity import ActivityPeriod, ActivityRangeOut, SyncIn, SyncOut
 from app.services.activity import sync_activity
+from app.services.local_date import local_today
+from app.services.device_binding import require_device_key
 
 router = APIRouter(prefix="/activity", tags=["activity"])
 
 
-def _local_today(user):
-    try:
-        return datetime.now(ZoneInfo(user.timezone or "Asia/Karachi")).date()
-    except (ZoneInfoNotFoundError, ValueError):
-        return datetime.now(timezone.utc).date()
-
+@router.get('/today', response_model=SyncOut, summary='Read today without writing reward records')
+async def today_summary(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SyncOut:
+    today = local_today(current_user.timezone).isoformat()
+    day = select(ActivityDaily.eligible_steps).where(
+        ActivityDaily.user_id == current_user.id, ActivityDaily.local_date == today
+    ).scalar_subquery()
+    balance = select(func.sum(PointsLedger.delta)).where(
+        PointsLedger.user_id == current_user.id).scalar_subquery()
+    earned = select(func.sum(PointsLedger.delta)).join(
+        ActivityDaily, PointsLedger.ref_id == ActivityDaily.id
+    ).where(ActivityDaily.user_id == current_user.id,
+            ActivityDaily.local_date == today,
+            PointsLedger.user_id == current_user.id,
+            PointsLedger.reason == LedgerReason.STEP_EARN).scalar_subquery()
+    steps, balance, earned = (await session.execute(select(
+        func.coalesce(day, 0), func.coalesce(balance, 0), func.coalesce(earned, 0)
+    ))).one()
+    settings = get_settings()
+    return SyncOut(local_date=today, eligible_steps=int(steps), balance=int(balance),
+                   points_awarded=0, points_earned_today=int(earned), is_replay=False,
+                   steps_per_point=settings.steps_per_point, daily_step_cap=settings.daily_step_cap)
 
 
 @router.post(
@@ -39,6 +58,7 @@ def _local_today(user):
 )
 async def sync(
     body: SyncIn,
+    device_id: str = Depends(require_device_key),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SyncOut:
@@ -60,7 +80,7 @@ async def sync(
             detail="Invalid date format. Expected YYYY-MM-DD",
         )
 
-    today = _local_today(current_user)
+    today = local_today(current_user.timezone)
     if sync_date > today:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -74,10 +94,10 @@ async def sync(
 
     # 2. Execute sync service
     settings = get_settings()
-    if settings.environment.lower() == "production" and body.source in {"manual", "manual_debug"}:
-        raise HTTPException(status_code=403, detail="Manual step entry is disabled")
     result = await sync_activity(
         user_id=current_user.id,
+        device_id=device_id,
+        auth_version=current_user.auth_version,
         local_date=body.local_date,
         eligible_steps=body.eligible_steps,
         source=body.source,
@@ -85,12 +105,22 @@ async def sync(
         session=session,
         settings=settings,
     )
+    daily_points = (await session.execute(
+        select(func.coalesce(func.sum(PointsLedger.delta), 0))
+        .join(ActivityDaily, PointsLedger.ref_id == ActivityDaily.id)
+        .where(ActivityDaily.user_id == current_user.id,
+               ActivityDaily.local_date == body.local_date,
+               PointsLedger.reason == LedgerReason.STEP_EARN)
+    )).scalar_one()
     return SyncOut(
         local_date=body.local_date,
         eligible_steps=result.eligible_steps,
         points_awarded=result.points_awarded,
         balance=result.balance,
         is_replay=result.is_replay,
+        points_earned_today=int(daily_points),
+        steps_per_point=settings.steps_per_point,
+        daily_step_cap=settings.daily_step_cap,
     )
 
 
@@ -100,35 +130,43 @@ async def sync(
     summary="Get aggregated step history",
 )
 async def get_activity(
-    range: str = Query(default="today", pattern="^(today|week|month)$"),
+    range: str = Query(default="today", pattern="^(today|week|month|3months|6months|year|all)$"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> ActivityRangeOut:
-    """Return step totals for today, the last 7 days, or the last 30 days.
+    """Return step totals for today, previous weeks, or previous months.
 
     Days with no synced data are omitted from ``days`` but counted in the
     date window for ``total_steps``.
     """
-    today = _local_today(current_user)
+    today = local_today(current_user.timezone)
     if range == "today":
         start = today
     elif range == "week":
         start = today - timedelta(days=6)
-    else:  # month
+    elif range == "month":
         start = today - timedelta(days=29)
+    elif range == "3months":
+        start = today - timedelta(days=90)
+    elif range == "6months":
+        start = today - timedelta(days=180)
+    elif range == "year":
+        start = today - timedelta(days=365)
+    else:  # all
+        start = None
 
-    start_str = start.isoformat()
     end_str = today.isoformat()
 
-    rows_result = await session.execute(
-        select(ActivityDaily)
-        .where(
-            ActivityDaily.user_id == current_user.id,
-            ActivityDaily.local_date >= start_str,
-            ActivityDaily.local_date <= end_str,
-        )
-        .order_by(ActivityDaily.local_date)
+    query = select(ActivityDaily).where(
+        ActivityDaily.user_id == current_user.id,
+        ActivityDaily.local_date <= end_str,
     )
+    if start is not None:
+        query = query.where(ActivityDaily.local_date >= start.isoformat())
+
+    query = query.order_by(ActivityDaily.local_date)
+
+    rows_result = await session.execute(query)
     rows = rows_result.scalars().all()
 
     days = [ActivityPeriod(date=r.local_date, eligible_steps=r.eligible_steps, source=r.source) for r in rows]

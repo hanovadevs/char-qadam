@@ -1,46 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import React from 'react';
+import { useAdminQuery } from '../hooks/use-admin-query';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import { Link } from 'react-router-dom';
 
 export default function Overview() {
-  const [metrics, setMetrics] = useState(null);
-  const [charts, setCharts] = useState(null);
-  const [recentRedemptions, setRecentRedemptions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [overviewData, chartData, redemptions] = await Promise.all([
-        api.getAnalyticsOverview(),
-        api.getAnalyticsCharts(),
-        api.listRedemptions({ limit: 8 }),
-      ]);
-      setMetrics(overviewData);
-      setCharts(chartData);
-      setRecentRedemptions((redemptions || []).slice(0, 8));
-    } catch (err) {
-      setError(err.message || 'Failed to load ecosystem metrics.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const metricsQuery = useAdminQuery('/admin/analytics/overview');
+  const chartsQuery = useAdminQuery('/admin/analytics/charts');
+  const recentQuery = useAdminQuery('/admin/redemptions?limit=8', []);
+  const { data: metrics, loading } = metricsQuery;
+  const charts = chartsQuery.data;
+  const recentRedemptions = recentQuery.data;
+  const error = metricsQuery.error || chartsQuery.error || recentQuery.error;
+  const loadData = () => Promise.all([metricsQuery.refresh(), chartsQuery.refresh(), recentQuery.refresh()]);
 
   const formatNumber = (num) => {
-    if (num == null) return '0';
+    if (num == null) return '—';
     return Number(num).toLocaleString();
   };
 
   const formatCurrency = (num) => {
-    if (num == null) return '$0.00';
+    if (num == null) return '—';
     return `$${Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
@@ -98,12 +78,12 @@ export default function Overview() {
         <StatCard
           label="Registered Users"
           value={loading ? '...' : formatNumber(metrics?.total_users)}
-          subtext="Registered accounts"
+          subtext="Active walkers"
         />
         <StatCard
           label="Eligible Steps"
           value={loading ? '...' : formatNumber(metrics?.total_steps)}
-          subtext="Synced eligible step totals"
+          subtext="Verified pedometer steps"
         />
         <StatCard
           label="Partner Stores"
@@ -121,9 +101,9 @@ export default function Overview() {
           subtext="Completed POS redemptions"
         />
         <StatCard
-          label="Fixed discounts redeemed"
-          value={loading ? '...' : formatCurrency(metrics?.fixed_discount_value)}
-          subtext="Face value; excludes percentage offers"
+          label="Customer Savings"
+          value={loading ? '...' : formatCurrency(metrics?.total_customer_savings)}
+          subtext="Direct consumer value delivered"
         />
       </div>
 
@@ -171,7 +151,7 @@ export default function Overview() {
               })
             ) : (
               <div style={{ width: '100%', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '12px', padding: '40px 0' }}>
-                No daily step activity recorded yet.
+                {chartsQuery.loading ? 'Loading daily step activity...' : 'No daily step activity recorded yet.'}
               </div>
             )}
           </div>
@@ -254,7 +234,7 @@ export default function Overview() {
               Recent POS Voucher Redemptions
             </h3>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Most recent recorded voucher redemptions
+              Live log of vouchers redeemed at merchant cash counters
             </p>
           </div>
           <Link to="/vouchers" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--brand-teal)', textDecoration: 'none' }}>
@@ -286,7 +266,7 @@ export default function Overview() {
                     {formatCurrency(r.discount_value)}
                   </td>
                   <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : 'Unavailable'}
+                    {r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : 'Just now'}
                   </td>
                   <td>
                     <Badge status="REDEEMED" label="REDEEMED" />
@@ -296,7 +276,7 @@ export default function Overview() {
             ) : (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                  No voucher redemptions recorded yet.
+                  {recentQuery.loading ? 'Loading voucher redemptions...' : 'No voucher redemptions recorded yet.'}
                 </td>
               </tr>
             )}
