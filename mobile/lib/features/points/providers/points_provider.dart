@@ -63,13 +63,14 @@ class PointsNotifier extends StateNotifier<PointsState> {
   }
 
   Future<void> refresh() async {
+    if (state.isLoading || state.isLoadingMore) return;
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final balance = await pointsRepository.getBalance();
-      final history = await pointsRepository.getHistory(
-        limit: PointsState.pageSize,
-        offset: 0,
-      );
+      final (balance, history) = await (
+        pointsRepository.getBalance(),
+        pointsRepository.getHistory(limit: PointsState.pageSize, offset: 0),
+      ).wait;
+      if (!mounted) return;
       state = PointsState(
         balanceData: balance,
         entries: history.entries,
@@ -79,13 +80,14 @@ class PointsNotifier extends StateNotifier<PointsState> {
         hasMore: history.entries.length < history.total,
       );
     } catch (e) {
+      if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }
   }
 
   Future<void> loadMore() async {
-    if (state.isLoadingMore || !state.hasMore) return;
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
 
     state = state.copyWith(isLoadingMore: true);
     try {
@@ -93,6 +95,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         limit: PointsState.pageSize,
         offset: state.offset,
       );
+      if (!mounted) return;
       final allEntries = [...state.entries, ...history.entries];
       state = state.copyWith(
         entries: allEntries,
@@ -102,6 +105,7 @@ class PointsNotifier extends StateNotifier<PointsState> {
         total: history.total,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoadingMore: false);
     }
   }

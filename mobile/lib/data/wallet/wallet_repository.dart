@@ -18,7 +18,7 @@ class WalletRepository {
 
   /// Fetch user vouchers filtered by status: 'active' | 'redeemed' | 'expired' (with offline cache fallback).
   Future<List<VoucherModel>> getVouchers({String status = 'active'}) async {
-    final cacheKey = 'wallet_vouchers_$status';
+    final cacheKey = await cacheService.scopedKey('wallet_vouchers_$status');
     try {
       final response = await apiClient.get(
         '/vouchers',
@@ -28,6 +28,9 @@ class WalletRepository {
       await cacheService.cacheData(cacheKey, list);
       return list.map((j) => VoucherModel.fromJson(j as Map<String, dynamic>)).toList();
     } catch (e) {
+      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        throw Exception('Please sign in again to access this data.');
+      }
       final cached = await cacheService.getCachedData(cacheKey);
       if (cached != null && cached is List<dynamic>) {
         return cached.map((j) => VoucherModel.fromJson(j as Map<String, dynamic>)).toList();

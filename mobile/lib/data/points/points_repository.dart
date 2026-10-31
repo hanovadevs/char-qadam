@@ -18,13 +18,16 @@ class PointsRepository {
 
   /// Fetch current balance and lifetime earned/spent stats (with offline cache fallback).
   Future<BalanceModel> getBalance() async {
-    const cacheKey = 'points_balance';
+    final cacheKey = await cacheService.scopedKey('points_balance');
     try {
       final response = await apiClient.get('/points/balance');
       final data = response.data as Map<String, dynamic>;
       await cacheService.cacheData(cacheKey, data);
       return BalanceModel.fromJson(data);
     } catch (e) {
+      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        throw Exception('Please sign in again to access this data.');
+      }
       final cached = await cacheService.getCachedData(cacheKey);
       if (cached != null && cached is Map<String, dynamic>) {
         return BalanceModel.fromJson(cached);
@@ -38,7 +41,7 @@ class PointsRepository {
 
   /// Fetch paginated points ledger entries (newest first, with offline cache fallback for initial page).
   Future<LedgerPageModel> getHistory({int limit = 20, int offset = 0}) async {
-    final cacheKey = 'points_history_offset_$offset';
+    final cacheKey = await cacheService.scopedKey('points_history_offset_$offset');
     try {
       final response = await apiClient.get(
         '/points/history',
@@ -50,6 +53,9 @@ class PointsRepository {
       }
       return LedgerPageModel.fromJson(data);
     } catch (e) {
+      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        throw Exception('Please sign in again to access this data.');
+      }
       if (offset == 0) {
         final cached = await cacheService.getCachedData(cacheKey);
         if (cached != null && cached is Map<String, dynamic>) {

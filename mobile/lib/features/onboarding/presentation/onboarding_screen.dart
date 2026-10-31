@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/activity/health_service.dart';
+import '../../../core/services/health_consent.dart';
 
 /// Key used to persist onboarding completion state
 const String onboardingCompleteKey = 'qadam_onboarding_complete';
@@ -29,12 +30,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _requestPermissions() async {
+    if (!await HealthConsent.request(context) || !mounted) return;
     setState(() => _requestingPermission = true);
     HapticsService.medium();
 
     final healthService = ref.read(healthServiceProvider);
     final granted = await healthService.requestPermissions();
 
+    if (!mounted) return;
     setState(() {
       _permissionGranted = granted;
       _requestingPermission = false;
@@ -294,8 +297,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const SizedBox(height: 28),
           _buildPrivacyRow(
             Icons.phone_android,
-            'STEP DATA STAYS LOCAL',
-            'Raw health data never leaves your device.',
+            'STEP TOTALS SYNC SECURELY',
+            'Daily step totals are sent to our server to calculate points.',
           ),
           const SizedBox(height: 14),
           _buildPrivacyRow(
@@ -307,13 +310,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _buildPrivacyRow(
             Icons.location_off_outlined,
             'ZERO GPS TRACKING',
-            'No location, route, or movement data is collected.',
+            'We do not collect GPS locations or routes.',
           ),
           const SizedBox(height: 14),
           _buildPrivacyRow(
             Icons.delete_outline,
             'FULL DATA CONTROL',
-            'Delete your account anytime. All data is removed.',
+            'Delete your account in Profile. Step history and profile details are erased; anonymized transaction records may remain.',
           ),
         ],
       ),

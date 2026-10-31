@@ -12,19 +12,46 @@ class TokenStorage {
   static const String _tokenKey = 'qadam_access_token';
   static const String _userKey = 'qadam_cached_user';
   final FlutterSecureStorage _storage;
+  String? _token;
+  bool _tokenLoaded = false;
+  int _tokenVersion = 0;
+  Future<String?>? _tokenRead;
 
   TokenStorage({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: _tokenKey, value: token);
+    _tokenVersion++;
+    _token = token;
+    _tokenLoaded = true;
+    _tokenRead = null;
   }
 
   Future<String?> getToken() async {
-    return await _storage.read(key: _tokenKey);
+    if (_tokenLoaded) return _token;
+    final version = _tokenVersion;
+    final read = _tokenRead ??= _storage.read(key: _tokenKey);
+    try {
+      final token = await read;
+      if (version != _tokenVersion) return _token;
+      _token = token;
+      _tokenLoaded = true;
+      return token;
+    } finally {
+      if (identical(_tokenRead, read)) _tokenRead = null;
+    }
+  }
+
+  void _clearMemoryToken() {
+    _tokenVersion++;
+    _token = null;
+    _tokenLoaded = true;
+    _tokenRead = null;
   }
 
   Future<void> deleteToken() async {
+    _clearMemoryToken();
     await _storage.delete(key: _tokenKey);
   }
 
@@ -49,6 +76,7 @@ class TokenStorage {
 
   /// Clears both access token and cached user profile in secure storage.
   Future<void> clearAll() async {
+    _clearMemoryToken();
     await Future.wait([
       _storage.delete(key: _tokenKey),
       _storage.delete(key: _userKey),

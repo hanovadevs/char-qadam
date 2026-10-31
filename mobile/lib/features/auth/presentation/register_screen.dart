@@ -47,12 +47,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (googleUser == null) return; // user cancelled the picker
 
       final googleAuth = await googleUser.authentication;
-      // Prefer the verified Google ID token; fall back to the REAL signed-in
-      // email if the OAuth client doesn't return one — never a demo user.
       final token = googleAuth.idToken;
-      final idToken = (token != null && token.isNotEmpty)
-          ? token
-          : 'mock_google_token:${googleUser.email}';
+      if (token == null || token.isEmpty) {
+        throw Exception('Google did not return a verified sign-in token. Please contact support.');
+      }
+      final idToken = token;
 
       await ref.read(authStateProvider.notifier).loginWithGoogle(
             idToken: idToken,

@@ -44,16 +44,21 @@ class LeaderboardNotifier extends StateNotifier<LeaderboardState> {
     fetchLeaderboard(state.selectedScope);
   }
 
+  int _requestVersion = 0;
+
   Future<void> fetchLeaderboard(String scope) async {
+    final version = ++_requestVersion;
     state = state.copyWith(isLoading: true, selectedScope: scope, errorMessage: null);
     try {
       final data = await repository.getLeaderboard(scope: scope);
+      if (!mounted || version != _requestVersion) return;
       state = state.copyWith(
         isLoading: false,
         selectedScope: scope,
         data: data,
       );
     } catch (e) {
+      if (!mounted || version != _requestVersion) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }

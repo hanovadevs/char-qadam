@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/voucher_models.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../data/wallet/wallet_repository.dart';
 
 class WalletState {
@@ -44,7 +45,10 @@ class WalletNotifier extends StateNotifier<WalletState> {
     fetchVouchers(state.selectedStatus);
   }
 
+  int _requestVersion = 0;
+
   Future<void> fetchVouchers(String status) async {
+    final version = ++_requestVersion;
     state = state.copyWith(
       selectedStatus: status,
       isLoading: true,
@@ -52,8 +56,17 @@ class WalletNotifier extends StateNotifier<WalletState> {
     );
     try {
       final list = await walletRepository.getVouchers(status: status);
+      if (!mounted || version != _requestVersion) return;
       state = state.copyWith(vouchers: list, isLoading: false);
+      if (status == 'active') {
+        for (final voucher in list) {
+          final remaining = voucher.expiresAt.difference(DateTime.now());
+          if (remaining.isNegative) continue;
+          await NotificationService.showVoucherExpiring(offerTitle: voucher.offerTitle, shortCode: voucher.shortCode, daysLeft: remaining.inDays);
+        }
+      }
     } catch (e) {
+      if (!mounted || version != _requestVersion) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }

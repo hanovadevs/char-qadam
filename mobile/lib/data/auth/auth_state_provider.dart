@@ -4,6 +4,8 @@ import '../api/api_client.dart';
 import '../models/user_model.dart';
 import 'auth_repository.dart';
 import 'token_storage.dart';
+import '../../core/services/cache_service.dart';
+import '../../core/services/notification_service.dart';
 
 // SharedPreferences keys for the client-only cached Google profile (name/photo).
 // These are not stored server-side; they only decorate the local profile UI.
@@ -251,6 +253,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await tokenStorage.clearAll();
+    await CacheService.clearAllPersonalCaches();
+    await NotificationService.setUser(null);
     await _saveGoogleProfile(null, null); // clear cached Google profile
     state = const AuthState(
       status: AuthStatus.unauthenticated,

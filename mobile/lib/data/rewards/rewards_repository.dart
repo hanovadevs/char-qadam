@@ -18,13 +18,16 @@ class RewardsRepository {
 
   /// Fetch active redeemable offers catalog (with offline cache fallback).
   Future<List<OfferModel>> getOffers() async {
-    const cacheKey = 'offers_catalog';
+    final cacheKey = await cacheService.scopedKey('offers_catalog');
     try {
       final response = await apiClient.get('/offers');
       final list = response.data as List<dynamic>;
       await cacheService.cacheData(cacheKey, list);
       return list.map((json) => OfferModel.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
+      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        throw Exception('Please sign in again to access this data.');
+      }
       final cached = await cacheService.getCachedData(cacheKey);
       if (cached != null && cached is List<dynamic>) {
         return cached.map((json) => OfferModel.fromJson(json as Map<String, dynamic>)).toList();

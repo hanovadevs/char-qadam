@@ -86,6 +86,21 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   StreamSubscription<int>? _stepStreamSub;
   Timer? _debounceTimer;
 
+  bool _syncInFlight = false;
+  int _lastSubmittedSteps = 0;
+  String _activeDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+  void _resetDayIfNeeded() {
+    final today = _getTodayString();
+    if (_activeDate == today) return;
+    _activeDate = today;
+    _lastSubmittedSteps = 0;
+    _lastSyncAt = null;
+    _lastHistoryAt = null;
+    state = state.copyWith(todaySteps: 0, serverSteps: 0, pointsEarnedToday: 0);
+  }
+  DateTime? _lastHistoryAt;
+
   bool _permissionsRequested = false;
   DateTime? _lastSyncAt;
 
@@ -99,6 +114,8 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
 
   void _listenToStepStream() {
     _stepStreamSub = healthService.stepStream.listen((liveSteps) {
+      if (!mounted) return;
+      _resetDayIfNeeded();
       if (liveSteps > state.todaySteps) {
         state = state.copyWith(todaySteps: liveSteps);
         _scheduleDebouncedSync();
@@ -107,9 +124,10 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   }
 
   void _scheduleDebouncedSync() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(seconds: 10), () {
-      if (state.todaySteps > state.serverSteps) {
+    if (_debounceTimer?.isActive ?? false) return;
+    _debounceTimer = Timer(const Duration(seconds: 60), () {
+      if (!mounted) return;
+      if (state.todaySteps > _lastSubmittedSteps) {
         _performSync(
           steps: state.todaySteps,
           source: 'health',
@@ -124,7 +142,15 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   /// Safe to call on every app resume: permissions are only requested once per
   /// session, and repeated calls within a short window are throttled so the
   /// screen doesn't re-sync/reload constantly.
+  Future<void> requestAccessAndSync() async {
+    _permissionsRequested = false;
+    _lastSyncAt = null;
+    await initAndSync();
+  }
+
   Future<void> initAndSync() async {
+    if (!mounted) return;
+    _resetDayIfNeeded();
     if (state.isSyncing) return;
     if (_lastSyncAt != null &&
         DateTime.now().difference(_lastSyncAt!) < const Duration(seconds: 30)) {
@@ -134,15 +160,18 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
 
     state = state.copyWith(isSyncing: true, errorMessage: null);
 
+    try {
     // Request OS permissions only on the first run — re-requesting on every
     // resume spams the permission APIs and floods the log.
     if (!_permissionsRequested) {
       _permissionsRequested = true;
       final hasPerm = await healthService.requestPermissions();
+      if (!mounted) return;
       state = state.copyWith(hasPermission: hasPerm);
     }
 
     final rawSteps = await healthService.fetchTodaySteps();
+    if (!mounted) return;
     state = state.copyWith(todaySteps: rawSteps);
 
     // If steps > 0, sync to server
@@ -154,7 +183,10 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       );
     } else {
       await loadHistory(state.selectedRange);
-      state = state.copyWith(isSyncing: false);
+      if (mounted) state = state.copyWith(isSyncing: false);
+    }
+    } catch (error) {
+      if (mounted) state = state.copyWith(isSyncing: false, errorMessage: error.toString());
     }
   }
 
@@ -163,6 +195,9 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     required String source,
     required String date,
   }) async {
+    if (_syncInFlight || !mounted) return false;
+    _syncInFlight = true;
+    state = state.copyWith(isSyncing: true);
     try {
       final syncKey = _uuid.v4();
       final syncResponse = await activityRepository.syncActivity(
@@ -172,11 +207,14 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
         syncKey: syncKey,
       );
 
+      if (!mounted || date != _getTodayString()) return false;
+      _lastSubmittedSteps = steps;
       final nowFormatted = DateFormat('hh:mm a').format(DateTime.now());
       _lastSyncAt = DateTime.now();
 
       state = state.copyWith(
-        todaySteps: syncResponse.eligibleSteps,
+        todaySteps: state.todaySteps > syncResponse.eligibleSteps
+            ? state.todaySteps : syncResponse.eligibleSteps,
         serverSteps: syncResponse.eligibleSteps,
         pointsEarnedToday: syncResponse.pointsAwarded,
         userBalance: syncResponse.balance,
@@ -190,13 +228,21 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
         );
       }
 
-      await loadHistory(state.selectedRange);
+      if (_lastHistoryAt == null ||
+          DateTime.now().difference(_lastHistoryAt!) >= const Duration(minutes: 5)) {
+        await loadHistory(state.selectedRange);
+      }
+      if (!mounted) return false;
       state = state.copyWith(isSyncing: false);
       return true;
     } catch (e) {
+      if (!mounted) return false;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isSyncing: false, errorMessage: msg);
       return false;
+    } finally {
+      _syncInFlight = false;
+      if (mounted && state.todaySteps > _lastSubmittedSteps) _scheduleDebouncedSync();
     }
   }
 
@@ -214,6 +260,8 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   Future<void> loadHistory(String range) async {
     try {
       final historyData = await activityRepository.getActivityHistory(range: range);
+      if (!mounted) return;
+      _lastHistoryAt = DateTime.now();
       int streak = 0;
       if (historyData.days.isNotEmpty) {
         for (final day in historyData.days.reversed) {

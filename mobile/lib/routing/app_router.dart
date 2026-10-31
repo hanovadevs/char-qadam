@@ -17,6 +17,9 @@ import '../features/points/presentation/points_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/rewards/presentation/rewards_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
+import '../features/support/presentation/support_screen.dart';
+import '../features/profile/presentation/notification_settings_screen.dart';
+import '../features/profile/presentation/privacy_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -28,20 +31,22 @@ final onboardingCompleteProvider = FutureProvider<bool>((ref) async {
 });
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
   final onboardingAsync = ref.watch(onboardingCompleteProvider);
   final onboardingComplete = onboardingAsync.valueOrNull ?? true;
 
-  return GoRouter(
+  final refresh = _RiverpodRefreshListenable(ref, authStateProvider);
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
-    refreshListenable: _RiverpodRefreshListenable(ref, authStateProvider),
+    refreshListenable: refresh,
     redirect: (context, state) {
+      if (state.matchedLocation == '/privacy') return null;
+      final authState = ref.read(authStateProvider);
       final status = authState.status;
       final isSplash = state.matchedLocation == '/splash';
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
-          state.matchedLocation == '/forgot-password';
+          state.matchedLocation == '/forgot-password' || state.matchedLocation == '/privacy';
       final isOnboarding = state.matchedLocation == '/onboarding';
 
       if (status == AuthStatus.initial) {
@@ -55,7 +60,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (status == AuthStatus.authenticated) {
         // If the authenticated user is a Merchant, route directly to /merchant-pos!
         if (authState.user?.isMerchant == true) {
-          if (state.matchedLocation != '/merchant-pos') {
+          if (state.matchedLocation != '/merchant-pos' && state.matchedLocation != '/support' && state.matchedLocation != '/privacy') {
             return '/merchant-pos';
           }
           return null;
@@ -103,6 +108,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
+      GoRoute(path: '/privacy', parentNavigatorKey: _rootNavigatorKey, builder: (context, state) => const PrivacyScreen()),
+      GoRoute(path: '/notification-settings', parentNavigatorKey: _rootNavigatorKey, builder: (context, state) => const NotificationSettingsScreen()),
+      GoRoute(path: '/support', parentNavigatorKey: _rootNavigatorKey, builder: (context, state) => const SupportScreen()),
       GoRoute(
         path: '/leaderboard',
         parentNavigatorKey: _rootNavigatorKey,
@@ -170,6 +178,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(() { router.dispose(); refresh.dispose(); });
+  return router;
 });
 
 /// Dedicated splash screen shown during app startup and auth token resolution (Swiss Light Style).

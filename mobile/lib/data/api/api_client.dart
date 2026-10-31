@@ -43,7 +43,10 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) async {
-          if (error.response?.statusCode == 401) {
+          final sentAuthorization = error.requestOptions.headers['Authorization'];
+          final currentToken = await tokenStorage.getToken();
+          if (error.response?.statusCode == 401 &&
+              sentAuthorization == 'Bearer $currentToken') {
             // Token expired or invalid — clear token, cached user, and invoke callback
             await tokenStorage.clearAll();
             onUnauthorized?.call();

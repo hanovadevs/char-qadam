@@ -7,6 +7,7 @@ import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/health_consent.dart';
 
 final healthServiceProvider = Provider<HealthService>((ref) {
   final service = HealthService();
@@ -40,8 +41,8 @@ class HealthService {
   String? _dailyBaselineDate;
   int _currentTodaySteps = 0;
   int _lastNotifiedSteps = 0;
-  String _pedestrianStatus = 'unknown';
-  String get pedestrianStatus => _pedestrianStatus;
+  String get pedestrianStatus => 'unknown';
+  bool _disposed = false;
 
   // Only refresh the ongoing notification once the step count has moved this
   // many steps. The pedometer stream fires on nearly every step, and updating
@@ -53,8 +54,11 @@ class HealthService {
   StreamSubscription<PedestrianStatus>? _statusSubscription;
   Completer<int>? _firstReadingCompleter;
 
-  HealthService() {
-    _init();
+  Future<void>? _initialization;
+  HealthService() { _initializeIfConsented(); }
+
+  Future<void> _initializeIfConsented() async {
+    if (await HealthConsent.hasConsent()) await (_initialization ??= _init());
   }
 
   Future<void> _init() async {
@@ -92,7 +96,7 @@ class HealthService {
   }
 
   void _startPedometerStreams() {
-    if (kIsWeb) return;
+    if (kIsWeb || _disposed || _pedometerSubscription != null) return;
     try {
       _firstReadingCompleter = Completer<int>();
 
@@ -105,22 +109,13 @@ class HealthService {
         cancelOnError: false,
       );
 
-      // 2. Pedestrian status stream (keeps motion coprocessor sensor active)
-      _statusSubscription = Pedometer.pedestrianStatusStream.listen(
-        (PedestrianStatus event) {
-          _pedestrianStatus = event.status;
-        },
-        onError: (error) {
-          debugPrint('Pedestrian status stream error: $error');
-        },
-        cancelOnError: false,
-      );
     } catch (e) {
       debugPrint('Failed to initialize pedometer streams: $e');
     }
   }
 
   Future<void> _onPedometerEvent(StepCount event) async {
+    if (_disposed) return;
     final hardwareCount = event.steps;
     _cumulativeHardwareSteps = hardwareCount;
 
@@ -167,16 +162,14 @@ class HealthService {
       }
     }
 
+    if (_disposed || _stepStreamController.isClosed) return;
     _stepStreamController.add(_currentTodaySteps);
 
     // Update ongoing persistent notification for 24/7 background tracking,
     // throttled so we don't churn the notification on every sensor tick.
     if ((_currentTodaySteps - _lastNotifiedSteps).abs() >= _notificationStepThreshold) {
       _lastNotifiedSteps = _currentTodaySteps;
-      NotificationService.updateOngoingStepNotification(
-        stepsToday: _currentTodaySteps,
-        dailyGoal: 20000,
-      );
+      NotificationService.checkProgress(stepsToday: _currentTodaySteps);
     }
   }
 
@@ -187,7 +180,8 @@ class HealthService {
   /// - Ignore Battery Optimizations (Prevents OEM aggressive killing)
   /// - Health Connect (OS-level background step ledger)
   Future<bool> requestPermissions() async {
-    if (kIsWeb) return false;
+    if (kIsWeb || !await HealthConsent.hasConsent()) return false;
+    await _initializeIfConsented();
 
     // 1. Activity Recognition — this is the permission that powers the live
     // hardware pedometer, which is the app's primary step source. If it is
@@ -198,30 +192,6 @@ class HealthService {
       activityGranted = status.isGranted;
     } catch (e) {
       debugPrint('Activity recognition error: $e');
-    }
-
-    // 2. Body Sensors
-    try {
-      await Permission.sensors.request();
-    } catch (e) {
-      debugPrint('Sensors permission error: $e');
-    }
-
-    // 3. Notifications (for 24/7 ongoing service and rewards)
-    try {
-      await Permission.notification.request();
-    } catch (e) {
-      debugPrint('Notification permission error: $e');
-    }
-
-    // 4. Request Battery Optimization Exemption
-    try {
-      final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
-      if (!batteryStatus.isGranted) {
-        await Permission.ignoreBatteryOptimizations.request();
-      }
-    } catch (e) {
-      debugPrint('Battery optimization request error: $e');
     }
 
     // 5. Health Connect / Apple HealthKit (best-effort — enriches step data but
@@ -244,7 +214,8 @@ class HealthService {
 
   /// Fetch total step count for today (local midnight 00:00:00 to now).
   Future<int> fetchTodaySteps() async {
-    if (kIsWeb) return 0;
+    if (kIsWeb || !await HealthConsent.hasConsent()) return 0;
+    await _initializeIfConsented();
 
     // 1. Check Google Health Connect / Apple HealthKit first
     try {
@@ -258,10 +229,7 @@ class HealthService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt(_prefLastStepsToday, healthSteps);
 
-        NotificationService.updateOngoingStepNotification(
-          stepsToday: healthSteps,
-          dailyGoal: 20000,
-        );
+        NotificationService.checkProgress(stepsToday: healthSteps);
 
         return healthSteps;
       }
@@ -295,7 +263,20 @@ class HealthService {
     return DateFormat('yyyy-MM-dd').format(DateTime.now());
   }
 
+  Future<void> pauseLiveTracking() async {
+    await _pedometerSubscription?.cancel();
+    await _statusSubscription?.cancel();
+    _pedometerSubscription = null;
+    _statusSubscription = null;
+  }
+
+  Future<void> resumeLiveTracking() async {
+    await _initializeIfConsented();
+    if (await HealthConsent.hasConsent()) _startPedometerStreams();
+  }
+
   void dispose() {
+    _disposed = true;
     _pedometerSubscription?.cancel();
     _statusSubscription?.cancel();
     _stepStreamController.close();

@@ -45,7 +45,7 @@ class ActivityRepository {
 
   /// Get aggregated step history for range: 'today' | 'week' | 'month' (with offline cache fallback).
   Future<ActivityRangeModel> getActivityHistory({String range = 'today'}) async {
-    final cacheKey = 'activity_history_$range';
+    final cacheKey = await cacheService.scopedKey('activity_history_$range');
     try {
       final response = await apiClient.get(
         '/activity',
@@ -55,6 +55,9 @@ class ActivityRepository {
       await cacheService.cacheData(cacheKey, data);
       return ActivityRangeModel.fromJson(data);
     } catch (e) {
+      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        throw Exception('Please sign in again to access this data.');
+      }
       final cached = await cacheService.getCachedData(cacheKey);
       if (cached != null && cached is Map<String, dynamic>) {
         return ActivityRangeModel.fromJson(cached);

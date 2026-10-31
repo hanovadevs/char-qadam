@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/haptics_service.dart';
+import '../../../core/services/health_consent.dart';
+import '../../../data/activity/health_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/activity_provider.dart';
 
@@ -22,6 +24,12 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (await HealthConsent.request(context) && mounted) {
+        await ref.read(activityProvider.notifier).requestAccessAndSync();
+      }
+    });
     _syncAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -31,7 +39,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      ref.read(healthServiceProvider).resumeLiveTracking();
       ref.read(activityProvider.notifier).initAndSync();
+    } else if (state == AppLifecycleState.paused) {
+      ref.read(healthServiceProvider).pauseLiveTracking();
     }
   }
 
@@ -142,7 +153,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Earned today: +${activityState.pointsEarnedToday} pts',
+                          'Last sync earned: +${activityState.pointsEarnedToday} pts',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,

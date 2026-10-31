@@ -53,14 +53,17 @@ class RewardsNotifier extends StateNotifier<RewardsState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final catalog = await rewardsRepository.getOffers();
-      state = RewardsState(offers: catalog, isLoading: false);
+      if (!mounted) return;
+      state = state.copyWith(offers: catalog, isLoading: false);
     } catch (e) {
+      if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }
   }
 
   Future<RedeemResultModel?> redeem(String offerId) async {
+    if (state.isRedeeming) return null;
     state = state.copyWith(isRedeeming: true, errorMessage: null);
     try {
       final offerTitle = state.offers
@@ -68,6 +71,7 @@ class RewardsNotifier extends StateNotifier<RewardsState> {
           .map((o) => o.title)
           .firstOrNull ?? 'Reward Offer';
       final result = await rewardsRepository.redeemOffer(offerId);
+      if (!mounted) return result;
       state = state.copyWith(
         isRedeeming: false,
         lastRedeemedResult: result,
@@ -81,6 +85,7 @@ class RewardsNotifier extends StateNotifier<RewardsState> {
       fetchOffers();
       return result;
     } catch (e) {
+      if (!mounted) return null;
       final msg = e.toString().replaceAll('Exception: ', '');
       state = state.copyWith(isRedeeming: false, errorMessage: msg);
       return null;

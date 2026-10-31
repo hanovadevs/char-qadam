@@ -25,9 +25,10 @@ android {
     }
 
     defaultConfig {
+        resValue("string", "public_privacy_url", System.getenv("PUBLIC_PRIVACY_URL") ?: "")
         applicationId = "com.stepsy.run"
         minSdk = 26
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
@@ -35,10 +36,12 @@ android {
 
     signingConfigs {
         create("release") {
+            if (keystorePropertiesFile.exists()) {
             keyAlias = keystoreProperties["keyAlias"] as String
             keyPassword = keystoreProperties["keyPassword"] as String
             storeFile = file(keystoreProperties["storeFile"] as String)
             storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
@@ -61,4 +64,11 @@ dependencies {
 
 flutter {
     source = "../.."
+}
+
+// Debug builds work without upload keys; release tasks fail clearly.
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.name.contains("Release", ignoreCase = true) } && !keystorePropertiesFile.exists()) {
+        throw GradleException("Release signing requires android/key.properties and your upload keystore")
+    }
 }

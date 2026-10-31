@@ -64,9 +64,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       final googleAuth = await googleUser.authentication;
       final token = googleAuth.idToken;
-      final idToken = (token != null && token.isNotEmpty)
-          ? token
-          : 'mock_google_token:${googleUser.email}';
+      if (token == null || token.isEmpty) {
+        throw Exception('Google did not return a verified sign-in token. Please contact support.');
+      }
+      final idToken = token;
 
       await ref.read(authStateProvider.notifier).loginWithGoogle(
             idToken: idToken,

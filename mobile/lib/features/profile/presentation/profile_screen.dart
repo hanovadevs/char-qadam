@@ -184,7 +184,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Are you sure you want to delete your account? Your step history, points balance, and active vouchers will be permanently removed.',
+              'Are you sure you want to delete your account? Your profile details, step history, and support conversations will be erased, and active vouchers will be cancelled. Anonymized transaction records may be retained for accounting and abuse prevention.',
               style: TextStyle(fontSize: 14, color: AppTheme.inkSecondary, height: 1.4),
             ),
             const SizedBox(height: 24),
@@ -440,6 +440,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             child: Column(
               children: [
+                _buildSettingRow(
+                  icon: CupertinoIcons.lock_shield,
+                  title: 'Privacy & your data',
+                  onTap: () => context.push('/privacy'),
+                ),
+                const Divider(height: 1, color: AppTheme.hairline),
+                _buildSettingRow(
+                  icon: CupertinoIcons.bell,
+                  title: 'Notifications & walking goal',
+                  onTap: () => context.push('/notification-settings'),
+                ),
+                const Divider(height: 1, color: AppTheme.hairline),
+                _buildSettingRow(
+                  icon: CupertinoIcons.question_circle,
+                  title: 'Help, FAQs & support',
+                  onTap: () => context.push('/support'),
+                ),
+                const Divider(height: 1, color: AppTheme.hairline),
                 _buildSettingRow(
                   icon: CupertinoIcons.square_arrow_right,
                   title: 'Sign out',
