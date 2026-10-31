@@ -18,7 +18,7 @@ from tests.test_offers import _create_offer
 
 @pytest_asyncio.fixture
 async def accounts(monkeypatch):
-    context = {'emails': [], 'offers': []}
+    context = {'emails': [], 'offers': [], 'ids': []}
     async def google(token, client_id=None):
         if not token.startswith('device-google:'):
             raise ValueError('Invalid token')
@@ -28,6 +28,7 @@ async def accounts(monkeypatch):
     yield context
     async with get_session_factory()() as s:
         ids = list((await s.scalars(select(User.id).where(User.email.in_(context['emails'])))).all())
+        ids.extend(context['ids'])
         voucher_ids = select(Voucher.id).where(Voucher.user_id.in_(ids))
         await s.execute(delete(Redemption).where(Redemption.voucher_id.in_(voucher_ids)))
         await s.execute(delete(RedemptionRequest).where(RedemptionRequest.user_id.in_(ids)))
@@ -55,7 +56,9 @@ async def google(client, email, device):
 async def signed_in(client, accounts, device):
     response = await google(client, address(accounts), device)
     assert response.status_code == 200, response.text
-    return response.json()['access_token']
+    token = response.json()['access_token']
+    accounts['ids'].append(decode_access_claims(token)['sub'])
+    return token
 
 
 async def sync(client, token, steps, date=None):
@@ -103,6 +106,8 @@ async def test_deactivation_releases_phone_without_repeating_steps_or_sharing_wa
     first_id = decode_access_claims(first)['sub']
     async with get_session_factory()() as s:
         assert (await s.get(User, first_id)).status == UserStatus.DELETED
+        assert (await s.get(User, first_id)).email == f'deleted-{first_id}@deleted.invalid'
+        assert (await s.scalar(select(Voucher).where(Voucher.user_id == first_id))).status.value == 'CANCELLED'
         assert await s.scalar(select(func.count(Voucher.id)).where(Voucher.user_id == first_id)) == 1
         assert await s.scalar(select(func.sum(PointsLedger.delta)).where(PointsLedger.user_id == first_id)) == 5
     await client.delete('/users/me', headers=auth_headers(second))

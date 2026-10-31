@@ -186,7 +186,7 @@ void showDeviceAccountInfo(BuildContext context) => showDialog<void>(
     title: const Text('Accounts on this phone'),
     content: const Text(
       'One customer account and one merchant account can use this phone. '
-      'Each account keeps its own data. A second account of the same type is blocked until the original is deactivated.',
+      'Each account keeps its own data. A second account of the same type is blocked until the original is deleted.',
     ),
     actions: [
       TextButton(

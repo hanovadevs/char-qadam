@@ -1,3 +1,4 @@
+import '../../../core/services/health_consent.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../guided_tour/tour_provider.dart';
@@ -206,7 +207,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Deactivate account',
+              'Delete account',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -216,7 +217,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Your account will be deactivated and you will be signed out. This phone can then use a different account. Activity and reward records stay with this account; steps already rewarded on this phone cannot earn points again.',
+              'This permanently deletes your profile, synced step history and support conversations. Active vouchers are cancelled and you will be signed out. De-identified reward transactions and device records remain for accounting and duplicate-reward prevention. This cannot be undone.',
               style: TextStyle(
                 fontSize: 14,
                 color: AppTheme.inkSecondary,
@@ -266,7 +267,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         if (mounted) setState(() => _isUpdating = false);
                       }
                     },
-                    child: const Text('Deactivate account'),
+                    child: const Text('Delete account'),
                   ),
                 ),
               ],
@@ -354,6 +355,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   trailing: connected ? 'Connected' : 'Connect',
                   onTap: () async {
                     HapticsService.light();
+                    if (!await HealthConsent.request(context)) return;
                     await ref.read(healthServiceProvider).requestPermissions();
                     if (context.mounted) {
                       showModalBottomSheet<void>(
@@ -493,7 +495,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const Divider(),
                 _buildSettingRow(
                   icon: CupertinoIcons.trash,
-                  title: 'Deactivate account',
+                  title: 'Delete account',
                   titleColor: AppTheme.destructive,
                   iconColor: AppTheme.destructive,
                   onTap: () => _confirmDeleteAccount(context),

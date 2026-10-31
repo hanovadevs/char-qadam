@@ -115,7 +115,9 @@ async def test_leaderboard_ranking_order(client: AsyncClient) -> None:
         # First place should have at least 15000 steps
         assert rankings[0]["total_steps"] >= 15000
         # Display name must be masked
-        assert "****" in rankings[0]["display_name"]
+        assert rankings[0]["display_name"].startswith("Walker ")
+        assert "@" not in str(rankings)
+        assert user1_email not in str(rankings)
 
         # Check caller user_ranking for user3
         user_ranking = data["user_ranking"]

@@ -23,7 +23,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-RUN useradd --system --uid 10001 --create-home qadam
+RUN useradd --system --uid 10001 --create-home qadam \
+    && mkdir -p /app/uploads \
+    && chown qadam:qadam /app/uploads
 USER qadam
 
 # Expose port

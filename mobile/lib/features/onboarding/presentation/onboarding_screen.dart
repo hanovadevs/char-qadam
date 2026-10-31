@@ -1,3 +1,4 @@
+import '../../../core/services/health_consent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -32,6 +33,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _requestPermissions() async {
+    if (!await HealthConsent.request(context)) return;
+    if (!mounted) return;
     setState(() => _requestingPermission = true);
     HapticsService.medium();
 
@@ -251,7 +254,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         _privacy(
           Icons.pause_circle_outline,
           'You stay in control',
-          'Pause from the tracking notification, manage permissions, or deactivate your account in You.',
+          'Pause from the tracking notification, manage permissions, or delete your account in You.',
         ),
       ],
     ),

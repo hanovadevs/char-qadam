@@ -1,3 +1,4 @@
+import '../../../core/services/health_consent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -40,6 +41,7 @@ class _TrackingControlsState extends ConsumerState<TrackingControls>
     try {
       final control = ref.read(trackingControllerProvider.notifier);
       if (resume) {
+        if (!await HealthConsent.request(context)) return;
         await ref.read(healthServiceProvider).requestPermissions();
         if (!await control.resume()) {
           throw StateError('Allow motion access to resume tracking.');

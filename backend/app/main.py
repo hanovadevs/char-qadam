@@ -64,6 +64,18 @@ def create_app() -> FastAPI:
     app.add_middleware(RateLimiterMiddleware)
     app.add_middleware(StructuredLoggingMiddleware)
 
+    @app.get('/privacy', include_in_schema=False)
+    @app.get('/privacy.html', include_in_schema=False)
+    async def privacy_policy():
+        return FileResponse(Path(__file__).parent / 'public' / 'privacy.html',
+                            media_type='text/html', headers={'X-Content-Type-Options': 'nosniff'})
+
+    @app.get('/delete-account', include_in_schema=False)
+    @app.get('/delete-account.html', include_in_schema=False)
+    async def deletion_policy():
+        return FileResponse(Path(__file__).parent / 'public' / 'delete-account.html',
+                            media_type='text/html', headers={'X-Content-Type-Options': 'nosniff'})
+
     # Feature routers
     app.include_router(health.router)
     app.include_router(auth.router)

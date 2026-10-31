@@ -13,6 +13,10 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) } && !keystorePropertiesFile.exists()) {
+    throw GradleException("Release signing is required: configure android/key.properties with the existing Play upload key.")
+}
+
 android {
     namespace = "com.stepsy.run"
     compileSdk = 36
@@ -25,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        resValue("string", "public_privacy_url", System.getenv("PUBLIC_PRIVACY_URL") ?: "")
+        resValue("string", "public_privacy_url", System.getenv("PUBLIC_PRIVACY_URL") ?: "https://api.stepsyapp.com/privacy")
         applicationId = "com.stepsy.run"
         minSdk = 26
         targetSdk = flutter.targetSdkVersion

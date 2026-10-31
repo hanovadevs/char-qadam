@@ -19,9 +19,11 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select, func
 
-from app.db.models import ActivityDaily, PointsLedger, User, Voucher
+from app.db.models import (ActivityDaily, PointsLedger, User, Voucher, Device,
+    SupportTicket, SupportMessage, SupportAIUsage, RedemptionRequest)
+from app.services.security import decode_access_claims
 from app.db.postgres import get_session_factory
 
 
@@ -37,17 +39,22 @@ def _auth(token: str) -> dict:
     return auth_headers(token)
 
 
+_registered_ids = {}
+
+
 async def _register(client: AsyncClient, email: str, password: str = "startpass1") -> str:
     r = await register_verified(client, json={"email": email, "password": password})
     assert r.status_code == 200, r.text
-    return r.json()["access_token"]
+    token = r.json()["access_token"]
+    _registered_ids[email] = decode_access_claims(token)["sub"]
+    return token
 
 
 async def _cleanup(email: str) -> None:
     factory = get_session_factory()
     async with factory() as session:
         result = await session.execute(
-            __import__("sqlalchemy", fromlist=["select"]).select(User).where(User.email == email)
+            __import__("sqlalchemy", fromlist=["select"]).select(User).where(User.id == _registered_ids.get(email))
         )
         user = result.scalar_one_or_none()
         if user:
@@ -189,21 +196,48 @@ async def test_delete_returns_204(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_soft_deletes_account(client: AsyncClient) -> None:
-    """After DELETE, the user row still exists in the DB but status = DELETED."""
+async def test_delete_erases_profile_and_private_data(client: AsyncClient) -> None:
+    """A non-login tombstone remains, without profile, health or support data."""
     email = _email()
     try:
         token = await _register(client, email)
-        await client.delete("/users/me", headers=_auth(token))
-
+        user_id = _registered_ids[email]
         factory = get_session_factory()
         async with factory() as session:
-            result = await session.execute(
-                __import__("sqlalchemy", fromlist=["select"]).select(User).where(User.email == email)
-            )
-            user = result.scalar_one_or_none()
-            assert user is not None
-            assert user.status.value == "DELETED"
+            user = await session.get(User, user_id)
+            old_hash = user.password_hash
+            user.google_subject = 'subject-' + uuid.uuid4().hex
+            user.country = 'PK'
+            user.timezone = 'Asia/Karachi'
+            session.add(ActivityDaily(user_id=user_id, local_date='2026-10-31', eligible_steps=1500,
+                source='health', sync_key=uuid.uuid4().hex))
+            session.add(Device(user_id=user_id, platform='android'))
+            ticket = SupportTicket(user_id=user_id, subject='Private message', category='account')
+            session.add(ticket)
+            await session.flush()
+            ticket_id = ticket.id
+            session.add(SupportMessage(ticket_id=ticket_id, author='USER', body='Private support details'))
+            await session.commit()
+        assert (await client.delete('/users/me', headers=_auth(token))).status_code == 204
+        async with factory() as session:
+            user = await session.get(User, user_id)
+            assert user.status.value == 'DELETED'
+            assert user.email == f'deleted-{user_id}@deleted.invalid'
+            assert user.password_hash != old_hash
+            assert user.google_subject is None and user.email_verified_at is None
+            assert user.country is None and user.timezone is None
+            assert user.verification_code_hash is None
+            for model in (ActivityDaily, Device, SupportTicket, SupportAIUsage, RedemptionRequest):
+                assert await session.scalar(select(func.count()).select_from(model).where(model.user_id == user_id)) == 0
+            assert await session.scalar(select(func.count()).select_from(SupportMessage).where(SupportMessage.ticket_id == ticket_id)) == 0
+        # Deletion must release the email for a genuinely new account.
+        fresh = await register_verified(client, json={'email': email, 'password': 'newpass12345'})
+        assert fresh.status_code == 200, fresh.text
+        new_id = decode_access_claims(fresh.json()['access_token'])['sub']
+        assert new_id != user_id
+        async with factory() as session:
+            await session.execute(delete(User).where(User.id == new_id))
+            await session.commit()
     finally:
         await _cleanup(email)
 
@@ -233,7 +267,7 @@ async def test_delete_blocks_login(client: AsyncClient) -> None:
         await client.delete("/users/me", headers=_auth(token))
 
         login = await client.post("/auth/login", json={"email": email, "password": password})
-        assert login.status_code == 403
+        assert login.status_code == 401
         assert 'access_token' not in login.json()
     finally:
         await _cleanup(email)

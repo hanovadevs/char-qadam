@@ -1,3 +1,4 @@
+import '../../core/services/health_consent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -31,6 +32,7 @@ class TrackingHelpScreen extends ConsumerWidget {
           'This gives Stepsy access to the phone’s step counter.',
           action: 'Check activity access',
           onTap: () async {
+            if (!await HealthConsent.request(context)) return;
             await ref.read(healthServiceProvider).requestPermissions();
             await ref.read(trackingControllerProvider.notifier).refresh();
           },

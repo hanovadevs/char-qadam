@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
-from app.db.models import AuditLog, SupportAISettings, SupportAIUsage, SupportMessage, SupportTicket, User
+from app.db.models import AuditLog, SupportAISettings, SupportAIUsage, SupportMessage, SupportTicket, User, UserStatus
 from app.db.postgres import get_session
 from app.deps import get_current_user, get_current_admin
 from app.services.support import faqs, support_question_allowed, reserve_ai_allowance, ask_ai, RESERVED_TOKENS
@@ -93,7 +93,11 @@ async def detail(session, ticket):
 
 @router.post('/tickets', status_code=201)
 async def create_ticket(body: TicketIn, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    await session.execute(select(User.id).where(User.id == user.id).with_for_update())
+    active = await session.scalar(select(User.id).where(
+        User.id == user.id, User.status == UserStatus.ACTIVE,
+        User.auth_version == user.auth_version).with_for_update())
+    if active is None:
+        raise HTTPException(401, 'Please sign in again.')
     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     count = (await session.execute(select(func.count()).select_from(SupportTicket).where(SupportTicket.user_id == user.id, SupportTicket.created_at >= start))).scalar_one()
     if count >= 5:
@@ -134,7 +138,7 @@ async def reply(ticket_id: str, body: MessageIn, user: User = Depends(get_curren
 
 @admin_router.get('/tickets')
 async def admin_tickets(status: Literal['ALL', 'OPEN', 'WAITING', 'RESOLVED'] = 'ALL', limit: int = Query(51, ge=1, le=100), offset: int = Query(0, ge=0), session: AsyncSession = Depends(get_session)):
-    query = select(SupportTicket, User.email).join(User, User.id == SupportTicket.user_id)
+    query = select(SupportTicket, User, UserStatus.email).join(User, User.id == SupportTicket.user_id)
     if status != 'ALL':
         query = query.where(SupportTicket.status == status)
     rows = (await session.execute(query.order_by(SupportTicket.updated_at.desc(), SupportTicket.id).limit(limit).offset(offset))).all()

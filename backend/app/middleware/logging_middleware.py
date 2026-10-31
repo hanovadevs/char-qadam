@@ -35,7 +35,7 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
                 "path": path,
                 "status_code": 500,
                 "duration_ms": duration_ms,
-                "error": str(exc),
+                "error": type(exc).__name__,
             }
             logger.error(json.dumps(log_payload))
             raise exc

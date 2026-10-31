@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import uuid
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from app.db.models import SupportAISettings, SupportAIUsage
 from app.db.postgres import get_session_factory
 from app.services.support import reserve_ai_allowance, RESERVED_TOKENS
@@ -53,6 +53,11 @@ async def test_faq_and_off_topic_questions_never_call_openai(client):
 @pytest.mark.asyncio
 async def test_ai_quotas_are_shared_atomic_and_cannot_be_reset_by_restarting_client():
     factory = get_session_factory()
+    # This suite is restricted to a disposable loopback database by conftest.
+    async with factory() as session:
+        await session.execute(delete(SupportAIUsage))
+        await session.execute(delete(SupportAISettings))
+        await session.commit()
     user = str(uuid.uuid4())
     day = datetime.now(timezone.utc).date().isoformat()
     async with factory() as session:

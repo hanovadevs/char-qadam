@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/services/health_consent.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -61,6 +62,7 @@ class HealthService {
   Future<bool> requestPermissions() async {
     await _ready;
     if (_disposed || (!_android && !_ios)) return false;
+    if (!await HealthConsent.hasConsent()) return false;
     var motion = false;
     try {
       motion = _android
@@ -157,6 +159,7 @@ class HealthService {
   Future<int> fetchTodaySteps() async {
     await _ready;
     if (_disposed || (!_android && !_ios)) return 0;
+    if (!await HealthConsent.hasConsent()) return 0;
     final now = DateTime.now();
     final day = DateFormat('yyyy-MM-dd').format(now);
     var hardware = 0;

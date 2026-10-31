@@ -7,7 +7,7 @@ Ranks active users by verified step activity over configurable scopes:
 - ``all_time``: Cumulative lifetime step totals.
 
 Features:
-- Privacy-masked display names (e.g. ``ali****@gmail.com``).
+- Pseudonymous walker labels that do not reveal email addresses.
 - Computes caller's exact rank and percentile even if outside top N.
 """
 from __future__ import annotations
@@ -26,20 +26,6 @@ from app.schemas.leaderboard import (
     LeaderboardResponseOut,
     UserRankingOut,
 )
-
-
-def _mask_email(email: str) -> str:
-    """Mask email for privacy, e.g. 'athlete123@domain.com' -> 'ath****@domain.com'."""
-    if not email or "@" not in email:
-        return "Walker"
-    local, domain = email.split("@", 1)
-    if len(local) <= 2:
-        masked_local = local[0] + "*"
-    elif len(local) <= 4:
-        masked_local = local[:2] + "**"
-    else:
-        masked_local = local[:3] + "****"
-    return f"{masked_local}@{domain}"
 
 
 async def get_leaderboard(
@@ -73,7 +59,7 @@ async def get_leaderboard(
 
     totals = (
         select(
-            User.id.label("user_id"), User.email, User.country, User.created_at,
+            User.id.label("user_id"), User.country, User.created_at,
             func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("total_steps"),
         )
         .outerjoin(
@@ -82,7 +68,7 @@ async def get_leaderboard(
             if date_filter is not None else ActivityDaily.user_id == User.id,
         )
         .where(User.status == UserStatus.ACTIVE)
-        .group_by(User.id, User.email, User.country, User.created_at)
+        .group_by(User.id, User.country, User.created_at)
         .subquery()
     )
     ranked = select(
@@ -105,7 +91,7 @@ async def get_leaderboard(
         is_caller = row.user_id == caller_user_id
         if rank <= limit:
             rankings.append(LeaderboardEntryOut(
-                rank=rank, user_id=row.user_id, display_name=_mask_email(row.email),
+                rank=rank, user_id=row.user_id, display_name="Walker " + row.user_id.replace("-", "")[:8],
                 total_steps=steps, points_earned=points, country=row.country or "PK",
                 is_current_user=is_caller,
             ))

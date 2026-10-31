@@ -39,6 +39,7 @@ from app.db.models import (
 )
 from app.db.postgres import get_session_factory
 from app.services.partner_auth import hash_api_key
+from app.services.security import decode_access_claims
 
 
 @pytest.mark.asyncio
@@ -76,6 +77,7 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
         session.add(offer)
         await session.commit()
 
+    user_id = None
     try:
         # --- STEP 1: Register User ---
         reg_resp = await register_verified(client,
@@ -83,6 +85,7 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
         )
         assert reg_resp.status_code == 200, reg_resp.text
         user_token = reg_resp.json()["access_token"]
+        user_id = decode_access_claims(user_token)["sub"]
         user_headers = {"Authorization": f"Bearer {user_token}"}
         partner_headers = {"X-Partner-Key": raw_partner_key}
 
@@ -194,7 +197,7 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
     finally:
         # --- CLEANUP ---
         async with factory() as session:
-            res = await session.execute(select(User).where(User.email == email))
+            res = await session.execute(select(User).where(User.id == user_id))
             user = res.scalar_one_or_none()
             if user:
                 await session.execute(delete(Redemption).where(Redemption.partner_id == partner_id))

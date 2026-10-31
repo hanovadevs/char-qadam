@@ -54,6 +54,8 @@ jobs:
         working-directory: mobile
         run: |
           flutter build appbundle --release --dart-define="API_BASE_URL=$API_BASE_URL" --dart-define="PRIVACY_POLICY_URL=$PUBLIC_PRIVACY_URL" --dart-define="ACCOUNT_DELETION_URL=$ACCOUNT_DELETION_URL" --dart-define="SUPPORT_EMAIL=$PUBLIC_SUPPORT_EMAIL" --dart-define="PUBLISHER_NAME=$PUBLISHER_NAME"
+      - name: Check public review pages and signed bundle
+        run: python3 scripts/play_release_preflight.py --api "$API_BASE_URL" --bundle mobile/build/app/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
           name: stepsy-play-store-bundle
