@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="mobile/assets/icon/Stepsy_Icon1.png" width="88" alt="Stepsy logo" />
+  <img src="mobile/assets/icon/Stepsy_Icon_sage.png" width="88" alt="Stepsy sage logo" />
 </p>
 <h1 align="center">Stepsy</h1>
 <p align="center"><strong>Every step, closer.</strong><br />A walking companion and partner-rewards app for Pakistan, by Hanova Devs.</p>

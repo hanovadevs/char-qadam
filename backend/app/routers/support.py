@@ -8,7 +8,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.models import AuditLog, SupportAISettings, SupportAIUsage, SupportMessage, SupportTicket, User, UserStatus
-from app.db.postgres import get_session
+from app.db.postgres import get_session, get_read_session
 from app.deps import get_current_user, get_current_admin
 from app.services.support import faqs, support_question_allowed, reserve_ai_allowance, ask_ai, RESERVED_TOKENS
 
@@ -137,7 +137,7 @@ async def reply(ticket_id: str, body: MessageIn, user: User = Depends(get_curren
     return await add_reply(session, await get_ticket(session, ticket_id, user.id, lock=True), body.message, 'USER')
 
 @admin_router.get('/tickets')
-async def admin_tickets(status: Literal['ALL', 'OPEN', 'WAITING', 'RESOLVED'] = 'ALL', limit: int = Query(51, ge=1, le=100), offset: int = Query(0, ge=0), session: AsyncSession = Depends(get_session)):
+async def admin_tickets(status: Literal['ALL', 'OPEN', 'WAITING', 'RESOLVED'] = 'ALL', limit: int = Query(51, ge=1, le=100), offset: int = Query(0, ge=0), session: AsyncSession = Depends(get_read_session)):
     query = select(SupportTicket, User.email).join(User, User.id == SupportTicket.user_id)
     if status != 'ALL':
         query = query.where(SupportTicket.status == status)

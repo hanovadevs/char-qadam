@@ -10,6 +10,10 @@
       "destination": "https://api.stepsyapp.com/health"
     },
     {
+      "source": "/health/:path*",
+      "destination": "https://api.stepsyapp.com/health/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

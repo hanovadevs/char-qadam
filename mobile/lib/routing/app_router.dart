@@ -266,7 +266,7 @@ class SplashScreen extends StatelessWidget {
               ),
               padding: const EdgeInsets.all(12),
               child: Image.asset(
-                'assets/icon/Stepsy_Icon1.png',
+                'assets/icon/Stepsy_Icon_sage.png',
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: AppTheme.surfaceMuted,

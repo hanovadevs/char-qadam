@@ -1,4 +1,5 @@
 .venv
+.venv*
 venv
 ENV/
 env/
@@ -12,5 +13,6 @@ htmlcov
 .git
 .gitignore
 .env
+.env.*
 *.log
 uploads/

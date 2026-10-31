@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Accepts both postgresql:// and postgresql+asyncpg:// — the validator below
     # normalises plain postgresql:// (psycopg2) to asyncpg automatically.
     database_url: str = "postgresql+asyncpg://qadam:qadam@localhost:5432/qadam"
+    db_pool_size: int = Field(default=5, ge=1, le=20)
+    db_max_overflow: int = Field(default=5, ge=0, le=20)
+    db_read_pool_size: int = Field(default=2, ge=1, le=10)
 
     @field_validator("database_url", mode="before")
     @classmethod

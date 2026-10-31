@@ -14,7 +14,7 @@ class StepsyBrand extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       Image.asset(
-        'assets/icon/Stepsy_Icon1.png',
+        'assets/icon/Stepsy_Icon_sage.png',
         width: size + 6,
         height: size + 6,
       ),

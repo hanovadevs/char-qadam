@@ -48,7 +48,7 @@ export default function Login({ onLoginSuccess }) {
         {/* Brand Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img
-            src="/logo.png"
+            src="/logo-sage.png"
             alt="Stepsy"
             style={{ height: '48px', margin: '0 auto 16px auto', display: 'block' }}
           />

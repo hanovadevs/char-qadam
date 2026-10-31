@@ -5,9 +5,11 @@ import { ReadCache } from './read-cache.js';
 const BASE_URL = import.meta.env?.VITE_API_URL || '';
 
 export class ApiClient {
-  constructor({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch.bind(globalThis), onUnauthorized } = {}) {
+  constructor({ storage = globalThis.localStorage, fetchImpl = globalThis.fetch.bind(globalThis), onUnauthorized, timeoutMs = 15000, retryDelayMs = 250 } = {}) {
     this.storage = storage;
     this.fetchImpl = fetchImpl;
+    this.timeoutMs = timeoutMs;
+    this.retryDelayMs = retryDelayMs;
     this.onUnauthorized = onUnauthorized || (() => {
       if (globalThis.window && !window.location.pathname.includes('/login')) window.location.href = '/login';
     });
@@ -54,10 +56,23 @@ export class ApiClient {
     const url = `${BASE_URL}${path}`;
     const headers = { ...this.getHeaders(token), ...options.headers };
     if (options.body instanceof FormData) delete headers['Content-Type'];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const abort = () => controller.abort(options.signal.reason);
+    if (options.signal?.aborted) abort();
+    else options.signal?.addEventListener('abort', abort, { once: true });
 
     try {
       if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
-      const response = await this.fetchImpl(url, { ...options, headers });
+      let response;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
+        response = await this.fetchImpl(url, { ...options, headers, signal: controller.signal });
+        const canRetry = (options.method || 'GET').toUpperCase() === 'GET' && [502, 503, 504].includes(response.status);
+        if (!canRetry || attempt || controller.signal.aborted) break;
+        await response.body?.cancel();
+        await new Promise(resolve => setTimeout(resolve, this.retryDelayMs));
+      }
       if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
       if (response.status === 401 && token) {
         this.setToken(null);
@@ -74,8 +89,12 @@ export class ApiClient {
       if (sessionVersion !== this.sessionVersion) throw new Error('Request belongs to a previous session.');
       return data;
     } catch (err) {
+      if (controller.signal.aborted && !options.signal?.aborted) throw new Error('The server is taking too long. Please try again.');
       console.error(`[API Error] ${path}:`, err);
       throw err;
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener('abort', abort);
     }
   }
 
@@ -240,10 +259,12 @@ export class ApiClient {
   }
 
   // Users
-  async listUsers({ search, status } = {}) {
+  async listUsers({ search, status, limit, offset } = {}) {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     if (status && status !== 'ALL') params.append('status', status);
+    if (limit !== undefined) params.append('limit', limit);
+    if (offset !== undefined) params.append('offset', offset);
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/users${query}`);
   }

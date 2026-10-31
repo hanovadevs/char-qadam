@@ -27,7 +27,7 @@ export default function Navbar({ user }) {
       {/* Brand */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <img
-          src="/logo.png"
+          src="/logo-sage.png"
           alt="Stepsy Logo"
           style={{ height: '28px', width: 'auto', objectFit: 'contain' }}
         />

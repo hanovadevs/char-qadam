@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.postgres import get_session
+from app.db.postgres import get_read_session
 
 router = APIRouter(tags=["health"])
 
@@ -24,7 +24,7 @@ async def health_live() -> dict:
 
 
 @router.get("/health/ready", summary="Deep readiness probe")
-async def health_ready(session: AsyncSession = Depends(get_session)) -> dict:
+async def health_ready(session: AsyncSession = Depends(get_read_session)) -> dict:
     """Deep readiness probe verifying PostgreSQL database connectivity and measuring latency."""
     settings = get_settings()
     start_time = time.perf_counter()

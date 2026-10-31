@@ -7,7 +7,7 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[1]
 SKIP = {'.git', '.venv', 'node_modules', 'build', 'dist', '.dart_tool', '.gradle',
         '.kotlin', '.local-test-postgres', '.pytest_cache', '__pycache__', 'Pods',
-        '.symlinks', '.pub-cache', 'ephemeral'}
+        '.symlinks', '.pub-cache', 'ephemeral', '.agents', '.claude', '.venv312'}
 names = []
 for directory, folders, files in os.walk(ROOT):
     folders[:] = [name for name in folders if name not in SKIP]

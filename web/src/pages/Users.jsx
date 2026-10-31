@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAdminQuery, useDebouncedValue } from '../hooks/use-admin-query';
 import { queryPath } from '../services/read-cache';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
+import RecordControls from '../components/RecordControls';
 import { Search, Sliders, History, Edit, Trash2, BarChart2 } from 'lucide-react';
 
 export default function Users() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [position, setPosition] = useState({ key: '', page: 0 });
 
   // Edit User Modal
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -38,8 +40,12 @@ export default function Users() {
   const [activityRange, setActivityRange] = useState('month');
 
   const searchQuery = useDebouncedValue(search.trim());
-  const { data: users, loading, error, refresh: fetchUsers } = useAdminQuery(
-    queryPath('/admin/users', { search: searchQuery, status: statusFilter }), []);
+  const filterKey = JSON.stringify([searchQuery, statusFilter]);
+  useEffect(() => setPosition({ key: filterKey, page: 0 }), [filterKey]);
+  const page = position.key === filterKey ? position.page : 0;
+  const { data: rows, loading, error, refresh: fetchUsers } = useAdminQuery(
+    queryPath('/admin/users', { search: searchQuery, status: statusFilter, limit: 51, offset: page * 50 }), []);
+  const users = rows.slice(0, 50);
 
   const handleAdjustPoints = async (e) => {
     e.preventDefault();
@@ -226,7 +232,7 @@ export default function Users() {
 
       {error && (
         <div style={{ padding: '12px 16px', background: '#FFF1F2', border: '1px solid #FECDD3', color: '#9F1239', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontSize: '13px' }}>
-          {error}
+          {error} <button className="btn btn-secondary btn-sm" onClick={fetchUsers}>Try again</button>
         </div>
       )}
 
@@ -357,6 +363,7 @@ export default function Users() {
           </tbody>
         </table>
       </div>
+      <RecordControls page={page} setPage={value => setPosition({ key: filterKey, page: value })} hasMore={rows.length > 50} loading={loading} />
 
       {/* Adjust Points Modal */}
       <Modal

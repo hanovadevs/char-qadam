@@ -2,17 +2,17 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/icon/Stepsy_Icon1.png"
+  image_path: "assets/icon/Stepsy_Icon_sage.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icon/Stepsy_Icon1.png"
+  adaptive_icon_background: "#FEF8EC"
+  adaptive_icon_foreground: "assets/icon/Stepsy_Icon_sage.png"
   web:
     generate: true
-    image_path: "assets/icon/Stepsy_Icon1.png"
-    background_color: "#FFFFFF"
-    theme_color: "#000000"
+    image_path: "assets/icon/Stepsy_Icon_sage.png"
+    background_color: "#FEF8EC"
+    theme_color: "#4F6A4D"
   windows:
     generate: true
-    image_path: "assets/icon/Stepsy_Icon1.png"
+    image_path: "assets/icon/Stepsy_Icon_sage.png"
     icon_size: 48
 

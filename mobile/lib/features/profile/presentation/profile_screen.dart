@@ -506,7 +506,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: 20),
           Center(
             child: Image.asset(
-              'assets/icon/Stepsy_Icon1.png',
+              'assets/icon/Stepsy_Icon_sage.png',
               width: 28,
               height: 28,
             ),

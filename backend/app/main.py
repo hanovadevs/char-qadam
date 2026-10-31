@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.db.postgres import dispose_engine, warm_pool
+from app.db.postgres import dispose_engine, warm_pool, warm_read_pool
 from app.middleware.logging_middleware import StructuredLoggingMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware
 from app.services.store_cover import cover_path
@@ -37,6 +37,7 @@ async def lifespan(app: FastAPI):
     """Manage startup/shutdown: warm-up and dispose the PostgreSQL engine."""
     try:
         await warm_pool()
+        await warm_read_pool()
         async with httpx.AsyncClient(timeout=12.0, limits=httpx.Limits(max_connections=10, max_keepalive_connections=5)) as client:
             app.state.support_ai_client = client
             yield

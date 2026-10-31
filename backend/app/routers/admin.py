@@ -31,7 +31,7 @@ from app.db.models import (
     Voucher,
     VoucherStatus,
 )
-from app.db.postgres import get_session
+from app.db.postgres import get_session, get_read_session
 from app.deps import get_current_admin
 from app.services.partner_auth import hash_api_key
 from app.services.security import create_access_token, hash_password
@@ -250,7 +250,7 @@ async def admin_get_me() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 @router.get("/analytics/overview", summary="Overview Metrics")
-async def get_analytics_overview(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+async def get_analytics_overview(session: AsyncSession = Depends(get_read_session)) -> dict[str, Any]:
     # Scalar subqueries preserve independent totals without a cartesian join.
     row = (await session.execute(select(
         select(func.count(User.id)).scalar_subquery(),
@@ -276,7 +276,7 @@ async def get_analytics_overview(session: AsyncSession = Depends(get_session)) -
 
 
 @router.get("/analytics/charts", summary="Chart Metrics")
-async def get_analytics_charts(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+async def get_analytics_charts(session: AsyncSession = Depends(get_read_session)) -> dict[str, Any]:
     # Recent daily steps aggregation
     steps_query = (
         select(
@@ -344,7 +344,7 @@ async def get_analytics_charts(session: AsyncSession = Depends(get_session)) -> 
 async def list_partners(
     search: str | None = None,
     status: str | None = None,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
     offers = select(Offer.partner_id, func.count(Offer.id).label('count')).group_by(Offer.partner_id).subquery()
     redemptions = select(Redemption.partner_id, func.count(Redemption.id).label('count'),
@@ -728,7 +728,7 @@ async def regenerate_partner_key(
 @router.get("/partners/{partner_id}", summary="Get Partner Details")
 async def get_partner(
     partner_id: str,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> dict[str, Any]:
     merchant_email = select(func.min(User.email)).where(
         User.partner_id == partner_id, User.role == 'MERCHANT').scalar_subquery()
@@ -805,7 +805,7 @@ async def list_offers(
     partner_id: str | None = None,
     status: str | None = None,
     search: str | None = None,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
     query = select(Offer, offer_has_history(Offer.id)).options(joinedload(Offer.partner)).order_by(desc(Offer.created_at))
     if partner_id and partner_id != "ALL":
@@ -992,7 +992,7 @@ async def list_vouchers(
     status: str | None = None,
     short_code: str | None = None,
     search: str | None = None,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
     query = (
         select(Voucher)
@@ -1157,7 +1157,7 @@ async def delete_voucher(
 async def list_redemptions(
     partner_id: str | None = None,
     limit: int | None = Query(default=None, ge=1, le=1000),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
     query = (
         select(Redemption)
@@ -1198,24 +1198,29 @@ async def list_redemptions(
 async def list_users(
     search: str | None = None,
     status: str | None = None,
-    session: AsyncSession = Depends(get_session),
+    limit: int = Query(51, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
-    steps = select(ActivityDaily.user_id, func.sum(ActivityDaily.eligible_steps).label('total')).group_by(ActivityDaily.user_id).subquery()
-    points = select(PointsLedger.user_id, func.sum(PointsLedger.delta).label('balance')).group_by(PointsLedger.user_id).subquery()
+    page_query = select(User.id).order_by(desc(User.created_at), User.id)
+    if status and status != "ALL":
+        page_query = page_query.where(User.status == UserStatus(status))
+    if search:
+        page_query = page_query.where(User.email.ilike(f"%{search}%"))
+    page = page_query.limit(limit).offset(offset).cte('user_page')
+    page_ids = select(page.c.id)
+    steps = select(ActivityDaily.user_id, func.sum(ActivityDaily.eligible_steps).label('total')).where(ActivityDaily.user_id.in_(page_ids)).group_by(ActivityDaily.user_id).subquery()
+    points = select(PointsLedger.user_id, func.sum(PointsLedger.delta).label('balance')).where(PointsLedger.user_id.in_(page_ids)).group_by(PointsLedger.user_id).subquery()
     query = (
         select(
             User,
             func.coalesce(steps.c.total, 0), func.coalesce(points.c.balance, 0), ~user_has_history(User.id),
         )
+        .join(page, User.id == page.c.id)
         .outerjoin(steps, User.id == steps.c.user_id)
         .outerjoin(points, User.id == points.c.user_id)
-        .order_by(desc(User.created_at))
+        .order_by(desc(User.created_at), User.id)
     )
-
-    if status and status != "ALL":
-        query = query.where(User.status == UserStatus(status))
-    if search:
-        query = query.where(User.email.ilike(f"%{search}%"))
 
     result = await session.execute(query)
     rows = result.all()
@@ -1408,7 +1413,7 @@ async def adjust_user_points(
 @router.get("/users/{user_id}/ledger", summary="Get User Points Ledger")
 async def get_user_ledger(
     user_id: str,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
     result = await session.execute(
         select(PointsLedger).where(PointsLedger.user_id == user_id).order_by(desc(PointsLedger.created_at))
@@ -1430,7 +1435,7 @@ async def get_user_ledger(
 async def get_user_activity(
     user_id: str,
     range: str = Query(default="3months", pattern="^(today|week|month|3months|6months|year|all)$"),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> dict[str, Any]:
     today = local_today()
     if range == "today":
@@ -1471,7 +1476,7 @@ async def get_user_activity(
 @router.get("/ledger", summary="Global Points Ledger")
 async def get_global_ledger(
     reason: str | None = None,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
     query = select(PointsLedger).options(joinedload(PointsLedger.user)).order_by(desc(PointsLedger.created_at)).limit(100)
     if reason and reason != "ALL":
@@ -1494,7 +1499,7 @@ async def get_global_ledger(
 
 @router.get("/audit-logs", summary="System Audit Logs")
 async def list_audit_logs(
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_read_session),
 ) -> list[dict[str, Any]]:
     result = await session.execute(
         select(AuditLog).order_by(desc(AuditLog.created_at)).limit(100)

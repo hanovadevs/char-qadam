@@ -5,7 +5,7 @@ from sqlalchemy import delete, event, select
 
 from app.db.models import (ActivityDaily, DeviceActivityDaily, DeviceBinding, Offer,
     Partner, PointsLedger, Redemption, RedemptionRequest, User, Voucher)
-from app.db.postgres import get_engine, get_session_factory
+from app.db.postgres import get_read_engine, get_session_factory
 from app.services.local_date import local_today
 from tests.auth_helpers import auth_headers, register_verified
 
@@ -108,8 +108,8 @@ async def test_admin_customer_and_merchant_share_one_reward_lifecycle(client, ad
                      '/admin/redemptions?limit=8', '/admin/ledger', '/admin/analytics/overview']:
             statements = []
             def capture(_conn, _cursor, statement, _params, _context, _many):
-                if statement.lstrip().upper().startswith('SELECT'): statements.append(statement)
-            engine = get_engine().sync_engine
+                if statement.lstrip().upper().startswith(('SELECT', 'WITH')): statements.append(statement)
+            engine = get_read_engine().sync_engine
             event.listen(engine, 'before_cursor_execute', capture)
             try:
                 response = await admin_client.get(path)

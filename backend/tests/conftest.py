@@ -49,6 +49,9 @@ def _patch_engine_for_tests():
     # Monkeypatch the module-level engine and factory
     _pg_module._engine = test_engine
     _pg_module._session_factory = test_factory
+    test_read_engine = create_async_engine(settings.database_url, poolclass=NullPool, isolation_level='AUTOCOMMIT')
+    _pg_module._read_engine = test_read_engine
+    _pg_module._read_session_factory = async_sessionmaker(test_read_engine, expire_on_commit=False, autoflush=False)
 
     import asyncio
     from alembic import command
@@ -57,6 +60,7 @@ def _patch_engine_for_tests():
     command.upgrade(Config(str(Path(__file__).resolve().parents[1] / 'alembic.ini')), 'head')
     yield
     asyncio.run(test_engine.dispose())
+    asyncio.run(test_read_engine.dispose())
 
 
 @pytest_asyncio.fixture
