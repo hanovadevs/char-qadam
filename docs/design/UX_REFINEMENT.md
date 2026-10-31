@@ -36,4 +36,4 @@ No API, ranking reward, earning multiplier or admin campaign is introduced.
 - Existing auth, live-counting/animation, redemption, Wallet, Maps, account and 20-stop tour checks pass. Pending-step guidance is verified through the info sheet.
 - Arm64 profile APK built and installed with `adb install -r`, retaining **587 steps**, five days of history and enabled/not-paused flags. SHA-256: `6af1f67104a034b6c5408e9077de1653a8f96f7e742745b107fb02843b9dfe30`.
 - Post-open sampling found the foreground tracking service running and no sampled fatal, unhandled Flutter or layout-overflow errors.
-- Owner review of info sheets, Activity details, leaderboard and live counting is pending. TalkBack and long-duration performance require separate physical observations.
+- Owner acceptance, 31 October 2026: the owner confirmed that the info sheets, Activity details and leaderboard worked well, with live steps, points and vouchers intact. TalkBack and long-duration performance require separate physical observations.
