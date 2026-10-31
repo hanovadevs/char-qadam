@@ -14,7 +14,7 @@ class WelcomeScreen extends ConsumerWidget {
       welcome: true,
       pose: 'walk',
       title: 'Small steps.\nLovely possibilities.',
-      subtitle: 'Walk, earn points, and enjoy partner discounts.',
+      subtitle: 'Walk. Earn points. Enjoy rewards.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -19,6 +19,7 @@ import '../../../core/widgets/cozy_scene.dart';
 import 'companion_goal_meter.dart';
 import 'weekly_preview.dart';
 import 'tracking_controls.dart';
+import '../../../core/widgets/section_info.dart';
 import '../../guided_tour/tour_targets.dart';
 
 class ActivityScreen extends ConsumerStatefulWidget {
@@ -107,6 +108,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
         state.settledSteps != null ||
         state.lastSyncTime != null;
     final cap = state.dailyCap;
+    final pendingSteps = max(0, min(state.todaySteps, cap) - state.serverSteps);
     final number = NumberFormat.decimalPattern();
     final progress = (steps / prefs.goal).clamp(0.0, 1.0);
     final ringSize = MediaQuery.textScalerOf(context).scale(1) > 1.3
@@ -115,10 +117,27 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     return Scaffold(
       appBar: CozyAppBar(
         actions: [
-          IconButton(
-            tooltip: 'Tracking diagnostics',
-            onPressed: _diagnostics,
-            icon: const Icon(CupertinoIcons.info_circle, size: 19),
+          SectionInfo(
+            title: 'About your steps',
+            message:
+                'Your phone updates steps live. Points are confirmed after eligible activity syncs. '
+                'Your personal goal does not change the earning cap. Open Tracking help for permissions, background settings and Stop/Resume.',
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.push('/tracking-help');
+                },
+                child: const Text('Open tracking help'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _diagnostics();
+                },
+                child: const Text('Tracking diagnostics'),
+              ),
+            ],
           ),
         ],
       ),
@@ -134,18 +153,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
             tourBottomPadding(ref, context),
           ),
           children: [
-            Text(
-              DateFormat('EEEE, d MMMM').format(DateTime.now()),
-              style: AppTheme.captionStyle,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'A little walk.\nA real reward.',
-              style: AppTheme.titleStyle.copyWith(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                height: 1.08,
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Today’s walk', style: AppTheme.titleStyle),
+                ),
+                Text(
+                  DateFormat('EEE, d MMM').format(DateTime.now()),
+                  style: AppTheme.captionStyle,
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -226,31 +243,40 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               known: known,
             ),
             const SizedBox(height: 8),
-            Semantics(
-              key: tourKey(ref, 'steps.sync'),
-              liveRegion: true,
-              child: TextButton(
-                onPressed: state.isSyncing ? null : _sync,
-                style: TextButton.styleFrom(
-                  alignment: Alignment.centerLeft,
-                  padding: EdgeInsets.zero,
+            Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    key: tourKey(ref, 'steps.sync'),
+                    liveRegion: true,
+                    child: TextButton(
+                      onPressed: state.isSyncing ? null : _sync,
+                      style: TextButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Text(
+                        '${known ? '+${number.format(state.pointsEarnedToday)} pts today' : 'Waiting for activity'} · ${state.isSyncing
+                            ? 'Syncing…'
+                            : state.errorMessage != null
+                            ? 'Sync needs attention'
+                            : state.lastSyncTime == null
+                            ? 'Not synced yet'
+                            : 'Synced ${state.lastSyncTime}'}',
+                      ),
+                    ),
+                  ),
                 ),
-                child: Text(
-                  '${known ? '+${number.format(state.pointsEarnedToday)} pts today' : 'Waiting for activity'} · ${state.isSyncing
-                      ? 'Syncing…'
-                      : state.errorMessage != null
-                      ? 'Sync needs attention'
-                      : state.lastSyncTime == null
-                      ? 'Not synced yet'
-                      : 'Synced ${state.lastSyncTime}'}',
+                SectionInfo(
+                  title: 'Syncing & earning points',
+                  message:
+                      '${number.format(state.stepsPerPoint)} eligible steps = 1 point. '
+                      'Points can be earned from up to ${number.format(cap)} eligible steps per day. '
+                      '${known ? '${number.format(pendingSteps)} device ${pendingSteps == 1 ? 'step is' : 'steps are'} awaiting sync. ' : 'Waiting for a current step total. '}'
+                      'Pull down or tap the sync line to retry. Saved steps stay on your phone when offline.',
                 ),
-              ),
+              ],
             ),
-            if (min(state.todaySteps, cap) > state.serverSteps)
-              Text(
-                '${number.format(min(state.todaySteps, cap) - state.serverSteps)} device steps awaiting sync',
-                style: AppTheme.captionStyle,
-              ),
             if (state.errorMessage != null)
               StatusNotice(state.errorMessage!, onRetry: _sync),
             if (tracking?.paused == true)
@@ -263,13 +289,27 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 'Connect activity to count your walks.',
                 onRetry: _sync,
               ),
-            const SizedBox(height: 12),
-            Text(
-              state.currentStreakDays > 0
-                  ? '${state.currentStreakDays}-day streak · 1,000 steps/day'
-                  : 'Every day is a fresh start. Streaks start at 1,000 steps/day.',
-              style: AppTheme.captionStyle,
-            ),
+            if (state.currentStreakDays > 0)
+              Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.flame,
+                    size: 15,
+                    color: AppTheme.accentAmber,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${state.currentStreakDays}-day streak',
+                    style: AppTheme.captionStyle,
+                  ),
+                  SectionInfo(
+                    title: 'Your walking streak',
+                    message:
+                        'A day with at least 1,000 eligible steps continues your streak. Move at a pace that feels comfortable; every day can be a fresh start.',
+                  ),
+                ],
+              ),
+            const SizedBox(height: 8),
             if (reward != null)
               Container(
                 key: tourKey(ref, 'steps.reward'),
@@ -405,110 +445,127 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 'Weekly history is unavailable. Pull down to try again.',
                 style: AppTheme.captionStyle,
               ),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _metric(
-                  context,
-                  'Est. distance',
-                  known ? '${(steps * .0007).toStringAsFixed(2)} km' : '—',
-                  CupertinoIcons.location,
-                ),
-                _metric(
-                  context,
-                  'Est. energy',
-                  known ? '${(steps * .04).round()} kcal' : '—',
-                  CupertinoIcons.flame,
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                '${number.format(state.stepsPerPoint)} eligible steps = 1 point · Earning cap ${number.format(cap)} steps/day${state.serverSteps >= cap ? ' · Cap reached; movement still counts toward your personal goal.' : ''}',
-                style: AppTheme.captionStyle,
-              ),
-            ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Community leaderboard'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/leaderboard'),
             ),
-            TrackingControls(key: tourKey(ref, 'steps.tracking')),
-            const SectionHeading('Synced activity'),
-            FilterPills(
-              options: const {
-                'today': 'Today',
-                'week': '7 days',
-                'month': '30 days',
-              },
-              selected: state.selectedRange,
-              onSelected: (value) {
-                HapticsService.selection();
-                ref.read(activityProvider.notifier).loadHistory(value);
-              },
+            TrackingControls(
+              key: tourKey(ref, 'steps.tracking'),
+              compact: true,
             ),
-            const SizedBox(height: 12),
-            if (state.history?.days.isNotEmpty == true)
-              SurfaceCard(
-                child: Column(
+            ExpansionTile(
+              key: const ValueKey('activity-details'),
+              tilePadding: EdgeInsets.zero,
+              title: const Text(
+                'Activity details',
+                style: AppTheme.headlineStyle,
+              ),
+              subtitle: const Text(
+                'Synced history & estimates',
+                style: AppTheme.captionStyle,
+              ),
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
                   children: [
-                    for (final day in state.history!.days)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                DateFormat(
-                                  'EEE, d MMM',
-                                ).format(DateTime.parse(day.date)),
-                                style: AppTheme.captionStyle,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              '${number.format(day.eligibleSteps)} steps',
-                              style: AppTheme.bodyStyle.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontFeatures: AppTheme.tabular,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    _metric(
+                      context,
+                      'Est. distance',
+                      known ? '${(steps * .0007).toStringAsFixed(2)} km' : '—',
+                      CupertinoIcons.location,
+                    ),
+                    _metric(
+                      context,
+                      'Est. energy',
+                      known ? '${(steps * .04).round()} kcal' : '—',
+                      CupertinoIcons.flame,
+                    ),
                   ],
                 ),
-              )
-            else if (state.isSyncing)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: CircularProgressIndicator(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    '${number.format(state.stepsPerPoint)} eligible steps = 1 point · Earning cap ${number.format(cap)} steps/day${state.serverSteps >= cap ? ' · Cap reached; movement still counts toward your personal goal.' : ''}',
+                    style: AppTheme.captionStyle,
+                  ),
                 ),
-              )
-            else
-              const EmptyState(
-                title: 'Your story starts with a step.',
-                message:
-                    'Synced activity will appear here after your next walk.',
-                icon: CupertinoIcons.chart_bar,
-              ),
-            const SizedBox(height: 20),
-            Text(
-              state.lastSyncTime == null
-                  ? 'Pull down to sync your steps.'
-                  : 'Last synced ${state.lastSyncTime}',
-              textAlign: TextAlign.center,
-              style: AppTheme.captionStyle,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Distance and energy are estimates. Stepsy counts movement without tracking your GPS location.',
-              textAlign: TextAlign.center,
-              style: AppTheme.captionStyle,
+                const SectionHeading('Synced activity'),
+                FilterPills(
+                  options: const {
+                    'today': 'Today',
+                    'week': '7 days',
+                    'month': '30 days',
+                  },
+                  selected: state.selectedRange,
+                  onSelected: (value) {
+                    HapticsService.selection();
+                    ref.read(activityProvider.notifier).loadHistory(value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (state.history?.days.isNotEmpty == true)
+                  SurfaceCard(
+                    child: Column(
+                      children: [
+                        for (final day in state.history!.days)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    DateFormat(
+                                      'EEE, d MMM',
+                                    ).format(DateTime.parse(day.date)),
+                                    style: AppTheme.captionStyle,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  '${number.format(day.eligibleSteps)} steps',
+                                  style: AppTheme.bodyStyle.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontFeatures: AppTheme.tabular,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  )
+                else if (state.isSyncing)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  const EmptyState(
+                    title: 'Your story starts with a step.',
+                    message:
+                        'Synced activity will appear here after your next walk.',
+                    icon: CupertinoIcons.chart_bar,
+                  ),
+                const SizedBox(height: 20),
+                Text(
+                  state.lastSyncTime == null
+                      ? 'Pull down to sync your steps.'
+                      : 'Last synced ${state.lastSyncTime}',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.captionStyle,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Distance and energy are estimates. Stepsy counts movement without tracking your GPS location.',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.captionStyle,
+                ),
+              ],
             ),
           ],
         ),

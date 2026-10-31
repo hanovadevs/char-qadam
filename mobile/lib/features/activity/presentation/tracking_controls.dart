@@ -7,7 +7,8 @@ import '../providers/activity_provider.dart';
 import '../providers/tracking_controller.dart';
 
 class TrackingControls extends ConsumerStatefulWidget {
-  const TrackingControls({super.key});
+  final bool compact;
+  const TrackingControls({super.key, this.compact = false});
   @override
   ConsumerState<TrackingControls> createState() => _TrackingControlsState();
 }
@@ -96,7 +97,11 @@ class _TrackingControlsState extends ConsumerState<TrackingControls>
               ),
             ],
           ),
-          if (!status.paused && status.running)
+          if (!status.paused &&
+              status.running &&
+              (!widget.compact ||
+                  status.vehicleBlocked ||
+                  status.vehicleFilter == 'UNAVAILABLE'))
             Text(
               status.vehicleBlocked
                   ? 'Bike/car movement detected. These sensor steps are excluded.'
@@ -111,10 +116,11 @@ class _TrackingControlsState extends ConsumerState<TrackingControls>
               style: AppTheme.captionStyle,
             ),
           if (!status.paused && !status.unrestricted) ...[
-            const Text(
-              'Allow background activity so tracking can continue after idle. This can use more battery; Stop tracking is always available in the notification.',
-              style: AppTheme.captionStyle,
-            ),
+            if (!widget.compact)
+              const Text(
+                'Allow background activity so tracking can continue after idle. This can use more battery; Stop tracking is always available in the notification.',
+                style: AppTheme.captionStyle,
+              ),
             TextButton(
               onPressed: () async {
                 try {
@@ -135,10 +141,11 @@ class _TrackingControlsState extends ConsumerState<TrackingControls>
               },
               child: const Text('Allow background activity'),
             ),
-            const Text(
-              'On Redmi, also allow Autostart and choose No restrictions in Stepsy’s battery settings.',
-              style: AppTheme.captionStyle,
-            ),
+            if (!widget.compact)
+              const Text(
+                'On Redmi, also allow Autostart and choose No restrictions in Stepsy’s battery settings.',
+                style: AppTheme.captionStyle,
+              ),
           ],
         ],
       ),

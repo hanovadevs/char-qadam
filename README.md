@@ -24,7 +24,7 @@ Stepsy connects daily movement to useful partner offers. See live steps, work to
 
 <table>
   <tr>
-    <td align="center"><img src="artifacts/cozy-release/blueprint-home-390.png" width="230" alt="Steps preview with the companion and a reward goal" /><br /><strong>Every little step</strong></td>
+    <td align="center"><img src="artifacts/ux-refinement/steps.png" width="230" alt="Steps preview with the companion and a reward goal" /><br /><strong>Every little step</strong></td>
     <td align="center"><img src="artifacts/cozy-release/rewards.png" width="230" alt="Rewards preview with point prices and branch Maps" /><br /><strong>Find your little win</strong></td>
     <td align="center"><img src="artifacts/cozy-release/wallet.png" width="230" alt="Wallet preview with a voucher and Show QR" /><br /><strong>Keep it in Wallet</strong></td>
   </tr>
@@ -38,6 +38,7 @@ Stepsy connects daily movement to useful partner offers. See live steps, work to
 | **Steps** | Live hardware counts, personal goals, weekly history and diagnostics. Android uses a foreground service, wake-up sensor preference and a wake-lock fallback. |
 | **Companion & theme** | Editable 3D character, 13 pre-rendered clips, illustrated sage/cream screens, tap reactions, live walking and reduced-motion controls. |
 | **Guided first visit** | A replayable 20-stop character tour with thought clouds, real section highlights and saved progress across the five customer tabs. |
+| **Achievements** | A server-ranked leaderboard with a medal podium, personal place, period controls and scoring guidance. |
 | **Points & rewards** | Server-calculated earnings, ledger history, one claim per account per offer, explicit confirmation and purchase recovery. |
 | **Wallet & merchant POS** | Ready/history vouchers, camera QR validation, explicit redemption, and weekly/monthly PDF ledgers with generation history. |
 | **Account** | Google sign-in, verified email access and separate one-customer/one-merchant device reservations. |

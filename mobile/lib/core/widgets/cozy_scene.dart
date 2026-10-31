@@ -139,12 +139,14 @@ class CozyScene extends StatelessWidget {
   final String pose;
   final bool portrait;
   final bool sky;
+  final bool arrival;
   const CozyScene({
     super.key,
     this.height = 240,
     this.pose = 'walk',
     this.portrait = false,
     this.sky = false,
+    this.arrival = false,
   });
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
@@ -157,12 +159,70 @@ class CozyScene extends StatelessWidget {
             Image.asset(
               'assets/illustrations/cozy-park.png',
               fit: BoxFit.cover,
-              alignment: portrait || sky
+              alignment: arrival
+                  ? const Alignment(0, .5)
+                  : portrait || sky
                   ? Alignment.topCenter
                   : const Alignment(0, .25),
               cacheWidth: 900,
             ),
-            if (portrait)
+            if (arrival)
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 105,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.surfaceMuted,
+                        Color(0xE6FEF8EC),
+                        Color(0x00FEF8EC),
+                      ],
+                      stops: [0, .35, 1],
+                    ),
+                  ),
+                ),
+              ),
+            if (arrival)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 28,
+                child: Center(
+                  child: SizedBox(
+                    width: height * .85,
+                    height: height * .85,
+                    child: Stack(
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        Positioned(
+                          bottom: height * .055,
+                          child: Container(
+                            width: height * .32,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(100),
+                              gradient: RadialGradient(
+                                colors: [
+                                  AppTheme.inkPrimary.withValues(alpha: .18),
+                                  Colors.transparent,
+                                ],
+                                radius: .8,
+                              ),
+                            ),
+                          ),
+                        ),
+                        CompanionPortrait(pose: 'welcome', size: height * .85),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else if (portrait)
               Positioned(
                 right: -20,
                 bottom: -100,

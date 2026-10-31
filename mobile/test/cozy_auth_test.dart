@@ -132,7 +132,7 @@ Future<void> screenshot(WidgetTester tester, String name) async {
   if (!const bool.fromEnvironment('CAPTURE_UI')) return;
   final context = tester.element(find.byType(MaterialApp));
   await tester.runAsync(() async {
-    for (final pose in ['walk', 'peek', 'wave', 'letter', 'sit']) {
+    for (final pose in ['welcome', 'walk', 'peek', 'wave', 'letter', 'sit']) {
       await precacheImage(
         AssetImage('assets/companion/portraits/$pose.png'),
         context,

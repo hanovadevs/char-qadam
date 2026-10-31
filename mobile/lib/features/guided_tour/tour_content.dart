@@ -70,7 +70,7 @@ const tourStops = [
     'steps.week',
     'Your daily walk',
     'See the bigger picture.',
-    'Your week gives you a gentle view of recent activity. View trends opens more progress history. Distance and calories are estimates, not measurements or medical advice. Your daily earning conversion and cap are explained further down this page; walking beyond the cap still counts toward your personal goal.',
+    'Your week gives you a gentle view of recent activity. View trends opens more progress history. Activity details holds your synced history and estimates. The sync info icon explains the earning conversion and cap; walking beyond that cap still counts toward your personal goal.',
   ),
   TourStop(
     0,

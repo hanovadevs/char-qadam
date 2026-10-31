@@ -416,7 +416,7 @@ void main() {
           .data,
       '101',
     );
-    expect(find.text('1 device steps awaiting sync'), findsOneWidget);
+    expect(find.text('1 device steps awaiting sync'), findsNothing);
     expect(container.read(activityProvider).pointsEarnedToday, 1);
     final walking = find.byWidgetPredicate(
       (w) => w is Companion && w.clip == 'walk',
@@ -436,6 +436,14 @@ void main() {
     expect(walking, findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1100));
     expect(walking, findsNothing, reason: 'Rest after movement stops');
+    await tester.tap(find.byTooltip('Syncing & earning points'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('2 device steps are awaiting sync.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

@@ -21,7 +21,8 @@ class CozyAuthFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
-      child: Center(
+      child: Align(
+        alignment: welcome ? Alignment.topCenter : Alignment.center,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: SingleChildScrollView(
@@ -32,10 +33,11 @@ class CozyAuthFrame extends StatelessWidget {
                 Stack(
                   children: [
                     CozyScene(
-                      height: welcome ? 360 : 235,
+                      height: welcome ? 310 : 235,
                       pose: pose,
                       portrait: !welcome,
                       sky: true,
+                      arrival: welcome,
                     ),
                     Positioned(
                       top: 14,
