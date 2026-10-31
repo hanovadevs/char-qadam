@@ -33,6 +33,26 @@ function fixture(t, component, props) {
 const clickEvent = { stopPropagation() {} };
 const buttonText = (node) => node.children.filter((child) => typeof child === 'string').join('');
 
+test('user pages show 50 rows and reset navigation when status filters change', async (t) => {
+  const paths = [];
+  t.mock.method(api, 'request', async (path) => {
+    paths.push(path);
+    const url = new URL(path, 'https://local-admin.test');
+    const offset = Number(url.searchParams.get('offset'));
+    return Array.from({ length: offset ? 1 : 51 }, (_, i) => ({ id: `page-${offset + i}`, email: `person-${offset + i}@example.com`, role: 'USER', status: 'ACTIVE', points_balance: 0, created_at: '2026-10-31T10:00:00Z' }));
+  });
+  const f = fixture(t, Users);
+  await act(async () => {});
+  assert.equal(f.view.root.findByType('tbody').findAllByType('tr').length, 50);
+  const button = label => f.view.root.findAllByType('button').find(node => buttonText(node) === label);
+  await act(async () => button('Next').props.onClick());
+  assert.equal(new URL(paths.at(-1), 'https://local-admin.test').searchParams.get('offset'), '50');
+  await act(async () => button('ACTIVE').props.onClick());
+  assert.equal(new URL(paths.at(-1), 'https://local-admin.test').searchParams.get('offset'), '0');
+  await act(async () => button('ALL').props.onClick());
+  assert.equal(f.view.root.findAllByType('button').find(node => buttonText(node) === 'Previous').props.disabled, true);
+});
+
 test('store actions archive first, restore safely, and expose permanent deletion only for unused archived records', async (t) => {
   const requests = [], changes = [];
   t.mock.method(api, 'request', async (path, options) => { requests.push({ path, method: options.method }); return {}; });

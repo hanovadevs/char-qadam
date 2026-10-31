@@ -15,8 +15,10 @@ The Docker healthcheck and `/health/ready` verify the database. The admin host p
 ## Verified locally
 
 - 212 backend tests on an isolated loopback database, including customer/merchant/admin reward consistency, pagination and transaction isolation.
-- 31 admin tests and production build, including gateway retry, stalled-request timeout and write non-repetition.
-- 170 Flutter tests and clean analysis after regenerating the sage launcher assets.
+- 32 admin tests and production build, including pagination controls, gateway retry, stalled-request timeout and write non-repetition.
+- 174 Flutter tests and clean analysis, including offline support guidance, preserved drafts, private conversations and larger-text layouts.
+
+The production rollout preserved all 11 unrelated running containers and their start times. Post-rollout authenticated reads on the admin host returned 200 in sampled ranges of approximately 0.67–1.04 seconds (Users: 0.74–1.01 seconds), compared with about two seconds before. The API was healthy with zero restarts at verification. The VPS uses explicit per-worker budgets of three write connections plus two overflow and two read connections, or 14 maximum across two workers. Timing samples are not a future uptime or load guarantee.
 
 ## Production rollout
 
