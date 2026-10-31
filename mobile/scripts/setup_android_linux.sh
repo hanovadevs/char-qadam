@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+case "${1:-}" in
+  ''|--tools-only) ;;
+  *) echo 'Usage: setup_android_linux.sh [--tools-only]'; exit 2 ;;
+esac
 # Install official Google SDK tools as the current user. Install Java first.
 if ! command -v javac >/dev/null 2>&1; then
   echo 'Java is missing. Run: sudo apt install openjdk-17-jdk'
@@ -48,9 +52,14 @@ with tempfile.TemporaryDirectory(prefix='stepsy-sdk-', dir=sdk) as temporary:
 PY
 fi
 manager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+if [[ "${1:-}" == '--tools-only' ]]; then
+  echo "Official SDK manager installed: $manager"
+  echo "Review licenses with: $manager --sdk_root=$ANDROID_HOME --licenses"
+  exit 0
+fi
 echo 'Review and accept the Android SDK licenses when prompted.'
 "$manager" --sdk_root="$ANDROID_HOME" --licenses
-"$manager" --sdk_root="$ANDROID_HOME" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+"$manager" --sdk_root="$ANDROID_HOME" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
 flutter config --android-sdk "$ANDROID_HOME" --jdk-dir "$JAVA_HOME"
 flutter doctor -v
 flutter devices

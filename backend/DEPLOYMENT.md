@@ -1,3 +1,24 @@
+# Qadam repair — 31 October 2026
+
+Restored the API after a restart loop caused by the newly required production
+CORS allowlist missing from the VPS environment. Set only `CORS_ORIGINS` to the
+real admin origin, corrected Qadam's media-volume ownership for UID 10001,
+applied migration 0012, and recreated only `qadam_backend`. A final admin probe
+also caught and fixed the support inbox selecting `UserStatus.email` instead of
+`User.email`; the corrected inbox passed its isolated regression and live check.
+
+Live health/readiness, privacy/deletion pages, authenticated admin config,
+support inbox and AI settings return 200. Anonymous protected routes return 401;
+the real admin origin passes CORS and an untrusted origin is rejected. The other
+11 containers retained their exact IDs and start times; no Nginx configuration
+was edited. This repair's temporary database/media/environment backups were
+removed after verification at the owner's request. Non-secret status evidence is
+under `/root/stepsy-rollouts/20261031-repair-174935/`.
+
+The support query correction exists in the VPS checkout and local working tree;
+include it in the next source commit before a future checkout or deployment.
+These server checks do not establish Play approval or signed-build readiness.
+
 # Docker rollout for the audited API
 
 This file includes historical rollout records. The later media/lifecycle rollout is

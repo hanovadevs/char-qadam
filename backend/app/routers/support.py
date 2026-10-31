@@ -138,7 +138,7 @@ async def reply(ticket_id: str, body: MessageIn, user: User = Depends(get_curren
 
 @admin_router.get('/tickets')
 async def admin_tickets(status: Literal['ALL', 'OPEN', 'WAITING', 'RESOLVED'] = 'ALL', limit: int = Query(51, ge=1, le=100), offset: int = Query(0, ge=0), session: AsyncSession = Depends(get_session)):
-    query = select(SupportTicket, User, UserStatus.email).join(User, User.id == SupportTicket.user_id)
+    query = select(SupportTicket, User.email).join(User, User.id == SupportTicket.user_id)
     if status != 'ALL':
         query = query.where(SupportTicket.status == status)
     rows = (await session.execute(query.order_by(SupportTicket.updated_at.desc(), SupportTicket.id).limit(limit).offset(offset))).all()

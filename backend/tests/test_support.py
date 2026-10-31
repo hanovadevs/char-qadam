@@ -28,6 +28,10 @@ async def test_tickets_are_private_and_admin_can_reply(client, admin_headers):
     response = await client.post('/support/tickets', headers=owner, json={'subject': 'Missing step sync', 'message': 'My steps have not updated today', 'category': 'steps'})
     assert response.status_code == 201
     ticket = response.json()['id']
+    listing = await client.get('/admin/support/tickets', headers=admin_headers)
+    assert listing.status_code == 200, listing.text
+    listed_ticket = next(row for row in listing.json() if row['id'] == ticket)
+    assert listed_ticket['user_email'].startswith('support-')
     assert (await client.get(f'/support/tickets/{ticket}', headers=other)).status_code == 404
     assert (await client.post(f'/support/tickets/{ticket}/messages', headers=other, json={'message': 'Not my ticket'})).status_code == 404
     assert (await client.get('/admin/support/tickets', headers=owner)).status_code == 403

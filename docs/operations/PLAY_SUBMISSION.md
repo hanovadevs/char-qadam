@@ -6,7 +6,7 @@ Status: **hold production submission** until the deployment and artifact checks 
 
 | Task | Answer |
 |---|---|
-| Privacy policy | `https://api.stepsyapp.com/privacy` — deploy and restore the API first; it currently returns 502. |
+| Privacy policy | `https://api.stepsyapp.com/privacy` — verified publicly accessible, HTTP 200. |
 | Sign-in details | Some/all functionality restricted. Supply a dedicated, verified customer email/password account, not your personal credentials. Supply a separate merchant account if that role is included in review. |
 | Ads | No only if partner placements are not paid/sponsored advertisements. No ad SDK was found. |
 | Content rating | Complete the questionnaire honestly; Console assigns the rating. No cash gambling, user-to-user public messaging or medical treatment is implemented. Private human/AI support exists. |
@@ -18,7 +18,7 @@ Status: **hold production submission** until the deployment and artifact checks 
 | Category/contact | App → Health & Fitness. `contact@hanovadevs.com`. Publisher: Hanova Devs, subject to matching your actual Console identity. |
 | App name | Stepsy |
 | Short description | Walk, track your steps and turn everyday movement into partner rewards. |
-| Account-deletion URL | `https://api.stepsyapp.com/delete-account` — deploy and restore the API first; it currently returns 502. |
+| Account-deletion URL | `https://api.stepsyapp.com/delete-account` — verified publicly accessible, HTTP 200. |
 
 Reviewer instructions to adapt after provisioning and testing the accounts:
 
@@ -82,8 +82,8 @@ Use current app screenshots, a 512×512 icon, and a 1024×500 feature graphic. D
 
 ## Remaining release gates
 
-1. Restore the API: the latest live checks return Nginx **502**, including `/health` and `/health/ready`. Deploy the reviewed backend/admin and migration **0012_support** to Stepsy only. Preserve private environment, receipt keys, uploads, the database and other VPS apps. SSH access is currently unavailable to this session.
-2. Fix ownership of existing `/app/uploads` volumes for UID 10001 before using the non-root image. New image directories are prepared, but an existing root-owned volume is not automatically repaired. Verify merchant cover uploads and private ledger generation.
+1. API restored October 31: explicit CORS allowlist configured; migration **0012_support** applied; public health, readiness, privacy and deletion endpoints verified HTTP 200. Only Qadam was recreated. Continue to preserve the private environment, receipt keys, uploads, database and other VPS apps.
+2. Media volume ownership repaired for UID 10001 and a non-root write probe passed. Verify the full merchant cover-upload and private-ledger user flows on the Play-installed build.
 3. Run `python3 scripts/play_release_preflight.py` after deployment. Privacy/deletion pages must load without authentication. Verify `/support/faqs` returns 401 without login and 200 with a valid account, rather than 404.
 4. Rotate the database credential previously committed in Git history through the provider, coordinate all consumers and update the private VPS environment. A clean current tree does not revoke a leaked credential.
 5. Wait for the existing Gradle process holding the project lock to finish. Its wrapper download has now completed; the attempted release build timed out waiting for that lock. Complete Android SDK tools/licenses. Reuse the registered upload key, set a version code higher than all prior uploads, and build a **fresh** release AAB. The current September artifact predates these fixes and must not be submitted.
@@ -102,4 +102,6 @@ Sources checked October 31, 2026:
 [AI reporting](https://support.google.com/googleplay/android-developer/answer/13985936),
 [16 KB compatibility](https://developer.android.com/guide/practices/page-sizes).
 
-Validation evidence: 210 backend tests passed in a fresh isolated PostgreSQL database; 11 final leaderboard/support/public-page checks passed; 170 Flutter tests passed. No production deletion test, VPS deployment, fresh signed AAB, or Play-installed acceptance has been completed by this session.
+Validation evidence: 210 backend tests passed in a fresh isolated PostgreSQL database; 11 final leaderboard/support/public-page checks passed; 170 Flutter tests passed. The VPS repair deployed migration 0012 and restored the public API/pages. No production deletion test, fresh signed AAB, or Play-installed acceptance has been completed by this session.
+
+Android build follow-up: enabled AGP 9 resource-value generation for the privacy URL. Configuration now passes that stage; release build is blocked by the unaccepted NDK 28.2.13676358 license. Review licenses using the local Android setup script before rebuilding.
