@@ -90,6 +90,7 @@ class StepTrackingService : Service(), SensorEventListener {
             }
         }
         publishState(this)
+        ReminderScheduler.trackingChanged(this)
         return START_STICKY
     }
     override fun onBind(intent: Intent?): IBinder? = null
@@ -102,6 +103,7 @@ class StepTrackingService : Service(), SensorEventListener {
         registered = false
         VehicleRecognition.stop(this)
         publishState(this)
+        ReminderScheduler.trackingChanged(this)
         super.onDestroy()
     }
 
@@ -183,6 +185,7 @@ class StepTrackingService : Service(), SensorEventListener {
                 .putBoolean("stepsy_tracking_enabled", true).putBoolean(PAUSED_KEY, false)
             if (wasPaused) editor.putString(HEALTH_EXCLUDED_KEY, LocalDate.now().toString())
             editor.commit()
+            ReminderScheduler.trackingChanged(context)
             context.startForegroundService(Intent(context, StepTrackingService::class.java))
             return true
         }
@@ -192,6 +195,7 @@ class StepTrackingService : Service(), SensorEventListener {
                 .putBoolean("stepsy_tracking_enabled", false).putBoolean(PAUSED_KEY, userPaused)
             if (userPaused) editor.putString(HEALTH_EXCLUDED_KEY, LocalDate.now().toString())
             editor.commit()
+            ReminderScheduler.trackingChanged(context)
             if (userPaused) update(context) { it.pause() }
             VehicleRecognition.stop(context)
             try { WorkManager.getInstance(context).cancelUniqueWork("stepsy-periodic-step-sync") }

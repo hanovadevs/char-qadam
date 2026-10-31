@@ -391,6 +391,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const Divider(),
                 _buildSettingRow(
+                  icon: CupertinoIcons.bell,
+                  title: 'Notifications & reminders',
+                  onTap: () => context.push('/notifications'),
+                ),
+                const Divider(),
+                _buildSettingRow(
                   icon: CupertinoIcons.shield,
                   title: 'Privacy & support',
                   onTap: () => showStepsyInformation(context, privacy: true),

@@ -9,6 +9,7 @@ import android.util.Log
 class StepBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        ReminderScheduler.ensureScheduled(context)
         val enabled = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             .getBoolean("stepsy_tracking_enabled", false)
         if (enabled) {

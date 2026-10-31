@@ -20,6 +20,8 @@ import '../features/merchant/presentation/merchant_scanner_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/points/presentation/points_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
+import '../features/notifications/notification_settings_screen.dart';
+import '../features/notifications/tracking_help_screen.dart';
 import '../features/rewards/presentation/rewards_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
 
@@ -146,6 +148,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/progress',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ProgressScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/tracking-help',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TrackingHelpScreen(),
       ),
       GoRoute(
         path: '/merchant-pos',

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qadam/core/services/background_sync_service.dart';
 import 'package:qadam/features/activity/presentation/tracking_controls.dart';
 import 'package:qadam/features/activity/providers/tracking_controller.dart';
+import 'package:qadam/features/notifications/tracking_help_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +60,24 @@ void main() {
       // No secure-storage/Health Connect plugin is installed in this test. A
       // failure to honour Stop would reach those plugins instead of returning.
       expect(calls, isEmpty);
+    },
+  );
+  testWidgets(
+    'Opening tracking help preserves an intentional pause and renders its recovery steps',
+    (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: TrackingHelpScreen())),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Tracking paused'), findsOneWidget);
+      expect(find.text('Resume tracking'), findsOneWidget);
+      expect(calls.where((c) => c.method == 'start'), isEmpty);
+      expect(paused, isTrue);
+      final settings = find.text('Open Stepsy app settings');
+      await tester.scrollUntilVisible(settings, 400);
+      expect(settings, findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
     },
   );
   testWidgets(

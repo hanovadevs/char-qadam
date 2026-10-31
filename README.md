@@ -40,6 +40,7 @@ Stepsy connects daily movement to useful partner offers. See live steps, work to
 | **Points & rewards** | Server-calculated earnings, ledger history, one claim per account per offer, explicit confirmation and purchase recovery. |
 | **Wallet & merchant POS** | Ready/history vouchers, camera QR validation, explicit redemption, and weekly/monthly PDF ledgers with generation history. |
 | **Account** | Google sign-in, verified email access and separate one-customer/one-merchant device reservations. |
+| **Reminders** | Optional walking encouragement, tracking recovery help and welcome-back reminders, with account preferences, quiet hours and a shared daily limit. |
 | **Admin** | Stores, cover uploads, Maps destinations, deals, users, vouchers, ledger and guarded archival. |
 
 **Status:** Android-first pre-launch hardening. Other Flutter platform scaffolds are retained but are not validated release targets. Play Console publishing is paused. The [launch audit](docs/operations/LAUNCH_AUDIT.md) records outstanding gates; passing tests or pushing `main` does not establish deployment or public release.

@@ -1,25 +1,50 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static Future<void>? _initializing;
+  static final destination = ValueNotifier<String?>(null);
+  static const _native = MethodChannel('stepsy/reminders');
+  static const _routes = {'/steps', '/wallet', '/points', '/tracking-help'};
+  static void queueDestination(String? route) {
+    if (route != null && _routes.contains(route)) destination.value = route;
+  }
 
-  static const String _channelId = 'stepsy_channel';
-  static const String _channelName = 'Stepsy Movement & Rewards';
+  static Future<bool> _allowed(String category) async {
+    if (defaultTargetPlatform != TargetPlatform.android || kIsWeb) {
+      return category != 'points';
+    }
+    try {
+      return await _native.invokeMethod<bool>('eventAllowed', {
+            'category': category,
+          }) ??
+          false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  static const String _channelId = 'stepsy_reward_updates';
+  static const String _channelName = 'Reward updates';
   static const String _channelDesc =
-      'Daily step tracking reminders and voucher expiry notices';
+      'Optional reward confirmations and points updates';
 
   static const AndroidNotificationDetails _androidDetails =
       AndroidNotificationDetails(
         _channelId,
         _channelName,
         channelDescription: _channelDesc,
-        importance: Importance.high,
-        priority: Priority.high,
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
         showWhen: true,
-        icon: '@mipmap/ic_launcher',
+        icon: 'ic_step_tracking',
+        visibility: NotificationVisibility.private,
       );
 
   static const NotificationDetails _notificationDetails = NotificationDetails(
@@ -31,18 +56,18 @@ class NotificationService {
     ),
   );
 
-  static Future<void> initialize() async {
+  static Future<void> initialize() =>
+      _initializing ??= _initialize().whenComplete(() => _initializing = null);
+  static Future<void> _initialize() async {
     if (kIsWeb) return;
     if (_initialized) return;
 
     try {
-      const androidSettings = AndroidInitializationSettings(
-        '@mipmap/ic_launcher',
-      );
+      const androidSettings = AndroidInitializationSettings('ic_step_tracking');
       const darwinSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
       );
 
       const initSettings = InitializationSettings(
@@ -53,10 +78,14 @@ class NotificationService {
       await _plugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
-          debugPrint('Notification clicked with payload: ${response.payload}');
+          queueDestination(response.payload);
         },
       );
 
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      if (launch?.didNotificationLaunchApp == true) {
+        queueDestination(launch?.notificationResponse?.payload);
+      }
       _initialized = true;
     } catch (e) {
       debugPrint('Failed to initialize local notifications: $e');
@@ -65,8 +94,9 @@ class NotificationService {
 
   /// Request runtime permissions on Android 13+ and iOS
   static Future<bool> requestPermissions() async {
-    if (kIsWeb) return true;
+    if (kIsWeb) return false;
     try {
+      await initialize();
       if (defaultTargetPlatform == TargetPlatform.android) {
         final androidImpl = _plugin
             .resolvePlatformSpecificImplementation<
@@ -100,7 +130,7 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    if (kIsWeb) return;
+    if (kIsWeb || !await _allowed(id == 4001 ? 'points' : 'rewards')) return;
     try {
       await initialize();
       await _plugin.show(
@@ -115,22 +145,6 @@ class NotificationService {
     }
   }
 
-  /// Daily step reminder (fired when user is under daily goal in evening)
-  static Future<void> showStepReminder({
-    required int currentSteps,
-    required int goalSteps,
-  }) async {
-    final remaining = (goalSteps - currentSteps).clamp(0, goalSteps);
-    await showNotification(
-      id: 1001,
-      title: 'STEPSY • EVENING STEP CHECK-IN',
-      body: remaining > 0
-          ? 'You have $remaining steps left to hit your daily $goalSteps goal! Take a quick walk.'
-          : 'You hit your daily goal of $goalSteps steps! Points minted to your balance.',
-      payload: '/steps',
-    );
-  }
-
   /// Expiring voucher warning
   static Future<void> showVoucherExpiring({
     required String offerTitle,
@@ -139,9 +153,9 @@ class NotificationService {
   }) async {
     await showNotification(
       id: 2000 + shortCode.hashCode.abs() % 1000,
-      title: 'STEPSY • VOUCHER EXPIRING SOON',
+      title: 'A little reminder about your reward',
       body:
-          'Your pass for $offerTitle ($shortCode) expires in $daysLeft ${daysLeft == 1 ? "day" : "days"}! Redeem at store.',
+          'Your reward for $offerTitle expires in $daysLeft ${daysLeft == 1 ? "day" : "days"}! Redeem at store.',
       payload: '/wallet',
     );
   }
@@ -153,9 +167,8 @@ class NotificationService {
   }) async {
     await showNotification(
       id: 3000 + shortCode.hashCode.abs() % 1000,
-      title: 'STEPSY • VOUCHER READY IN WALLET',
-      body:
-          '$offerTitle ($shortCode) pass is ready to present at store checkout.',
+      title: 'Your little win is in Wallet',
+      body: '$offerTitle is ready. Open Wallet to show your voucher in store.',
       payload: '/wallet',
     );
   }
@@ -168,15 +181,23 @@ class NotificationService {
     if (pointsAwarded <= 0) return;
     await showNotification(
       id: 4001,
-      title: 'STEPSY • POINTS MINTED',
+      title: 'Your walking points are in',
       body:
-          '+$pointsAwarded PTS earned from today\'s movement! Balance: $totalBalance PTS.',
+          '+$pointsAwarded points confirmed from your movement. Balance: $totalBalance points.',
       payload: '/points',
     );
   }
 
   static Future<void> cancelAll() async {
     if (kIsWeb) return;
+    destination.value = null;
+    try {
+      await _native.invokeMethod<void>('deactivate');
+    } on MissingPluginException {
+      // Other targets have no Android reminder worker.
+    } on PlatformException {
+      // Clearing the session must still complete if notification cleanup fails.
+    }
     try {
       await _plugin.cancelAll();
     } catch (_) {}

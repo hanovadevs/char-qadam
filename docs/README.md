@@ -8,6 +8,7 @@ Start with the [project README](../README.md) for local setup. This index separa
 | Product | [Requirements](product/REQUIREMENTS.md) · [Device policy](product/DEVICE_POLICY.md) · [One-claim rewards](product/REWARD_CLAIM_POLICY.md) · [Module inventory](product/MODULES.md) |
 | Architecture | [Project structure](architecture/PROJECT_STRUCTURE.md) · [Stack](architecture/TECH_STACK.md) |
 | Android tracking | [Idle recovery and Stop/Resume](tracking/ANDROID_TRACKING_RELIABILITY.md) · [Bike/car filtering](tracking/VEHICLE_FILTERING.md) |
+| Notifications | [Walking, tracking-help and welcome-back reminders](operations/NOTIFICATIONS.md) |
 | Merchant tools | [Customer/merchant slots, QR scanning and PDF ledgers](operations/MERCHANT_TOOLS.md) |
 | Admin and operations | [Admin guide](operations/ADMIN_PANEL_GUIDE.md) · [Store-media rollout](operations/ADMIN_MEDIA_ROLLOUT.md) · [Consistency verification](operations/ADMIN_SYNC_VERIFICATION.md) · [Performance](operations/PERFORMANCE.md) |
 | Release | [Launch audit](operations/LAUNCH_AUDIT.md) · [Docker deployment](../backend/DEPLOYMENT.md) · [Play Console](operations/PLAY_CONSOLE.md) |

@@ -19,8 +19,29 @@ import android.net.Uri
 // on the onboarding "Enable Step Tracking" screen.
 class MainActivity : FlutterFragmentActivity() {
     private val pdfSaveHandler = PdfSaveHandler(this)
+    private var reminderChannel: MethodChannel? = null
+    private var reminderRoute: String? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        reminderRoute = ReminderScheduler.validRoute(intent?.getStringExtra(ReminderScheduler.EXTRA_ROUTE))
+        reminderChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "stepsy/reminders").apply {
+            setMethodCallHandler { call, result ->
+                try {
+                    when (call.method) {
+                        "configure" -> {
+                            ReminderScheduler.configure(this@MainActivity, call.argument<String>("userId"), call.argument<Boolean>("customer") == true,
+                                call.argument<Map<String, Any?>>("settings") ?: emptyMap<String, Any?>(), call.argument<Int>("goal") ?: 8000)
+                            result.success(null)
+                        }
+                        "deactivate" -> { ReminderScheduler.configure(this@MainActivity, null, false, emptyMap<String, Any?>(), 8000); result.success(null) }
+                        "consumeLaunch" -> { val route = reminderRoute; reminderRoute = null; intent?.removeExtra(ReminderScheduler.EXTRA_ROUTE); result.success(route) }
+                        "preview" -> result.success(ReminderScheduler.preview(this@MainActivity))
+                        "eventAllowed" -> result.success(ReminderScheduler.eventAllowed(this@MainActivity, call.argument<String>("category") ?: ""))
+                        else -> result.notImplemented()
+                    }
+                } catch (e: Exception) { result.error("REMINDERS", "Could not update notification preferences", null) }
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "stepsy/documents")
             .setMethodCallHandler { call, result -> pdfSaveHandler.handle(call, result) }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "stepsy/device_identity").setMethodCallHandler { call, result ->
@@ -83,6 +104,24 @@ class MainActivity : FlutterFragmentActivity() {
             }
             override fun onCancel(arguments: Any?) { StepTrackingService.onStateChanged = null }
         })
+    }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        ReminderScheduler.validRoute(intent.getStringExtra(ReminderScheduler.EXTRA_ROUTE))?.let {
+            reminderRoute = it
+            reminderChannel?.invokeMethod("open", it)
+        }
+    }
+    override fun onResume() {
+        super.onResume()
+        ReminderScheduler.foreground = true
+        ReminderScheduler.markUsed(this)
+    }
+    override fun onPause() {
+        ReminderScheduler.markUsed(this)
+        ReminderScheduler.foreground = false
+        super.onPause()
     }
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
         StepTrackingService.onSteps = null
