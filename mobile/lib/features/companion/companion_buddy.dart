@@ -14,7 +14,7 @@ class CompanionBuddy extends StatefulWidget {
     this.size = 64,
     this.clip = 'rest',
     this.event = 0,
-    this.label = 'Play with Pip',
+    this.label = 'Play with your walking companion',
   });
   @override
   State<CompanionBuddy> createState() => _CompanionBuddyState();

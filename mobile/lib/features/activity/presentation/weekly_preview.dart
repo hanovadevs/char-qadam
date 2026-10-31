@@ -68,7 +68,7 @@ class WeeklyPreview extends StatelessWidget {
                             ? AppTheme.hairline
                             : date == today
                             ? AppTheme.accentSolid
-                            : const Color(0xFFD0EBE2),
+                            : AppTheme.accentBright,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(5),
                         ),

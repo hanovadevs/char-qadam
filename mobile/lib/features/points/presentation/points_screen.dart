@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../companion/companion_buddy.dart';
+import '../../../core/widgets/cozy_scene.dart';
+import '../../activity/providers/activity_provider.dart';
 import '../../../core/widgets/stepsy_ui.dart';
 import '../providers/points_provider.dart';
 
@@ -38,101 +39,91 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(pointsProvider);
     final balance = state.balanceData;
-    final number = NumberFormat('#,###');
+    final today = ref.watch(activityProvider).pointsEarnedToday;
+    final number = NumberFormat.decimalPattern();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Points'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh points',
-            onPressed: state.isLoading
-                ? null
-                : () => ref.read(pointsProvider.notifier).refresh(),
-            icon: const Icon(CupertinoIcons.arrow_2_circlepath),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: const CozyAppBar(),
       body: RefreshIndicator(
         onRefresh: () => ref.read(pointsProvider.notifier).refresh(),
         child: ListView(
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
           children: [
+            const Text('Points', style: AppTheme.largeTitleStyle),
+            const SizedBox(height: 10),
             SurfaceCard(
-              color: AppTheme.mintWash,
+              color: AppTheme.sageWash,
+              padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'Available points',
-                          style: AppTheme.headlineStyle,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Available points',
+                              style: AppTheme.bodyStyle,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              balance == null
+                                  ? '—'
+                                  : number.format(balance.balance),
+                              style: AppTheme.heroNumeralStyle.copyWith(
+                                color: AppTheme.accentDeep,
+                                fontSize: 52,
+                              ),
+                            ),
+                            const Text(
+                              'points to enjoy',
+                              style: AppTheme.bodyStyle,
+                            ),
+                          ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.surface,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const CompanionBuddy(size: 48),
+                      const CompanionPortrait(
+                        pose: 'sit',
+                        size: 150,
+                        interactive: true,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    balance == null ? '—' : number.format(balance.balance),
-                    style: AppTheme.heroNumeralStyle.copyWith(
-                      color: AppTheme.accentDeep,
-                      fontSize: 56,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'points available to spend',
-                    style: AppTheme.captionStyle,
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => context.go('/rewards'),
-                      icon: const Icon(CupertinoIcons.arrow_up_right, size: 18),
-                      label: const Text('Find your next reward'),
-                    ),
+                  ElevatedButton(
+                    onPressed: () => context.go('/rewards'),
+                    child: const Text('Explore rewards'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SurfaceCard(
-              child: Wrap(
-                spacing: 32,
-                runSpacing: 16,
+              color: AppTheme.peachWash.withValues(alpha: .5),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
                 children: [
-                  _total(
-                    'Walking points earned',
-                    balance == null ? '—' : number.format(balance.totalEarned),
+                  Expanded(
+                    child: _stat(
+                      CupertinoIcons.leaf_arrow_circlepath,
+                      '+$today',
+                      'Today',
+                    ),
                   ),
-                  _total(
-                    'Spent on rewards',
-                    balance == null ? '—' : number.format(balance.totalSpent),
+                  const SizedBox(height: 40, child: VerticalDivider()),
+                  Expanded(
+                    child: _stat(
+                      CupertinoIcons.cart,
+                      balance == null ? '—' : number.format(balance.totalSpent),
+                      'Spent',
+                    ),
                   ),
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 12),
-              child: Text(
-                'Walking points earned excludes manual adjustments. Your available balance includes all credits and debits.',
-                style: AppTheme.captionStyle,
-              ),
-            ),
-            const SectionHeading('Your transactions'),
+            const SectionHeading('Your activity'),
             if (state.errorMessage != null)
               StatusNotice(
                 state.errorMessage!,
@@ -140,7 +131,7 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
               ),
             if (state.isLoading && state.entries.isEmpty)
               const Padding(
-                padding: EdgeInsets.all(30),
+                padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (state.entries.isEmpty && state.errorMessage == null)
@@ -148,73 +139,65 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                 title: 'Your first points are a walk away.',
                 message:
                     'Once your steps sync, you’ll see your earned points here.',
-                icon: CupertinoIcons.circle_grid_hex,
+                icon: CupertinoIcons.leaf_arrow_circlepath,
               )
             else
-              SurfaceCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 4,
-                ),
-                child: Column(
-                  children: [
-                    for (final entry in state.entries)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Row(
+              ...state.entries.map(
+                (entry) => Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: AppTheme.hairline),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.peachWash,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          entry.reason == 'STEP_EARN'
+                              ? CupertinoIcons.leaf_arrow_circlepath
+                              : entry.delta < 0
+                              ? CupertinoIcons.cart
+                              : CupertinoIcons.gift,
+                          size: 22,
+                          color: AppTheme.accentDeep,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: entry.delta >= 0
-                                    ? AppTheme.mintWash
-                                    : AppTheme.surfaceMuted,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                entry.delta >= 0
-                                    ? CupertinoIcons.arrow_down_left
-                                    : CupertinoIcons.arrow_up_right,
-                                size: 18,
-                                color: AppTheme.accentDeep,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _reason(entry.reason),
-                                    style: AppTheme.bodyStyle.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    DateFormat(
-                                      'd MMM yyyy · h:mm a',
-                                    ).format(entry.createdAt.toLocal()),
-                                    style: AppTheme.captionStyle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
                             Text(
-                              '${entry.delta > 0 ? '+' : ''}${number.format(entry.delta)}',
-                              style: AppTheme.headlineStyle.copyWith(
-                                color: entry.delta > 0
-                                    ? AppTheme.accentDeep
-                                    : AppTheme.inkPrimary,
-                                fontFeatures: AppTheme.tabular,
-                              ),
+                              _reason(entry.reason),
+                              style: AppTheme.bodyStyle,
+                            ),
+                            Text(
+                              DateFormat(
+                                'd MMM yyyy · h:mm a',
+                              ).format(entry.createdAt.toLocal()),
+                              style: AppTheme.captionStyle,
                             ),
                           ],
                         ),
                       ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        '${entry.delta > 0 ? '+' : ''}${number.format(entry.delta)}',
+                        style: AppTheme.headlineStyle.copyWith(
+                          color: entry.delta < 0
+                              ? AppTheme.destructive
+                              : AppTheme.accentDeep,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             if (state.isLoadingMore)
@@ -227,26 +210,77 @@ class _PointsScreenState extends ConsumerState<PointsScreen> {
                 onPressed: () => ref.read(pointsProvider.notifier).loadMore(),
                 child: const Text('Load more activity'),
               ),
+            const SizedBox(height: 18),
+            SurfaceCard(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(CupertinoIcons.question_circle),
+                title: const Text('How points work'),
+                trailing: const Icon(CupertinoIcons.chevron_forward, size: 16),
+                onTap: () => showModalBottomSheet<void>(
+                  context: context,
+                  useSafeArea: true,
+                  isScrollControlled: true,
+                  builder: (context) => SafeArea(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'How points work',
+                            style: AppTheme.largeTitleStyle,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '${ref.read(activityProvider).stepsPerPoint} eligible steps = 1 point. Points are confirmed after syncing. Your daily earning cap is ${number.format(ref.read(activityProvider).dailyCap)} steps.',
+                            style: AppTheme.bodyStyle,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Walking points earned: ${balance == null ? '—' : number.format(balance.totalEarned)}. This excludes manual adjustments. Your available balance includes all credits and debits.',
+                            style: AppTheme.bodyStyle,
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Got it'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _total(String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _stat(IconData icon, String value, String label) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      Text(
-        value,
-        style: AppTheme.titleStyle.copyWith(fontFeatures: AppTheme.tabular),
+      Icon(icon, size: 24, color: AppTheme.accentSolid),
+      const SizedBox(width: 12),
+      Flexible(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: AppTheme.titleStyle.copyWith(color: AppTheme.accentDeep),
+            ),
+            Text(label, style: AppTheme.captionStyle),
+          ],
+        ),
       ),
-      const SizedBox(height: 4),
-      Text(label, style: AppTheme.captionStyle),
     ],
   );
   String _reason(String reason) => switch (reason) {
-    'STEP_EARN' => 'Steps converted',
-    'OFFER_SPEND' => 'Reward unlocked',
+    'STEP_EARN' => 'Walking points',
+    'OFFER_SPEND' => 'Rewards redeemed',
     'ADJUST' => 'Balance adjustment',
     'REFUND' => 'Points returned',
     _ => 'Points activity',

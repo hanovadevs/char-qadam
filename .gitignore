@@ -67,3 +67,12 @@ web/.next/
 *.swp
 design/stepsy-companion/*.blend1
 design/stepsy-companion/__pycache__/
+design/cozy-companion/*.blend1
+design/cozy-companion/renders/
+design/cozy-companion/review/
+design/cozy-companion/__pycache__/
+
+design/stepsy-companion/legacy-assets/
+artifacts/cozy/
+artifacts/cozy-auth/
+artifacts/cozy-auth-v2/

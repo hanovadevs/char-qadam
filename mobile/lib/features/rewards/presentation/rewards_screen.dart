@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/stepsy_ui.dart';
+import '../../../core/widgets/cozy_scene.dart';
 import '../../../data/models/offer_models.dart';
 import '../../points/providers/points_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
@@ -332,57 +333,24 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
       });
     }
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rewards'),
-        actions: [
-          IconButton(
-            tooltip: 'My rewards',
-            onPressed: () => context.go('/wallet'),
-            icon: const Icon(CupertinoIcons.ticket),
-          ),
-          IconButton(
-            tooltip: 'Refresh rewards',
-            onPressed: state.isLoading ? null : _refreshAll,
-            icon: const Icon(CupertinoIcons.arrow_2_circlepath),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: const CozyAppBar(),
       body: RefreshIndicator(
         onRefresh: _refreshAll,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            Row(
-              children: [
-                CompanionBuddy(
-                  size: 52,
-                  clip: state.isRedeeming
-                      ? 'wait'
-                      : _redemptionIssue
-                      ? 'reassure'
-                      : 'rest',
-                  event: _redemptionEvent,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    balance == null
-                        ? 'Checking your points'
-                        : '${NumberFormat.decimalPattern().format(balance)} points available',
-                    style: AppTheme.headlineStyle,
-                  ),
-                ),
-              ],
+            const CozyPageHeading(
+              title: 'Rewards',
+              subtitle: 'Little treats.\nWell earned.',
+              pose: 'peek',
             ),
             const SizedBox(height: 12),
             TextField(
               onChanged: (value) => setState(() => _search = value),
               decoration: const InputDecoration(
-                hintText: 'Find a reward or brand',
+                hintText: 'Search rewards',
                 prefixIcon: Icon(CupertinoIcons.search),
-                labelText: 'Search rewards',
               ),
             ),
             const SizedBox(height: 16),
@@ -408,16 +376,16 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                     'Let’s check the message below. I’m here when you’re ready to try again.',
               )
             else if (guided != null)
-              CompanionGuide(
-                clip: affordable.isNotEmpty ? 'gift' : 'point',
-                event: guided.id.hashCode,
-                message: affordable.isNotEmpty
-                    ? 'A little treat is within reach. Let’s check its terms!'
-                    : 'Found something you love? We can make it your walking goal.',
-                actionLabel: affordable.isNotEmpty
-                    ? 'Help me choose'
-                    : 'Find my next goal',
-                onAction: () => _details(guided),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _details(guided),
+                  child: Text(
+                    affordable.isNotEmpty
+                        ? 'Help me choose'
+                        : 'Find my next goal',
+                  ),
+                ),
               ),
             const SizedBox(height: 20),
             if (points.errorMessage != null)

@@ -9,8 +9,10 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/stepsy_ui.dart';
+import '../../../core/widgets/cozy_scene.dart';
+import '../../rewards/providers/rewards_provider.dart';
+import 'voucher_ticket.dart';
 import '../../../data/models/voucher_models.dart';
-import '../../rewards/presentation/reward_card.dart';
 import '../../companion/companion_buddy.dart';
 import '../providers/wallet_provider.dart';
 
@@ -202,40 +204,17 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
       });
     final highlighted = vouchers.any((v) => v.id == widget.highlightId);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My rewards'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh my rewards',
-            onPressed: state.isLoading
-                ? null
-                : () => ref.read(walletProvider.notifier).refresh(),
-            icon: const Icon(CupertinoIcons.arrow_2_circlepath),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: const CozyAppBar(),
       body: RefreshIndicator(
         onRefresh: () => ref.read(walletProvider.notifier).refresh(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            Row(
-              children: [
-                CompanionBuddy(
-                  size: 56,
-                  clip: highlighted && !widget.recovered ? 'gift' : 'rest',
-                  event: widget.highlightId.hashCode,
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Your vouchers, ready when you are.',
-                    style: AppTheme.headlineStyle,
-                  ),
-                ),
-              ],
+            const CozyPageHeading(
+              title: 'Wallet',
+              subtitle: 'Good things,\ncollected.',
+              pose: 'letter',
             ),
             const SizedBox(height: 12),
             FilterPills(
@@ -275,7 +254,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
               const CompanionGuide(
                 clip: 'point',
                 message:
-                    'Your reward is right here! Tap Show QR when you’re at the store.',
+                    'Your reward is right here! Tap Show voucher when you’re at the store.',
               ),
             if (state.errorMessage != null)
               StatusNotice(
@@ -287,137 +266,20 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                 padding: EdgeInsets.all(16),
                 child: Center(child: CircularProgressIndicator()),
               ),
-            ...vouchers.map((v) {
-              final ready =
-                  v.status == 'ISSUED' && v.expiresAt.isAfter(DateTime.now());
-              final used = v.status == 'REDEEMED';
-              final cancelled = v.status == 'CANCELLED';
-              final selected = v.id == widget.highlightId;
-              return Container(
+            ...vouchers.map(
+              (v) => VoucherTicket(
                 key: ValueKey('voucher-${v.id}'),
-                margin: const EdgeInsets.only(bottom: 18),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(
-                    color: selected ? AppTheme.accentSolid : AppTheme.hairline,
-                    width: selected ? 1.5 : 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 8,
-                            alignment: WrapAlignment.spaceBetween,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Text(
-                                discountLabel(
-                                  v.offerDiscountType,
-                                  v.offerDiscountValue,
-                                ),
-                                style: AppTheme.largeTitleStyle.copyWith(
-                                  color: ready
-                                      ? AppTheme.accentDeep
-                                      : AppTheme.inkSecondary,
-                                  fontSize: 30,
-                                ),
-                              ),
-                              Chip(
-                                label: Text(
-                                  ready
-                                      ? 'Ready to use'
-                                      : used
-                                      ? 'Used'
-                                      : cancelled
-                                      ? 'Cancelled'
-                                      : 'Expired',
-                                ),
-                                backgroundColor: ready
-                                    ? AppTheme.mintWash
-                                    : AppTheme.surfaceMuted,
-                                side: BorderSide.none,
-                                labelStyle: AppTheme.captionStyle.copyWith(
-                                  color: AppTheme.accentDeep,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(v.offerTitle, style: AppTheme.headlineStyle),
-                          const SizedBox(height: 8),
-                          Text(
-                            cancelled
-                                ? 'Cancelled. Contact support if you need help with this reward.'
-                                : used
-                                ? v.redeemedAt == null
-                                      ? 'Used in store'
-                                      : 'Used ${DateFormat('d MMM yyyy').format(v.redeemedAt!.toLocal())}'
-                                : 'Expires ${DateFormat('d MMM yyyy').format(v.expiresAt.toLocal())}',
-                            style: AppTheme.captionStyle,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const TicketDivider(),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            ready
-                                ? 'Ready to use'
-                                : cancelled
-                                ? 'Cancelled'
-                                : used
-                                ? 'Used'
-                                : 'Expired',
-                            style: AppTheme.captionStyle,
-                          ),
-                          if (ready)
-                            Wrap(
-                              spacing: 4,
-                              runSpacing: 8,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Share voucher',
-                                  onPressed: () => _share(v),
-                                  icon: const Icon(
-                                    CupertinoIcons.share,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                ElevatedButton.icon(
-                                  onPressed: () => _showQr(v),
-                                  icon: const Icon(
-                                    CupertinoIcons.qrcode,
-                                    size: 18,
-                                  ),
-                                  label: const Text('Show QR'),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                voucher: v,
+                selected: v.id == widget.highlightId,
+                offer: ref
+                    .watch(rewardsProvider)
+                    .offers
+                    .where((o) => o.id == v.offerId)
+                    .firstOrNull,
+                onShow: () => _showQr(v),
+                onShare: () => _share(v),
+              ),
+            ),
             if (!state.isLoading &&
                 vouchers.isEmpty &&
                 state.errorMessage == null)

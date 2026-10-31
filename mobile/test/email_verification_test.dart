@@ -194,11 +194,15 @@ void main() {
       tester.widget<ElevatedButton>(find.byType(ElevatedButton)).onPressed,
       isNull,
     );
+    await tester.ensureVisible(find.text('Resend code'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Resend code'));
     await tester.pumpAndSettle();
     expect(notifier.resends, 1);
     await tester.enterText(find.byType(TextField), '123456');
     await tester.pump();
+    await tester.ensureVisible(find.text('Verify and continue'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Verify and continue'));
     await tester.pumpAndSettle();
     expect(notifier.submittedCode, '123456');

@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 
 ROOT=Path(__file__).resolve().parents[2]
 source=ROOT/'design/stepsy-companion/renders'
-assets=ROOT/'mobile/assets/companion'
+assets=ROOT/'design/stepsy-companion/legacy-assets'
 (assets/'animations').mkdir(parents=True,exist_ok=True); (assets/'static').mkdir(exist_ok=True)
 manifest={'version':1,'authoring':'Blender 5.2.1 cutouts','runtimeFrameSize':[128,128],
           'masterFrameSize':[256,256],'footAnchor':[128,223],'cropOffset':[0,0],'clips':{}}

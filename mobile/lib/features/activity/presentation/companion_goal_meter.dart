@@ -116,10 +116,10 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
             ],
           ),
         SizedBox(
-          height: 78,
+          height: 165,
           child: LayoutBuilder(
             builder: (context, box) {
-              const sprite = 76.0;
+              const sprite = 154.0;
               final visualProgress =
                   Directionality.of(context) == TextDirection.rtl
                   ? 1 - progress
@@ -130,6 +130,26 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  Positioned.fill(
+                    bottom: 10,
+                    child: ExcludeSemantics(
+                      child: ShaderMask(
+                        blendMode: BlendMode.dstIn,
+                        shaderCallback: (bounds) => const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black],
+                          stops: [0, .45],
+                        ).createShader(bounds),
+                        child: Image.asset(
+                          'assets/illustrations/cozy-park.png',
+                          fit: BoxFit.cover,
+                          alignment: const Alignment(0, .2),
+                          cacheWidth: 900,
+                        ),
+                      ),
+                    ),
+                  ),
                   Positioned(
                     left: 0,
                     right: 0,
@@ -144,7 +164,9 @@ class _CompanionGoalMeterState extends ConsumerState<CompanionGoalMeter> {
                           key: const ValueKey('daily-goal-fill'),
                           value: progress,
                           minHeight: 12,
-                          backgroundColor: AppTheme.hairline,
+                          backgroundColor: AppTheme.accentBright.withValues(
+                            alpha: .35,
+                          ),
                           color: AppTheme.accentSolid,
                         ),
                       ),

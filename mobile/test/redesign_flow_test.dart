@@ -298,12 +298,26 @@ Future<void> reveal(WidgetTester tester, Finder finder) async {
 
 Future<void> capture(WidgetTester tester, String name) async {
   if (!const bool.fromEnvironment('CAPTURE_UI')) return;
+  final context = tester.element(find.byType(MaterialApp));
+  await tester.runAsync(() async {
+    for (final pose in ['walk', 'peek', 'wave', 'letter', 'sit']) {
+      await precacheImage(
+        AssetImage('assets/companion/portraits/$pose.png'),
+        context,
+      );
+    }
+  });
+  await tester.pump();
   final boundary =
       captureKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
   await tester.runAsync(() async {
     final image = await boundary.toImage(pixelRatio: 1.5);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    final file = File('../artifacts/redesign/$name.png');
+    final directory = const String.fromEnvironment(
+      'CAPTURE_DIRECTORY',
+      defaultValue: '../artifacts/redesign',
+    );
+    final file = File('$directory/$name.png');
     await file.parent.create(recursive: true);
     await file.writeAsBytes(data!.buffer.asUint8List());
     image.dispose();
@@ -332,50 +346,47 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
-  testWidgets(
-    'Pip guides a real offer through explicit confirmation to its QR',
-    (tester) async {
-      final rewards = PreviewRewards();
-      await mountPreview(tester, initialPath: '/rewards', rewards: rewards);
-      await reveal(tester, find.text('Help me choose'));
-      await tester.tap(find.text('Help me choose'));
-      await tester.pumpAndSettle();
-      expect(find.text(previewOffer.description!), findsOneWidget);
-      expect(rewards.purchases, 0);
-      await reveal(tester, find.text('Redeem for 200 points'));
-      await tester.tap(find.text('Redeem for 200 points'));
-      await tester.pumpAndSettle();
-      expect(find.text('Make it yours.'), findsOneWidget);
-      expect(
-        rewards.purchases,
-        0,
-        reason: 'The character cannot purchase without explicit confirmation',
-      );
-      await reveal(tester, find.text('Confirm & redeem'));
-      await tester.tap(find.text('Confirm & redeem'));
-      await tester.pumpAndSettle();
-      expect(rewards.purchases, 1);
-      expect(find.text('My rewards'), findsOneWidget);
-      expect(
-        find.text(
-          'Your reward is right here! Tap Show QR when you’re at the store.',
-        ),
-        findsOneWidget,
-      );
-      await reveal(tester, find.text('Show QR'));
-      await tester.tap(find.text('Show QR'));
-      await tester.pumpAndSettle();
-      expect(find.text(previewVoucher.shortCode), findsWidgets);
-      expect(
-        find.text(
-          'At the store? Let the team scan this code or enter it below.',
-        ),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-    },
-  );
+  testWidgets('Pip guides a real offer through explicit confirmation to its QR', (
+    tester,
+  ) async {
+    final rewards = PreviewRewards();
+    await mountPreview(tester, initialPath: '/rewards', rewards: rewards);
+    await reveal(tester, find.text('Help me choose'));
+    await tester.tap(find.text('Help me choose'));
+    await tester.pumpAndSettle();
+    expect(find.text(previewOffer.description!), findsOneWidget);
+    expect(rewards.purchases, 0);
+    await reveal(tester, find.text('Redeem for 200 points'));
+    await tester.tap(find.text('Redeem for 200 points'));
+    await tester.pumpAndSettle();
+    expect(find.text('Make it yours.'), findsOneWidget);
+    expect(
+      rewards.purchases,
+      0,
+      reason: 'The character cannot purchase without explicit confirmation',
+    );
+    await reveal(tester, find.text('Confirm & redeem'));
+    await tester.tap(find.text('Confirm & redeem'));
+    await tester.pumpAndSettle();
+    expect(rewards.purchases, 1);
+    expect(find.text('Good things,\ncollected.'), findsOneWidget);
+    expect(
+      find.text(
+        'Your reward is right here! Tap Show voucher when you’re at the store.',
+      ),
+      findsOneWidget,
+    );
+    await reveal(tester, find.text('Show voucher'));
+    await tester.tap(find.text('Show voucher'));
+    await tester.pumpAndSettle();
+    expect(find.text(previewVoucher.shortCode), findsWidgets);
+    expect(
+      find.text('At the store? Let the team scan this code or enter it below.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('Live steps and walking continue while points sync is delayed', (
     tester,
   ) async {
@@ -489,7 +500,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
   setUpAll(() async {
-    for (final family in ['Manrope', 'SpaceGrotesk']) {
+    for (final family in ['Manrope', 'SpaceGrotesk', 'Nunito']) {
       final loader = FontLoader(family)
         ..addFont(rootBundle.load('assets/fonts/$family.ttf'));
       await loader.load();
@@ -603,6 +614,9 @@ void main() {
     await reveal(tester, find.byKey(const ValueKey('redeem-preview-offer')));
     await tester.tap(find.byKey(const ValueKey('redeem-preview-offer')));
     await tester.pumpAndSettle();
+    await reveal(tester, find.text('Redeem for 200 points'));
+    await tester.tap(find.text('Redeem for 200 points'));
+    await tester.pumpAndSettle();
     expect(
       tester.takeException(),
       isNull,
@@ -611,8 +625,8 @@ void main() {
     await reveal(tester, find.text('Confirm & redeem'));
     await tester.tap(find.text('Confirm & redeem'));
     await tester.pumpAndSettle();
-    await reveal(tester, find.text('Show QR'));
-    await tester.tap(find.text('Show QR'));
+    await reveal(tester, find.text('Show voucher'));
+    await tester.tap(find.text('Show voucher'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'QR with large text');
     await tester.pumpWidget(const SizedBox.shrink());
@@ -629,16 +643,19 @@ void main() {
       await reveal(tester, find.byKey(const ValueKey('redeem-preview-offer')));
       await tester.tap(find.byKey(const ValueKey('redeem-preview-offer')));
       await tester.pumpAndSettle();
+      await reveal(tester, find.text('Redeem for 200 points'));
+      await tester.tap(find.text('Redeem for 200 points'));
+      await tester.pumpAndSettle();
       await reveal(tester, find.text('Confirm & redeem'));
       await tester.tap(find.text('Confirm & redeem'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pump();
-      expect(find.text('My rewards'), findsOneWidget);
+      expect(find.text('Good things,\ncollected.'), findsOneWidget);
       expect(find.byType(RewardFireworks), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 450));
       await capture(tester, 'reward-fireworks');
-      await tester.tap(find.text('Show QR'));
+      await tester.tap(find.text('Show voucher'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Your little win.'), findsOneWidget);
       await tester.pumpAndSettle();
@@ -657,10 +674,13 @@ void main() {
       await reveal(tester, find.byKey(const ValueKey('redeem-preview-offer')));
       await tester.tap(find.byKey(const ValueKey('redeem-preview-offer')));
       await tester.pumpAndSettle();
+      await reveal(tester, find.text('Redeem for 200 points'));
+      await tester.tap(find.text('Redeem for 200 points'));
+      await tester.pumpAndSettle();
       await reveal(tester, find.text('Confirm & redeem'));
       await tester.tap(find.text('Confirm & redeem'));
       await tester.pumpAndSettle();
-      expect(find.text('My rewards'), findsOneWidget);
+      expect(find.text('Good things,\ncollected.'), findsOneWidget);
       expect(find.text('Reward unlocked. It’s right here.'), findsOneWidget);
       expect(rewards.purchases, 1);
       expect(rewards.acknowledgements, 1);
@@ -678,8 +698,8 @@ void main() {
             .queryParameters['highlight'],
         previewVoucher.id,
       );
-      await reveal(tester, find.text('Show QR'));
-      await tester.tap(find.text('Show QR'));
+      await reveal(tester, find.text('Show voucher'));
+      await tester.tap(find.text('Show voucher'));
       await tester.pumpAndSettle();
       expect(find.text('Your little win.'), findsOneWidget);
       expect(find.text(previewVoucher.shortCode), findsWidgets);
@@ -697,6 +717,9 @@ void main() {
       await tester.pumpAndSettle();
       await reveal(tester, find.byKey(const ValueKey('redeem-preview-offer')));
       await tester.tap(find.byKey(const ValueKey('redeem-preview-offer')));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('Redeem for 200 points'));
+      await tester.tap(find.text('Redeem for 200 points'));
       await tester.pumpAndSettle();
       await reveal(tester, find.text('Confirm & redeem'));
       await tester.tap(find.text('Confirm & redeem'));
@@ -724,7 +747,7 @@ void main() {
         find.byKey(const ValueKey('voucher-preview-voucher')),
         findsOneWidget,
       );
-      expect(find.text('Show QR'), findsNothing);
+      expect(find.text('Show voucher'), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
@@ -749,7 +772,7 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('maps-preview-offer')));
       expect(opened.toString(), previewOffer.partnerGoogleMapsUrl);
-      expect(find.text('200 more to unlock'), findsOneWidget);
+      expect(find.text('200 pts to go'), findsOneWidget);
     },
   );
   test('Maps address fallback is encoded and unsafe links never launch', () {

@@ -6,7 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'experience_provider.dart';
 
-/// One lazily decoded clip per playing widget: 768x512 RGBA = 1.5 MiB.
+/// One lazily decoded clip per playing widget: 1152x768 RGBA = 3.375 MiB.
 /// Static slots share Flutter's small image cache; no perpetual ticker.
 class Companion extends ConsumerStatefulWidget {
   final String clip;
@@ -206,7 +206,7 @@ class _SpritePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) => canvas.drawImageRect(
     atlas,
-    Rect.fromLTWH((frame % 6) * 128, (frame ~/ 6) * 128, 128, 128),
+    Rect.fromLTWH((frame % 6) * 192, (frame ~/ 6) * 192, 192, 192),
     Offset.zero & size,
     Paint()..filterQuality = FilterQuality.medium,
   );

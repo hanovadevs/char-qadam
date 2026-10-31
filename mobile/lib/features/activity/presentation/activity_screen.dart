@@ -15,7 +15,7 @@ import '../../rewards/providers/rewards_provider.dart';
 import '../../rewards/reward_goal.dart';
 import '../../companion/experience_provider.dart';
 import '../../companion/experience_sheet.dart';
-import '../../companion/companion_buddy.dart';
+import '../../../core/widgets/cozy_scene.dart';
 import 'companion_goal_meter.dart';
 import 'weekly_preview.dart';
 import 'tracking_controls.dart';
@@ -108,35 +108,16 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
     final cap = state.dailyCap;
     final number = NumberFormat.decimalPattern();
     final progress = (steps / prefs.goal).clamp(0.0, 1.0);
+    final ringSize = MediaQuery.textScalerOf(context).scale(1) > 1.3
+        ? 112.0
+        : 82.0;
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset('assets/icon/Stepsy_Icon1.png', height: 32, width: 32),
-            const SizedBox(width: 6),
-            if (MediaQuery.textScalerOf(context).scale(1) < 1.4)
-              const Text(
-                'stepsy',
-                style: TextStyle(
-                  color: AppTheme.accentSolid,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-          ],
-        ),
+      appBar: CozyAppBar(
         actions: [
-          TextButton(
-            onPressed: () => context.go('/points'),
-            child: Text(
-              balance == null ? '— pts' : '${number.format(balance)} pts',
-            ),
-          ),
           IconButton(
             tooltip: 'Tracking diagnostics',
             onPressed: _diagnostics,
-            icon: const Icon(CupertinoIcons.info_circle, size: 21),
+            icon: const Icon(CupertinoIcons.info_circle, size: 19),
           ),
         ],
       ),
@@ -152,13 +133,14 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'A little walk. A real reward.',
+              'A little walk.\nA real reward.',
               style: AppTheme.titleStyle.copyWith(
                 fontSize: 28,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w900,
+                height: 1.08,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.end,
@@ -179,12 +161,48 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                     const Text('steps today', style: AppTheme.headlineStyle),
                   ],
                 ),
-                TextButton(
-                  onPressed: () => showExperienceSettings(context),
-                  child: Text(
-                    known
-                        ? '${(progress * 100).round()}% of goal'
-                        : 'Set daily goal',
+                Semantics(
+                  label: known
+                      ? '${(progress * 100).round()} percent of goal. Edit daily goal'
+                      : 'Set daily goal',
+                  button: true,
+                  child: InkWell(
+                    onTap: () => showExperienceSettings(context),
+                    borderRadius: BorderRadius.circular(48),
+                    child: SizedBox(
+                      width: ringSize,
+                      height: ringSize,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: ringSize - 8,
+                            height: ringSize - 8,
+                            child: CircularProgressIndicator(
+                              value: known ? progress : 0,
+                              strokeWidth: 7,
+                              backgroundColor: AppTheme.sageWash,
+                              color: AppTheme.accentBright,
+                            ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                known ? '${(progress * 100).round()}%' : '—',
+                                style: AppTheme.headlineStyle.copyWith(
+                                  color: AppTheme.accentDeep,
+                                ),
+                              ),
+                              const Text(
+                                'of goal',
+                                style: AppTheme.captionStyle,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -234,82 +252,113 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 'Connect activity to count your walks.',
                 onRetry: _sync,
               ),
+            const SizedBox(height: 12),
+            Text(
+              state.currentStreakDays > 0
+                  ? '${state.currentStreakDays}-day streak · 1,000 steps/day'
+                  : 'Every day is a fresh start. Streaks start at 1,000 steps/day.',
+              style: AppTheme.captionStyle,
+            ),
             if (reward != null)
               Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(top: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.mintWash,
+                  color: AppTheme.peachWash.withValues(alpha: .65),
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Container(
+                          width: 62,
+                          height: 74,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: reward.partnerCoverImageUrl == null
+                              ? const Icon(
+                                  CupertinoIcons.gift,
+                                  color: AppTheme.accentSolid,
+                                )
+                              : Image.network(
+                                  reward.partnerCoverImageUrl!,
+                                  fit: BoxFit.cover,
+                                  cacheWidth: 192,
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    CupertinoIcons.gift,
+                                    color: AppTheme.accentSolid,
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            chosen != null
-                                ? 'Your reward goal'
-                                : 'A reward to walk toward',
-                            style: AppTheme.captionStyle,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                chosen != null
+                                    ? 'Your reward goal'
+                                    : 'Your next little win',
+                                style: AppTheme.captionStyle,
+                              ),
+                              Text(
+                                reward.title,
+                                style: AppTheme.headlineStyle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                reward.partnerName ?? 'Stepsy partner',
+                                style: AppTheme.captionStyle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                '${number.format(reward.pointsCost)} pts · ${balance == null
+                                    ? 'Checking balance'
+                                    : balance >= reward.pointsCost
+                                    ? 'Within your points'
+                                    : '${number.format(reward.pointsCost - balance)} pts to go'}',
+                                style: AppTheme.captionStyle.copyWith(
+                                  color: AppTheme.accentDeep,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        CompanionBuddy(
-                          size: 48,
-                          clip: balance != null && balance >= reward.pointsCost
-                              ? 'ready'
-                              : 'rest',
-                          event: reward.id.hashCode,
-                        ),
-                      ],
-                    ),
-                    Text(reward.title, style: AppTheme.titleStyle),
-                    if (reward.partnerName != null)
-                      Text(reward.partnerName!, style: AppTheme.captionStyle),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: balance == null
-                            ? null
-                            : reward.pointsCost == 0
-                            ? 1
-                            : (balance / reward.pointsCost).clamp(0.0, 1.0),
-                        minHeight: 8,
-                        color: AppTheme.accentSolid,
-                        backgroundColor: AppTheme.hairline,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      spacing: 12,
-                      runSpacing: 6,
-                      children: [
-                        Text(
-                          '${balance == null ? '—' : number.format(balance)} / ${number.format(reward.pointsCost)} pts',
-                          style: AppTheme.headlineStyle,
-                        ),
-                        Text(
-                          balance == null
-                              ? 'Checking balance'
-                              : balance >= reward.pointsCost
-                              ? 'Ready to redeem'
-                              : '${number.format(reward.pointsCost - balance)} pts to unlock',
-                          style: AppTheme.captionStyle,
-                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => context.go(
-                          '/rewards?offer=${reward.id}&view=${DateTime.now().microsecondsSinceEpoch}',
+                    if (chosen != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: LinearProgressIndicator(
+                          value: balance == null
+                              ? 0
+                              : reward.pointsCost == 0
+                              ? 1
+                              : (balance / reward.pointsCost).clamp(0.0, 1.0),
+                          minHeight: 4,
                         ),
-                        child: const Text('View reward'),
                       ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      onPressed: () => context.go(
+                        '/rewards?offer=${reward.id}&view=${DateTime.now().microsecondsSinceEpoch}',
+                      ),
+                      child: const Text('View reward'),
                     ),
                     if (prefs.rewardId != null && chosen == null)
                       const Text(
@@ -329,15 +378,11 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.go('/rewards'),
               ),
-            const SizedBox(height: 12),
-            Text(
-              state.currentStreakDays > 0
-                  ? '${state.currentStreakDays}-day streak · 1,000 steps/day'
-                  : 'Every day is a fresh start. Streaks start at 1,000 steps/day.',
-              style: AppTheme.captionStyle,
+            SectionHeading(
+              'Your week',
+              action: 'View trends',
+              onAction: () => context.push('/progress'),
             ),
-            const TrackingControls(),
-            const SectionHeading('Your week'),
             WeeklyPreview(
               days: weekly.valueOrNull ?? state.history?.days ?? const [],
             ),
@@ -346,13 +391,6 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
                 'Weekly history is unavailable. Pull down to try again.',
                 style: AppTheme.captionStyle,
               ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => context.push('/progress'),
-                child: const Text('View trends'),
-              ),
-            ),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -384,6 +422,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen>
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/leaderboard'),
             ),
+            const TrackingControls(),
             const SectionHeading('Synced activity'),
             FilterPills(
               options: const {

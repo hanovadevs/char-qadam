@@ -4,7 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../companion/companion.dart';
+import '../../../core/widgets/cozy_scene.dart';
+import '../../../core/widgets/stepsy_ui.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../routing/app_router.dart';
 
@@ -62,7 +63,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.white,
+      backgroundColor: AppTheme.surfaceMuted,
       body: SafeArea(
         child: Column(
           children: [
@@ -74,7 +75,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: TextButton(
                   onPressed: _completeOnboarding,
                   child: const Text(
-                    'SKIP',
+                    'Skip',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -150,8 +151,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                   )
                                 : Text(
                                     _permissionGranted
-                                        ? 'START EARNING'
-                                        : 'ENABLE STEP TRACKING',
+                                        ? 'Let’s walk'
+                                        : 'Allow step tracking',
                                   ),
                           ),
                         ),
@@ -160,7 +161,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           TextButton(
                             onPressed: _completeOnboarding,
                             child: const Text(
-                              'CONTINUE WITHOUT TRACKING',
+                              'Continue without tracking',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: AppTheme.grey,
@@ -182,7 +183,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             curve: Curves.easeInOut,
                           );
                         },
-                        child: const Text('NEXT'),
+                        child: const Text('Continue'),
                       ),
                     ),
             ),
@@ -192,269 +193,117 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  Widget _buildWelcomePage() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppTheme.beige,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(color: AppTheme.borderDark, width: 1.5),
-            ),
-            child: const Companion(clip: 'wave', size: 80),
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            'WELCOME TO STEPSY',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
-              color: AppTheme.black,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'STEP-BASED VALUE NETWORK',
-            style: TextStyle(
-              fontSize: 11,
-              fontFamily: AppTheme.monoFont,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-              color: AppTheme.taupe,
-            ),
-          ),
-          const SizedBox(height: 28),
-          const Text(
-            'Walk. Earn points. Redeem real rewards.\nYour daily steps create tangible value\nat partner brands.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: AppTheme.grey, height: 1.6),
-          ),
-          const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+  Widget _intro(
+    String pose,
+    String title,
+    String description, {
+    Widget? child,
+  }) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CozyScene(height: 170, pose: pose),
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildStatChip('100 STEPS', '1 POINT'),
-              const SizedBox(width: 16),
-              _buildStatChip('20K CAP', 'DAILY'),
+              Text(title, style: AppTheme.largeTitleStyle),
+              const SizedBox(height: 12),
+              Text(description, style: AppTheme.bodyStyle),
+              if (child != null) ...[const SizedBox(height: 20), child],
             ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 
-  Widget _buildPrivacyPage() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppTheme.offWhite,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(color: AppTheme.borderDark, width: 1.5),
-            ),
-            child: const Icon(
-              Icons.shield_outlined,
-              size: 40,
-              color: AppTheme.black,
-            ),
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            'YOUR PRIVACY',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
-              color: AppTheme.black,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'DATA TRANSPARENCY GUARANTEE',
-            style: TextStyle(
-              fontSize: 11,
-              fontFamily: AppTheme.monoFont,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-              color: AppTheme.taupe,
-            ),
-          ),
-          const SizedBox(height: 28),
-          _buildPrivacyRow(
-            Icons.phone_android,
-            'STEP DATA STAYS LOCAL',
-            'Raw health data never leaves your device.',
-          ),
-          const SizedBox(height: 14),
-          _buildPrivacyRow(
-            Icons.cloud_upload_outlined,
-            'STEPS & DEVICE CHECK',
-            'Daily totals earn points. An app-scoped device identifier prevents repeat rewards across accounts.',
-          ),
-          const SizedBox(height: 14),
-          _buildPrivacyRow(
-            Icons.location_off_outlined,
-            'ZERO GPS TRACKING',
-            'Motion sensors count walks; GPS locations and routes are not collected.',
-          ),
-          const SizedBox(height: 14),
-          _buildPrivacyRow(
-            Icons.delete_outline,
-            'ACCOUNT ACCESS',
-            'Deactivate your account from Profile to stop access and tracking.',
-          ),
-        ],
+  Widget _buildWelcomePage() => _intro(
+    'walk',
+    'Every step, closer.',
+    'Walk at your own pace, collect points from eligible activity and enjoy partner rewards. Your companion is here for every little win.',
+    child: const SurfaceCard(
+      color: AppTheme.sageWash,
+      child: Text(
+        'Your live steps appear straight away. Points are confirmed after syncing.',
+        style: AppTheme.bodyStyle,
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildPermissionPage() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: _permissionGranted ? AppTheme.beige : AppTheme.offWhite,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-              border: Border.all(
-                color: _permissionGranted
-                    ? AppTheme.black
-                    : AppTheme.borderDark,
-                width: 1.5,
-              ),
-            ),
-            child: Icon(
-              _permissionGranted
-                  ? Icons.check_circle_outline
-                  : Icons.fitness_center,
-              size: 40,
-              color: AppTheme.black,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            _permissionGranted ? 'ALL SET' : 'ENABLE TRACKING',
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
-              color: AppTheme.black,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _permissionGranted
-                ? 'STEP TRACKING IS ACTIVE'
-                : 'HEALTH DATA ACCESS REQUIRED',
-            style: const TextStyle(
-              fontSize: 11,
-              fontFamily: AppTheme.monoFont,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-              color: AppTheme.taupe,
-            ),
-          ),
-          const SizedBox(height: 28),
-          Text(
-            _permissionGranted
-                ? 'Your device will automatically count your steps in the background. Walk naturally and earn points throughout the day.'
-                : 'Stepsy needs access to your step counter to track daily movement. This uses Apple HealthKit (iOS) or Health Connect (Android).',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.grey,
-              height: 1.6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildPrivacyPage() => _intro(
+    'wave',
+    'Your walk. Your choice.',
+    'Choose the activity access that works for you.',
+    child: Column(
+      children: [
+        _privacy(
+          Icons.phone_android,
+          'Daily totals, not a route',
+          'Eligible step totals are synced to award points. An app-scoped device check prevents repeat rewards.',
+        ),
+        _privacy(
+          Icons.location_off_outlined,
+          'No GPS route tracking',
+          'Motion sensors count your walks and help exclude bike and car movement.',
+        ),
+        _privacy(
+          Icons.pause_circle_outline,
+          'You stay in control',
+          'Pause from the tracking notification, manage permissions, or deactivate your account in You.',
+        ),
+      ],
+    ),
+  );
 
-  Widget _buildStatChip(String top, String bottom) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.offWhite,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        children: [
-          Text(
-            top,
-            style: const TextStyle(
-              fontSize: 11,
-              fontFamily: AppTheme.monoFont,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.black,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            bottom,
-            style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.grey,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrivacyRow(IconData icon, String title, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.offWhite,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(color: AppTheme.border),
-      ),
+  Widget _buildPermissionPage() => _intro(
+    'wave',
+    _permissionGranted ? 'You’re ready to wander.' : 'Let’s count your walks.',
+    _permissionGranted
+        ? 'Your activity access is ready. You can manage background tracking and pause it whenever you like.'
+        : 'Allow physical activity and notifications so Stepsy can keep counting in the background. Available health integrations depend on your phone.',
+    child: SurfaceCard(
+      color: AppTheme.sageWash,
       child: Row(
         children: [
-          Icon(icon, color: AppTheme.black, size: 20),
+          Icon(
+            _permissionGranted
+                ? Icons.check_circle_outline
+                : Icons.directions_walk_rounded,
+            color: AppTheme.accentSolid,
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: AppTheme.black,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 11, color: AppTheme.grey),
-                ),
-              ],
+            child: Text(
+              _permissionGranted
+                  ? 'Activity access is ready.'
+                  : 'Your steps belong to your own pace.',
+              style: AppTheme.bodyStyle,
             ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+
+  Widget _privacy(IconData icon, String title, String detail) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: AppTheme.accentSolid),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: AppTheme.headlineStyle),
+              Text(detail, style: AppTheme.captionStyle),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

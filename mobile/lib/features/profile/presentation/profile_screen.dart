@@ -6,7 +6,11 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/services/haptics_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../companion/companion_buddy.dart';
+import '../../../core/widgets/cozy_scene.dart';
+import '../../../core/widgets/stepsy_ui.dart';
+import '../../../core/widgets/stepsy_information.dart';
+import '../../companion/experience_provider.dart';
+import '../../activity/providers/activity_provider.dart';
 import '../../companion/experience_sheet.dart';
 import '../../../data/activity/health_service.dart';
 import '../../../data/auth/auth_state_provider.dart';
@@ -274,157 +278,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final user = authState.user;
-    final isMerchant = user?.role == 'MERCHANT';
-
+    final auth = ref.watch(authStateProvider);
+    final user = auth.user;
+    final goal = ref.watch(experienceProvider).goal;
+    final connected = ref.watch(activityProvider).hasPermission;
     return Scaffold(
-      backgroundColor: AppTheme.surfaceMuted,
-      appBar: AppBar(
-        backgroundColor: AppTheme.surfaceMuted,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text(
-          'You',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-            color: AppTheme.inkPrimary,
-          ),
-        ),
-      ),
+      appBar: const CozyAppBar(showPoints: false),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
         children: [
-          const Row(
-            children: [
-              CompanionBuddy(size: 64),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Your pace. Your space.',
-                  style: AppTheme.titleStyle,
-                ),
-              ),
-            ],
+          const CozyPageHeading(
+            title: 'You',
+            subtitle: 'Your pace.\nYour space.',
+            pose: 'wave',
           ),
-          const SizedBox(height: 16),
-          if (!isMerchant) ...[
-            _buildSettingRow(
-              icon: CupertinoIcons.flag,
-              title: 'Daily goal & companion',
-              onTap: () => showExperienceSettings(context),
-            ),
-            _buildSettingRow(
-              icon: CupertinoIcons.chart_bar,
-              title: 'Progress & activity',
-              onTap: () => context.push('/progress'),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (_isUpdating)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12.0),
-              child: LinearProgressIndicator(
-                color: AppTheme.accentSolid,
-                backgroundColor: AppTheme.hairline,
-                minHeight: 2,
-              ),
-            ),
-
-          // User Card Block (Apple Squircle Profile Card)
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.mintWash,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.hairline),
-            ),
-            padding: const EdgeInsets.all(18.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 10),
+          SurfaceCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildAvatar(
-                      authState.googlePhotoUrl,
-                      authState.googleName,
-                      user?.email,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (authState.googleName != null &&
-                              authState.googleName!.isNotEmpty)
-                            Text(
-                              authState.googleName!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.3,
-                                color: AppTheme.inkPrimary,
-                              ),
-                            ),
-                          Text(
-                            'Walking member',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize:
-                                  (authState.googleName != null &&
-                                      authState.googleName!.isNotEmpty)
-                                  ? 13
-                                  : 17,
-                              fontWeight:
-                                  (authState.googleName != null &&
-                                      authState.googleName!.isNotEmpty)
-                                  ? FontWeight.w400
-                                  : FontWeight.w600,
-                              color:
-                                  (authState.googleName != null &&
-                                      authState.googleName!.isNotEmpty)
-                                  ? AppTheme.inkSecondary
-                                  : AppTheme.inkPrimary,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                Material(
-                  color: Colors.transparent,
-                  child: ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: const EdgeInsets.only(bottom: 12),
-                    expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                    title: const Text('Account details'),
+                _buildAvatar(auth.googlePhotoUrl, auth.googleName, user?.email),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SelectableText(
-                        user?.email ?? 'Email unavailable',
-                        style: AppTheme.bodyStyle,
+                      Text(
+                        auth.googleName?.isNotEmpty == true
+                            ? auth.googleName!
+                            : 'Stepsy member',
+                        style: AppTheme.headlineStyle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 12),
-                      _buildDetailRow('Country', user?.country ?? 'PK'),
-                      const SizedBox(height: 8),
-                      _buildDetailRow(
-                        'Timezone',
-                        user?.timezone ?? 'Asia/Karachi',
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDetailRow(
-                        'Member since',
-                        user != null
-                            ? DateFormat(
-                                'MMMM yyyy',
-                              ).format(user.createdAt.toLocal())
-                            : '—',
+                      const Text(
+                        'Walking member',
+                        style: AppTheme.captionStyle,
                       ),
                     ],
                   ),
@@ -432,108 +321,136 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Grouped Inset List: Preferences & Sensors
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.hairline),
-            ),
+          const SizedBox(height: 12),
+          if (_isUpdating) const LinearProgressIndicator(),
+          SurfaceCard(
+            padding: EdgeInsets.zero,
             child: Column(
               children: [
                 _buildSettingRow(
-                  icon: CupertinoIcons.slider_horizontal_3,
-                  title: 'Edit preferences',
-                  onTap: () => _showEditProfileBottomSheet(context),
+                  icon: CupertinoIcons.flag,
+                  title: 'Daily goal & companion',
+                  trailing: NumberFormat.decimalPattern().format(goal),
+                  onTap: () => showExperienceSettings(context),
                 ),
-                const Divider(height: 1, color: AppTheme.hairline),
+                const Divider(),
                 _buildSettingRow(
-                  icon: CupertinoIcons.waveform_path,
-                  title: 'Motion & fitness access',
+                  icon: CupertinoIcons.chart_bar,
+                  title: 'Progress & activity',
+                  onTap: () => context.push('/progress'),
+                ),
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.link,
+                  title: 'Activity connection',
+                  trailing: connected ? 'Connected' : 'Connect',
                   onTap: () async {
                     HapticsService.light();
-                    final healthService = ref.read(healthServiceProvider);
-                    await healthService.requestPermissions();
+                    await ref.read(healthServiceProvider).requestPermissions();
                     if (context.mounted) {
-                      showModalBottomSheet(
+                      showModalBottomSheet<void>(
                         context: context,
-                        backgroundColor: AppTheme.surface,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(AppTheme.radiusLg),
-                          ),
-                        ),
-                        builder: (ctx) => Padding(
-                          padding: const EdgeInsets.all(22),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Motion & fitness access',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.3,
-                                  color: AppTheme.inkPrimary,
+                        useSafeArea: true,
+                        isScrollControlled: true,
+                        builder: (ctx) => SafeArea(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Motion & fitness access',
+                                  style: AppTheme.titleStyle,
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Stepsy runs in the background to count your steps throughout the day without using GPS tracking.\n\nMake sure "Physical Activity", "Sensors", and "Notifications" permissions are enabled.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.inkSecondary,
-                                  height: 1.4,
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Allow physical activity, notifications and background activity so Stepsy can count your walks. You can stop tracking from its notification and resume in Steps.',
+                                  style: AppTheme.bodyStyle,
                                 ),
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
+                                const SizedBox(height: 20),
+                                ElevatedButton(
                                   onPressed: () {
                                     openAppSettings();
                                     Navigator.pop(ctx);
                                   },
-                                  style: ElevatedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusMd,
-                                      ),
-                                    ),
-                                  ),
                                   child: const Text('Open device settings'),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );
                     }
                   },
                 ),
-                if (isMerchant) ...[
-                  const Divider(height: 1, color: AppTheme.hairline),
-                  _buildSettingRow(
-                    icon: CupertinoIcons.creditcard,
-                    title: 'Merchant POS terminal',
-                    onTap: () => context.push('/merchant-pos'),
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.slider_horizontal_3,
+                  title: 'Preferences',
+                  onTap: () => _showEditProfileBottomSheet(context),
+                ),
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.shield,
+                  title: 'Privacy & support',
+                  onTap: () => showStepsyInformation(context, privacy: true),
+                ),
+                const Divider(),
+                _buildSettingRow(
+                  icon: CupertinoIcons.doc_text,
+                  title: 'Account details',
+                  onTap: () => showModalBottomSheet<void>(
+                    context: context,
+                    useSafeArea: true,
+                    isScrollControlled: true,
+                    builder: (context) => SafeArea(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Account details',
+                              style: AppTheme.titleStyle,
+                            ),
+                            const SizedBox(height: 16),
+                            SelectableText(
+                              user?.email ?? 'Email unavailable',
+                              style: AppTheme.bodyStyle,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildDetailRow('Country', user?.country ?? 'PK'),
+                            const SizedBox(height: 12),
+                            _buildDetailRow(
+                              'Timezone',
+                              user?.timezone ?? 'Asia/Karachi',
+                            ),
+                            const SizedBox(height: 12),
+                            _buildDetailRow(
+                              'Member since',
+                              user == null
+                                  ? '—'
+                                  : DateFormat(
+                                      'MMMM yyyy',
+                                    ).format(user.createdAt.toLocal()),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Done'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Grouped Inset List: Account Actions
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.hairline),
-            ),
+          const SizedBox(height: 14),
+          SurfaceCard(
+            padding: EdgeInsets.zero,
             child: Column(
               children: [
                 _buildSettingRow(
@@ -541,7 +458,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   title: 'Sign out',
                   onTap: () => confirmSignOut(context, ref),
                 ),
-                const Divider(height: 1, color: AppTheme.hairline),
+                const Divider(),
                 _buildSettingRow(
                   icon: CupertinoIcons.trash,
                   title: 'Deactivate account',
@@ -552,42 +469,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           Center(
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/icon/Stepsy_Icon1.png',
-                  width: 32,
-                  height: 32,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Stepsy v1.0.0',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.inkTertiary,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Powered by Hanova Devs',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.inkTertiary,
-                    letterSpacing: 0.1,
-                  ),
-                ),
-              ],
+            child: Image.asset(
+              'assets/icon/Stepsy_Icon1.png',
+              width: 28,
+              height: 28,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 8),
+          const Text(
+            'Stepsy · By Hanova Devs',
+            style: AppTheme.captionStyle,
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -597,6 +492,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    String? trailing,
     Color? titleColor,
     Color? iconColor,
   }) {
@@ -619,6 +515,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
+            if (trailing != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: Text(trailing, style: AppTheme.captionStyle),
+              ),
             const Icon(
               CupertinoIcons.chevron_forward,
               size: 14,
@@ -642,7 +543,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppTheme.surfaceMuted,
+        color: AppTheme.sageWash,
         shape: BoxShape.circle,
         border: Border.all(color: AppTheme.hairline, width: 1),
         image: hasPhoto

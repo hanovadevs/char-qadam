@@ -9,6 +9,7 @@ import '../features/activity/presentation/activity_screen.dart';
 import '../features/activity/presentation/progress_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/welcome_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/home/presentation/main_scaffold.dart';
@@ -45,6 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final status = authState.status;
       final isSplash = state.matchedLocation == '/splash';
       final isAuthRoute =
+          state.matchedLocation == '/welcome' ||
           state.matchedLocation == '/verify-email' ||
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
@@ -58,7 +60,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (status == AuthStatus.unauthenticated) {
         if (state.matchedLocation == '/verify-email') return '/login';
-        return isAuthRoute ? null : '/login';
+        return isAuthRoute
+            ? null
+            : isSplash
+            ? '/welcome'
+            : '/login';
       }
 
       if (status == AuthStatus.verificationRequired) {
@@ -111,6 +117,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
       GoRoute(
         path: '/verify-email',
         builder: (context, state) => const VerifyEmailScreen(),

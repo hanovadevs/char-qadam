@@ -81,10 +81,16 @@ flutter:
     - assets/companion/static/
     - assets/companion/animations/
     - assets/companion/manifest.json
+    - assets/companion/portraits/
+    - assets/illustrations/
     - assets/icon/
     - assets/fonts/Manrope-OFL.txt
     - assets/fonts/SpaceGrotesk-OFL.txt
+    - assets/fonts/Nunito-OFL.txt
   fonts:
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito.ttf
     - family: Manrope
       fonts:
         - asset: assets/fonts/Manrope.ttf

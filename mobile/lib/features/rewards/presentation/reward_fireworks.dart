@@ -66,7 +66,7 @@ class _FireworksPainter extends CustomPainter {
   _FireworksPainter(this.progress) : super(repaint: progress);
 
   static const _colors = [
-    AppTheme.accentBright,
+    AppTheme.peach,
     AppTheme.accentSolid,
     AppTheme.accentBright,
     AppTheme.onDeep,

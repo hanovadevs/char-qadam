@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qadam/core/theme/app_theme.dart';
+import 'package:qadam/core/widgets/cozy_scene.dart';
 import 'package:qadam/features/companion/experience_provider.dart';
 import 'package:qadam/features/companion/companion.dart';
 import 'package:qadam/features/companion/companion_buddy.dart';
@@ -15,6 +16,43 @@ import 'package:qadam/data/models/offer_models.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets(
+    'Illustrated header reacts on tap and returns to its quiet portrait',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: MediaQuery(
+                data: const MediaQueryData(disableAnimations: true),
+                child: const CompanionPortrait(
+                  pose: 'sit',
+                  size: 150,
+                  interactive: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(Companion), findsNothing);
+      await tester.tap(find.byType(CompanionPortrait));
+      await tester.pump();
+      expect(tester.widget<Companion>(find.byType(Companion)).clip, 'wave');
+      expect(
+        find.descendant(
+          of: find.byType(Companion),
+          matching: find.byType(AnimatedBuilder),
+        ),
+        findsNothing,
+        reason: 'Reduced motion wins over tap reactions',
+      );
+      await tester.pump(const Duration(milliseconds: 1700));
+      expect(find.byType(Companion), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'Pip has accessible tap reactions and honours disabled animations',
     (tester) async {

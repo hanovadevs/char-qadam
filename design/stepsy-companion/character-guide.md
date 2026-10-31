@@ -1,4 +1,6 @@
-# Stepsy companion: editable first implementation
+# Stepsy companion: historical mint implementation
+
+The current app uses the [cozy 3D companion](../cozy-companion/character-guide.md). This guide records the earlier cutout implementation. Its packer now exports to `legacy-assets/` to avoid replacing the current app artwork.
 
 The working name is Pip. This is an original flat cutout interpretation of the supplied concept, with an editable Blender 5.2.1 LTS scene. The official Stepsy logo is separate and unchanged.
 

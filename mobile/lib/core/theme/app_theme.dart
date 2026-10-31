@@ -1,51 +1,30 @@
 import 'package:flutter/material.dart';
 
-/// Stepsy: an everyday walking club in the established mint/teal palette.
-///
-/// Shared type, surface and control tokens:
-/// - Light theme only (pure white and near-white/muted surfaces)
-/// - Single brand accent palette (Teal: #2FE0C4, #0B4A47, #0F8A78)
-/// - Dark navy-charcoal typography (#16213A, never pure black)
-/// - 1px hairline structural borders and dividers (#E7EBEA)
-/// - Continuous squircle curves (16-20pt card radius, 10-14pt controls)
-/// - iOS typography scale with sentence case
+/// Reference-inspired sage, cream and peach, with readable earth-tone controls.
+/// Pale sage is a surface/accent; dark moss carries text and actions.
 class AppTheme {
-  static const String bodyFont = 'Manrope';
-  static const String displayFont = 'SpaceGrotesk';
-  static const Color mintWash = Color(0xFFE8F6F2);
-  static const Color onDeep = Color(0xFFDAF7EE);
-  static const Color walkerSkin = Color(0xFFF1C9A7);
+  static const String bodyFont = 'Nunito';
+  static const String displayFont = 'Nunito';
+  static const Color sageWash = Color(0xFFEBEEDD);
+  static const Color mintWash = sageWash;
+  static const Color peachWash = Color(0xFFF5DFC5);
+  static const Color peach = Color(0xFFE1A58A);
+  static const Color onDeep = Color(0xFFFFF6E8);
+  static const Color walkerSkin = Color(0xFFF2CDB4);
   static const Duration motion = Duration(milliseconds: 220);
   static const Curve easeOut = Curves.easeOutCubic;
   static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
-  // Stepsy Core Brand Palette Tokens
-  static const Color accentBright = Color(
-    0xFF2FE0C4,
-  ); // Gradient start (hero moments)
-  static const Color accentDeep = Color(0xFF0B4A47); // Gradient end
-  static const Color accentSolid = Color(
-    0xFF087F72,
-  ); // Primary buttons, active tabs, text links
+  static const Color accentBright = Color(0xFFB6C49E);
+  static const Color accentDeep = Color(0xFF264A3A);
+  static const Color accentSolid = Color(0xFF4F6A4D);
 
-  static const Color inkPrimary = Color(
-    0xFF102B32,
-  ); // Primary text: dark navy-charcoal, NOT pure black
-  static const Color inkSecondary = Color(
-    0xFF536B71,
-  ); // Secondary text, inactive icons
-  static const Color inkTertiary = Color(
-    0xFF9AA3AD,
-  ); // Placeholders, disabled states, timestamps
+  static const Color inkPrimary = Color(0xFF3F352C);
+  static const Color inkSecondary = Color(0xFF6B6355);
+  static const Color inkTertiary = Color(0xFF7D7567);
 
-  static const Color surface = Color(
-    0xFFFFFFFF,
-  ); // Cards, modals, primary content
-  static const Color surfaceMuted = Color(
-    0xFFFAFBF8,
-  ); // Grouped list backgrounds, subtle fills
-  static const Color hairline = Color(
-    0xFFDDE8E3,
-  ); // 1px dividers, card outlines (never black)
+  static const Color surface = Color(0xFFFFFBF3);
+  static const Color surfaceMuted = Color(0xFFFEF8EC);
+  static const Color hairline = Color(0xFFDEDCCA);
 
   static const Color destructive = Color(
     0xFFB43837,
@@ -67,23 +46,23 @@ class AppTheme {
   static const Color taupe = accentSolid;
   static const Color accentGreen = accentSolid;
   static const Color accentRed = destructive;
-  static const Color accentAmber = Color(0xFFD97706);
+  static const Color accentAmber = Color(0xFFA46638);
   static const Color primaryColor = accentSolid;
   static const Color secondaryColor = accentSolid;
   static const String monoFont = displayFont;
 
-  // Corner Radius Tokens (Apple Continuous Squircle Language)
+  // Soft corners stay consistent across cards, sheets and controls.
   static const double radiusNone = 0.0;
   static const double radiusSm = 10.0;
   static const double radiusMd = 14.0;
-  static const double radiusLg = 24.0;
+  static const double radiusLg = 22.0;
   static const double radiusPill = 999.0;
 
   // Typography Constants (iOS Native Type Scale)
   static const TextStyle largeTitleStyle = TextStyle(
     fontFamily: displayFont,
     fontSize: 30,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800,
     letterSpacing: -0.8,
     color: inkPrimary,
   );
@@ -91,7 +70,7 @@ class AppTheme {
   static const TextStyle titleStyle = TextStyle(
     fontFamily: displayFont,
     fontSize: 22,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w800,
     letterSpacing: -0.4,
     color: inkPrimary,
   );
@@ -124,9 +103,9 @@ class AppTheme {
     fontFamily: displayFont,
     fontFeatures: tabular,
     fontSize: 48,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800,
     letterSpacing: -1.5,
-    color: inkPrimary,
+    color: accentDeep,
   );
 
   static ThemeData get lightTheme {
@@ -135,6 +114,8 @@ class AppTheme {
       brightness: Brightness.light,
       scaffoldBackgroundColor: surfaceMuted,
       fontFamily: bodyFont,
+      splashColor: accentBright.withValues(alpha: .18),
+      highlightColor: accentBright.withValues(alpha: .10),
       textTheme: const TextTheme(
         displayLarge: heroNumeralStyle,
         headlineLarge: largeTitleStyle,
@@ -150,12 +131,41 @@ class AppTheme {
         secondary: accentSolid,
         onSecondary: surface,
         tertiary: accentBright,
+        onTertiary: inkPrimary,
         surface: surface,
         onSurface: inkPrimary,
         surfaceContainerHighest: surfaceMuted,
         outline: hairline,
         error: destructive,
         onError: surface,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: accentSolid,
+        linearTrackColor: hairline,
+        circularTrackColor: sageWash,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: accentSolid),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: accentSolid,
+          foregroundColor: onDeep,
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusMd),
+          ),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? onDeep : inkSecondary,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? accentSolid : hairline,
+        ),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: surfaceMuted,
@@ -235,7 +245,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: accentDeep,
+          backgroundColor: accentSolid,
           foregroundColor: surface,
           minimumSize: const Size(0, 48),
           elevation: 0,

@@ -20,13 +20,13 @@
 
 ## A little walk. A real reward.
 
-Stepsy connects daily movement to useful partner offers. See live steps, work toward a personal goal, earn server-calculated points and redeem an offer into a single-use voucher. Pip, the mint walking companion, adds small moments of encouragement and helps users find their way from an offer to its QR code.
+Stepsy connects daily movement to useful partner offers. See live steps, work toward a personal goal, earn server-calculated points and redeem an offer into a single-use voucher. The cozy walking companion, adds small moments of encouragement and helps users find their way from an offer to its QR code.
 
 <table>
   <tr>
-    <td align="center"><img src="artifacts/redesign/blueprint-home-390.png" width="230" alt="Steps preview with Pip and a reward goal" /><br /><strong>Move with Pip</strong></td>
-    <td align="center"><img src="artifacts/redesign/rewards.png" width="230" alt="Rewards preview with point prices and branch Maps" /><br /><strong>Find your little win</strong></td>
-    <td align="center"><img src="artifacts/redesign/wallet.png" width="230" alt="Wallet preview with a voucher and Show QR" /><br /><strong>Keep it in Wallet</strong></td>
+    <td align="center"><img src="artifacts/cozy-release/blueprint-home-390.png" width="230" alt="Steps preview with the companion and a reward goal" /><br /><strong>Every little step</strong></td>
+    <td align="center"><img src="artifacts/cozy-release/rewards.png" width="230" alt="Rewards preview with point prices and branch Maps" /><br /><strong>Find your little win</strong></td>
+    <td align="center"><img src="artifacts/cozy-release/wallet.png" width="230" alt="Wallet preview with a voucher and Show QR" /><br /><strong>Keep it in Wallet</strong></td>
   </tr>
 </table>
 <sub>Design previews use fictional accounts, figures and offers. They are not claims of confirmed commercial partnerships or live reward availability.</sub>
@@ -36,7 +36,7 @@ Stepsy connects daily movement to useful partner offers. See live steps, work to
 | Experience | Implementation |
 | --- | --- |
 | **Steps** | Live hardware counts, personal goals, weekly history and diagnostics. Android uses a foreground service, wake-up sensor preference and a wake-lock fallback. |
-| **Pip** | Thirteen Blender-authored poses/animations, tap reactions, movement-driven walking and reduced-motion controls. |
+| **Companion & theme** | Editable 3D character, 13 pre-rendered clips, illustrated sage/cream screens, tap reactions, live walking and reduced-motion controls. |
 | **Points & rewards** | Server-calculated earnings, ledger history, one claim per account per offer, explicit confirmation and purchase recovery. |
 | **Wallet & merchant POS** | Ready/history vouchers, camera QR validation, explicit redemption, and weekly/monthly PDF ledgers with generation history. |
 | **Account** | Google sign-in, verified email access and separate one-customer/one-merchant device reservations. |
@@ -48,7 +48,7 @@ Stepsy connects daily movement to useful partner offers. See live steps, work to
 
 ```mermaid
 flowchart LR
-    Sensors[Android sensors] --> Mobile[Flutter app + Pip]
+    Sensors[Android sensors] --> Mobile[Flutter app + companion]
     Mobile --> API[FastAPI]
     Admin[React admin] --> API
     Merchant[Merchant POS] --> API
@@ -221,7 +221,8 @@ CI runs backend, Android and admin checks through [Stepsy checks](.github/workfl
 | [Product requirements](docs/product/REQUIREMENTS.md) | Requirements and acceptance criteria |
 | [Admin guide](docs/operations/ADMIN_PANEL_GUIDE.md) | Stores, covers, rewards, archival and account operations |
 | [Android tracking](docs/tracking/ANDROID_TRACKING_RELIABILITY.md) | Idle recovery, battery controls and persistent Stop/Resume |
-| [Companion guide](design/stepsy-companion/character-guide.md) | Editable Blender source, rendering and runtime budget |
+| [Cozy design implementation](docs/design/COZY_REDESIGN.md) | Current five-tab and authentication design, palette and validation |
+| [Companion guide](design/cozy-companion/character-guide.md) | Editable Blender source, rendering and runtime budget |
 | [Deployment](backend/DEPLOYMENT.md) | Docker rollout, persistent media and rollback |
 | [Play Console](docs/operations/PLAY_CONSOLE.md) | Signing, versioning and the paused release process |
 

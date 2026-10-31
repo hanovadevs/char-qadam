@@ -43,19 +43,46 @@ class RewardCard extends StatelessWidget {
       address: offer.partnerLocation,
     );
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.hairline),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                key: ValueKey('cover-${offer.id}'),
+                width: 82,
+                height: 108,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: AppTheme.peachWash,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: offer.partnerCoverImageUrl == null
+                    ? const Icon(
+                        Icons.card_giftcard_rounded,
+                        color: AppTheme.accentSolid,
+                        size: 30,
+                      )
+                    : Image.network(
+                        offer.partnerCoverImageUrl!,
+                        fit: BoxFit.cover,
+                        cacheWidth: 256,
+                        semanticLabel: '${offer.partnerName ?? 'Store'} cover',
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.storefront_rounded,
+                          color: AppTheme.accentSolid,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,58 +91,46 @@ class RewardCard extends StatelessWidget {
                       offer.partnerName ?? 'Stepsy partner',
                       style: AppTheme.captionStyle,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       discountLabel(offer.discountType, offer.discountValue),
-                      style: AppTheme.titleStyle.copyWith(
-                        fontSize: 26,
-                        color: AppTheme.accentDeep,
-                      ),
+                      style: AppTheme.titleStyle.copyWith(fontSize: 23),
                     ),
+                    Text(offer.title, style: AppTheme.headlineStyle),
+                    const SizedBox(height: 6),
+                    if (offer.alreadyRedeemed)
+                      const Text(
+                        'Claimed · One per account',
+                        style: AppTheme.captionStyle,
+                      ),
                   ],
                 ),
               ),
-              if (offer.partnerCoverImageUrl != null)
+              if (onDetails != null)
                 SizedBox(
-                  width: 88,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Image.network(
-                        offer.partnerCoverImageUrl!,
-                        fit: BoxFit.cover,
-                        cacheWidth: 256,
-                        semanticLabel: '${offer.partnerName ?? 'Store'} cover',
-                        errorBuilder: (_, _, _) => const ColoredBox(
-                          color: AppTheme.mintWash,
-                          child: Icon(
-                            Icons.storefront_outlined,
-                            color: AppTheme.accentDeep,
-                          ),
-                        ),
-                      ),
-                    ),
+                  width: 32,
+                  child: IconButton(
+                    tooltip: 'Details & terms',
+                    padding: EdgeInsets.zero,
+                    onPressed: onDetails,
+                    icon: const Icon(Icons.more_vert, size: 21),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(offer.title, style: AppTheme.headlineStyle),
-          if (offer.minBasket != null && offer.minBasket! > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                'Minimum spend Rs ${number.format(offer.minBasket)}',
-                style: AppTheme.captionStyle,
-              ),
-            ),
-          if (offer.partnerLocation?.isNotEmpty == true || location != null)
+          if (offer.partnerLocation?.isNotEmpty == true ||
+              location != null ||
+              offer.minBasket != null)
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    offer.partnerLocation ?? 'View branch location',
+                    [
+                      if (offer.partnerLocation?.isNotEmpty == true)
+                        offer.partnerLocation!,
+                      if (offer.minBasket != null && offer.minBasket! > 0)
+                        'Min. spend Rs ${number.format(offer.minBasket)}',
+                    ].join(' · '),
                     style: AppTheme.captionStyle,
                   ),
                 ),
@@ -126,60 +141,69 @@ class RewardCard extends StatelessWidget {
                     onPressed: () => onOpenLocation != null
                         ? onOpenLocation!(location)
                         : openStoreLocation(context, location),
-                    icon: const Icon(Icons.map_outlined, size: 22),
+                    icon: const Icon(Icons.location_on_outlined, size: 19),
                   ),
               ],
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Wrap(
             alignment: WrapAlignment.spaceBetween,
-            spacing: 12,
-            runSpacing: 12,
             crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${number.format(offer.pointsCost)} pts',
-                    style: AppTheme.headlineStyle,
+                    style: AppTheme.headlineStyle.copyWith(
+                      color: AppTheme.accentDeep,
+                    ),
                   ),
-                  Text(
-                    offer.alreadyRedeemed
-                        ? 'One per account'
-                        : !available
-                        ? 'Out of stock'
-                        : balance == null
-                        ? 'Checking balance'
-                        : ready
-                        ? 'Within your points'
-                        : '${number.format(missing)} more to unlock',
-                    style: AppTheme.captionStyle,
-                  ),
+                  if (!ready && !offer.alreadyRedeemed)
+                    Text(
+                      !available
+                          ? 'Out of stock'
+                          : balance == null
+                          ? 'Checking balance'
+                          : '${number.format(missing)} pts to go',
+                      style: AppTheme.captionStyle,
+                    ),
                 ],
               ),
               ElevatedButton(
                 key: ValueKey('redeem-${offer.id}'),
-                onPressed: offer.alreadyRedeemed
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ready || offer.alreadyRedeemed
+                      ? AppTheme.accentSolid
+                      : AppTheme.sageWash,
+                  foregroundColor: ready || offer.alreadyRedeemed
+                      ? AppTheme.onDeep
+                      : AppTheme.accentDeep,
+                  minimumSize: const Size(124, 42),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                ),
+                onPressed: busy
+                    ? null
+                    : offer.alreadyRedeemed
                     ? onClaimed
-                    : ready && available && !busy
-                    ? onRedeem
-                    : null,
+                    : onDetails ?? (ready && available ? onRedeem : null),
                 child: Text(
                   offer.alreadyRedeemed
                       ? 'View voucher'
                       : busy
                       ? 'Getting reward…'
-                      : 'Get reward',
+                      : ready
+                      ? 'View reward'
+                      : 'View details',
                 ),
               ),
             ],
           ),
-          if (onDetails != null)
-            TextButton(
-              onPressed: onDetails,
-              child: const Text('Details & terms'),
-            ),
         ],
       ),
     );

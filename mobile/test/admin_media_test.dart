@@ -78,12 +78,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(AspectRatio), findsOneWidget);
     expect(
-      tester.widget<AspectRatio>(find.byType(AspectRatio)).aspectRatio,
-      16 / 9,
+      tester.getSize(find.byKey(const ValueKey('cover-cover-offer'))),
+      const Size(82, 108),
     );
-    expect(find.byIcon(Icons.storefront_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.storefront_rounded), findsOneWidget);
     final button = find.byKey(const ValueKey('redeem-cover-offer'));
     await tester.ensureVisible(button);
     await tester.tap(button);
