@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -70,90 +70,51 @@ async def get_leaderboard(
         week_start_str = (now - timedelta(days=6)).strftime("%Y-%m-%d")
         date_filter = ActivityDaily.local_date >= week_start_str
 
-    if date_filter is not None:
-        stmt = (
-            select(
-                User.id.label("user_id"),
-                User.email.label("email"),
-                User.country.label("country"),
-                func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("total_steps"),
-            )
-            .outerjoin(
-                ActivityDaily,
-                (ActivityDaily.user_id == User.id) & date_filter,
-            )
-            .where(User.status == UserStatus.ACTIVE)
-            .group_by(User.id, User.email, User.country)
-            .order_by(
-                func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).desc(),
-                User.created_at.asc(),
-            )
+    totals = (
+        select(
+            User.id.label("user_id"), User.email, User.country, User.created_at,
+            func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("total_steps"),
         )
-    else:
-        stmt = (
-            select(
-                User.id.label("user_id"),
-                User.email.label("email"),
-                User.country.label("country"),
-                func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).label("total_steps"),
-            )
-            .outerjoin(ActivityDaily, ActivityDaily.user_id == User.id)
-            .where(User.status == UserStatus.ACTIVE)
-            .group_by(User.id, User.email, User.country)
-            .order_by(
-                func.coalesce(func.sum(ActivityDaily.eligible_steps), 0).desc(),
-                User.created_at.asc(),
-            )
+        .outerjoin(
+            ActivityDaily,
+            (ActivityDaily.user_id == User.id) & date_filter
+            if date_filter is not None else ActivityDaily.user_id == User.id,
         )
-
-    result = await session.execute(stmt)
-    rows = result.all()
-
-    total_participants = len(rows)
-    rankings: list[LeaderboardEntryOut] = []
-    user_ranking: Optional[UserRankingOut] = None
-
+        .where(User.status == UserStatus.ACTIVE)
+        .group_by(User.id, User.email, User.country, User.created_at)
+        .subquery()
+    )
+    ranked = select(
+        totals,
+        func.row_number().over(order_by=(totals.c.total_steps.desc(), totals.c.created_at.asc(), totals.c.user_id.asc())).label("rank"),
+        func.count().over().label("participants"),
+    ).subquery()
+    # Transfer only the visible page and caller, rather than every user's data.
+    rows = (await session.execute(
+        select(ranked).where(or_(ranked.c.rank <= limit, ranked.c.user_id == caller_user_id))
+        .order_by(ranked.c.rank)
+    )).all()
+    total_participants = int(rows[0].participants) if rows else 0
+    rankings = []
+    user_ranking = None
     steps_per_point = settings.steps_per_point if settings.steps_per_point > 0 else 100
-
-    for idx, row in enumerate(rows):
-        rank = idx + 1
-        u_id = row.user_id
-        u_email = row.email
-        u_country = row.country or "PK"
-        u_steps = int(row.total_steps)
-        u_points = u_steps // steps_per_point
-        is_caller = u_id == caller_user_id
-
-        entry = LeaderboardEntryOut(
-            rank=rank,
-            user_id=u_id,
-            display_name=_mask_email(u_email),
-            total_steps=u_steps,
-            points_earned=u_points,
-            country=u_country,
-            is_current_user=is_caller,
-        )
-
+    for row in rows:
+        rank, steps = int(row.rank), int(row.total_steps)
+        points = steps // steps_per_point
+        is_caller = row.user_id == caller_user_id
         if rank <= limit:
-            rankings.append(entry)
-
+            rankings.append(LeaderboardEntryOut(
+                rank=rank, user_id=row.user_id, display_name=_mask_email(row.email),
+                total_steps=steps, points_earned=points, country=row.country or "PK",
+                is_current_user=is_caller,
+            ))
         if is_caller:
-            percentile = (
-                round((rank / total_participants) * 100.0, 1)
-                if total_participants > 0
-                else 100.0
-            )
             user_ranking = UserRankingOut(
-                rank=rank,
-                total_steps=u_steps,
-                points_earned=u_points,
+                rank=rank, total_steps=steps, points_earned=points,
                 total_participants=total_participants,
-                percentile=percentile,
+                percentile=round(rank / total_participants * 100.0, 1),
             )
-
     return LeaderboardResponseOut(
-        scope=scope,
-        total_participants=total_participants,
-        rankings=rankings,
-        user_ranking=user_ranking,
+        scope=scope, total_participants=total_participants,
+        rankings=rankings, user_ranking=user_ranking,
     )

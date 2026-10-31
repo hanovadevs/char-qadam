@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 
 export default function Login({ onLoginSuccess }) {
-  const [email, setEmail] = useState('admin@stepsy.app');
-  const [password, setPassword] = useState('admin123@');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -89,7 +89,6 @@ export default function Login({ onLoginSuccess }) {
               className="input-control"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@stepsy.app"
             />
           </div>
 
@@ -103,7 +102,6 @@ export default function Login({ onLoginSuccess }) {
               className="input-control"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
             />
           </div>
 

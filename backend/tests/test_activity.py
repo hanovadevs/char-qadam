@@ -306,3 +306,17 @@ async def test_points_history_paginated(client: AsyncClient) -> None:
         assert body["offset"] == 0
     finally:
         await _cleanup(email)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_first_sync_awards_points_once(client):
+    import asyncio
+    from datetime import date
+    email = f'concurrent-{uuid.uuid4().hex}@example.com'
+    registered = await client.post('/auth/register', json={'email': email, 'password': 'valid-password-123'})
+    headers = {'Authorization': 'Bearer ' + registered.json()['access_token']}
+    async def sync_once():
+        return await client.post('/activity/sync', headers=headers, json={'local_date': date.today().isoformat(), 'eligible_steps': 1000, 'source': 'health', 'sync_key': str(uuid.uuid4())})
+    responses = await asyncio.gather(sync_once(), sync_once())
+    assert [r.status_code for r in responses] == [200, 200]
+    assert sum(r.json()['points_awarded'] for r in responses) == 10

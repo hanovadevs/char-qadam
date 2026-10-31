@@ -1,0 +1,16 @@
+{
+  "environment": "Local ASGI + isolated PostgreSQL; excludes VPS, HTTP/TLS and mobile rendering",
+  "registered_users": 1000,
+  "activity_rows": 30000,
+  "ledger_rows": 30000,
+  "requests": 1000,
+  "concurrency": 25,
+  "status_counts": {
+    "200": 1000
+  },
+  "elapsed_seconds": 9.4,
+  "requests_per_second": 106.35,
+  "p50_ms": 211.02,
+  "p95_ms": 374.44,
+  "p99_ms": 478.21
+}

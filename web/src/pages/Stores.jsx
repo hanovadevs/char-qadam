@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
@@ -7,6 +7,7 @@ import { Search, Plus, Copy, Check } from 'lucide-react';
 export default function Stores() {
   const [stores, setStores] = useState([]);
   const [search, setSearch] = useState('');
+  const requestVersion = useRef(0);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,6 +52,7 @@ export default function Stores() {
   const [isSubmittingDeal, setIsSubmittingDeal] = useState(false);
 
   const fetchStores = async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
     setError(null);
     try {
@@ -58,16 +60,22 @@ export default function Stores() {
         search: search.trim() || undefined,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
       });
+      if (version !== requestVersion.current) return;
       setStores(data || []);
     } catch (err) {
+      if (version !== requestVersion.current) return;
       setError(err.message || 'Error loading partner stores.');
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStores();
+    const timer = setTimeout(fetchStores, search ? 300 : 0);
+    return () => {
+      clearTimeout(timer);
+      requestVersion.current += 1;
+    };
   }, [search, statusFilter]);
 
   const handleCreateStore = async (e) => {
@@ -249,7 +257,6 @@ export default function Stores() {
             type="text"
             className="input-control"
             style={{ paddingLeft: '36px' }}
-            placeholder="Search stores by brand or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -375,7 +382,7 @@ export default function Stores() {
                   </div>
                   <div>
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: '600' }}>
-                      Discounts
+                      Fixed discounts
                     </span>
                     <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--brand-dark)', fontFamily: 'monospace' }}>
                       ${(s.total_discount_value || 0).toFixed(0)}
@@ -480,7 +487,6 @@ export default function Stores() {
                 type="text"
                 required
                 className="input-control"
-                placeholder="e.g. Apex Cafe & Bakery, Nike Gulberg"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
@@ -495,7 +501,6 @@ export default function Stores() {
                   type="email"
                   required
                   className="input-control"
-                  placeholder="merchant@brand.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
@@ -510,7 +515,6 @@ export default function Stores() {
                   required
                   minLength={6}
                   className="input-control"
-                  placeholder="Min. 6 characters"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
@@ -525,7 +529,6 @@ export default function Stores() {
                 <input
                   type="text"
                   className="input-control"
-                  placeholder="e.g. Cafe, Retail, Dining"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 />
@@ -538,7 +541,6 @@ export default function Stores() {
                 <input
                   type="text"
                   className="input-control"
-                  placeholder="e.g. Downtown Mall, Floor 1"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 />
@@ -631,7 +633,6 @@ export default function Stores() {
                   <form onSubmit={handleResetPassword} style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed var(--border-light)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
                       type="password"
-                      placeholder="Set new merchant password..."
                       value={resetPwd}
                       onChange={(e) => setResetPwd(e.target.value)}
                       className="input-control"
@@ -768,7 +769,6 @@ export default function Stores() {
               type="text"
               required
               className="input-control"
-              placeholder="e.g. 20% Off Entire Summer Menu"
               value={dealForm.title}
               onChange={(e) => setDealForm({ ...dealForm, title: e.target.value })}
             />
@@ -781,7 +781,6 @@ export default function Stores() {
             <input
               type="text"
               className="input-control"
-              placeholder="Valid on dine-in and takeaway orders"
               value={dealForm.description}
               onChange={(e) => setDealForm({ ...dealForm, description: e.target.value })}
             />
@@ -840,7 +839,6 @@ export default function Stores() {
                 type="number"
                 min="0"
                 className="input-control"
-                placeholder="Unlimited"
                 value={dealForm.inventory}
                 onChange={(e) => setDealForm({ ...dealForm, inventory: e.target.value })}
               />

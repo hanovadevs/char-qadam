@@ -3,6 +3,7 @@
 Wires up config, PostgreSQL lifespan, CORS, Middlewares, and all Feature routers.
 """
 from contextlib import asynccontextmanager
+import httpx
 
 from pathlib import Path
 from fastapi import FastAPI
@@ -24,6 +25,7 @@ from app.routers import (
     partner,
     points,
     users,
+    support,
     vouchers,
 )
 
@@ -33,7 +35,9 @@ async def lifespan(app: FastAPI):
     """Manage startup/shutdown: warm-up and dispose the PostgreSQL engine."""
     # Touch the engine on startup so misconfigured DATABASE_URL fails fast.
     get_engine()
-    yield
+    async with httpx.AsyncClient(timeout=12.0, limits=httpx.Limits(max_connections=10, max_keepalive_connections=5)) as client:
+        app.state.support_ai_client = client
+        yield
     await dispose_engine()
 
 
@@ -44,6 +48,9 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="0.1.0",
         lifespan=lifespan,
+        docs_url=None if settings.environment.lower() == "production" else "/docs",
+        redoc_url=None if settings.environment.lower() == "production" else "/redoc",
+        openapi_url=None if settings.environment.lower() == "production" else "/openapi.json",
     )
 
     # Core middlewares
@@ -67,7 +74,10 @@ def create_app() -> FastAPI:
     app.include_router(vouchers.router)
     app.include_router(partner.router)
     app.include_router(leaderboard.router)
+    app.include_router(admin.auth_router)
     app.include_router(admin.router)
+    app.include_router(support.router)
+    app.include_router(support.admin_router)
 
 
     # Mount Static Web Admin Portal
@@ -94,6 +104,7 @@ def create_app() -> FastAPI:
         @app.get("/users", include_in_schema=False)
         @app.get("/ledger", include_in_schema=False)
         @app.get("/audit", include_in_schema=False)
+        @app.get("/support", include_in_schema=False)
         @app.get("/settings", include_in_schema=False)
         @app.get("/partners", include_in_schema=False)
         @app.get("/offers", include_in_schema=False)

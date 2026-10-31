@@ -5,7 +5,8 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
-    PORT=8000
+    PORT=8000 \
+    WEB_CONCURRENCY=2
 
 WORKDIR /app
 
@@ -22,8 +23,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+RUN useradd --system --uid 10001 --create-home qadam
+USER qadam
+
 # Expose port
 EXPOSE 8000
 
 # Run uvicorn server
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers ${WEB_CONCURRENCY} --limit-concurrency 200 --timeout-keep-alive 5

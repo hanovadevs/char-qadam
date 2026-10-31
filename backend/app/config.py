@@ -2,7 +2,7 @@
 from functools import lru_cache
 from typing import Union
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +42,13 @@ class Settings(BaseSettings):
             return v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
 
+    # Per-worker connection budget; multiply by WEB_CONCURRENCY on the VPS.
+    db_ssl_ca_file: str | None = None
+    db_pool_size: int = Field(default=5, ge=1, le=100)
+    db_max_overflow: int = Field(default=5, ge=0, le=100)
+    db_pool_timeout: int = Field(default=10, ge=1, le=60)
+    db_command_timeout: int = Field(default=15, ge=1, le=120)
+
     # Points engine — server-side earning rule
     steps_per_point: int = 100          # 100 steps = 1 point
     daily_step_cap: int = 20_000        # max eligible steps counted per day
@@ -53,6 +60,17 @@ class Settings(BaseSettings):
     # Secret used to HMAC-sign validate→redeem nonces.  Defaults to jwt_secret.
     partner_nonce_secret: str = ""      # if empty, falls back to jwt_secret at runtime
     nonce_max_age_seconds: int = 300    # 5 minutes — nonce window between validate and redeem
+
+    # AI support: server-only key, fixed low-cost model, no tools or history.
+    openai_api_key: str = ""
+    openai_support_model: str = "gpt-4.1-mini"
+
+    @field_validator("openai_support_model")
+    @classmethod
+    def _support_model_allowlist(cls, value):
+        if value != "gpt-4.1-mini":
+            raise ValueError("Support AI only permits the approved gpt-4.1-mini model")
+        return value
 
     # OAuth (Google / Supabase)
     google_client_id: str = ""
@@ -71,7 +89,11 @@ class Settings(BaseSettings):
     def _validate_production_invariants(self) -> "Settings":
         """Enforce strict security requirements when deployed in production."""
         if self.environment.lower() == "production":
-            if self.jwt_secret in ("change-me-in-production", "secret", "test-secret") or len(self.jwt_secret) < 32:
+            if self.admin_password in {"admin123", "admin123@"} or self.admin_password.startswith("replace-") or len(self.admin_password) < 16:
+                raise ValueError("Production requires a unique ADMIN_PASSWORD of at least 16 characters")
+            if "*" in self.cors_origins:
+                raise ValueError("Production requires explicit CORS_ORIGINS")
+            if self.jwt_secret.startswith("change-me") or self.jwt_secret in ("secret", "test-secret") or len(self.jwt_secret) < 32:
                 raise ValueError(
                     "CRITICAL: Production deployment requires a secure JWT_SECRET with at least 32 characters! "
                     "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"

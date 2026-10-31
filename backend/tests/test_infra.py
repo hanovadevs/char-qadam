@@ -35,16 +35,16 @@ async def test_health_liveness_and_readiness(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_partner_provisioning(client: AsyncClient) -> None:
+async def test_admin_partner_provisioning(client: AsyncClient, admin_headers) -> None:
     partner_name = f"Test Bakery {uuid.uuid4().hex[:6]}"
     factory = get_session_factory()
     partner_id: str | None = None
 
     try:
-        resp = await client.post("/admin/partners", json={"name": partner_name})
+        resp = await client.post("/admin/partners", headers=admin_headers, json={"name": partner_name, "email": f"merchant-{uuid.uuid4().hex}@example.com", "password": "unique-merchant-password", "generate_api_key": True})
         assert resp.status_code == 201
         data = resp.json()
-        partner_id = data["partner_id"]
+        partner_id = data["id"]
         raw_key = data["raw_api_key"]
 
         assert data["name"] == partner_name
@@ -62,7 +62,7 @@ async def test_admin_partner_provisioning(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_voucher_expiration_sweep(client: AsyncClient) -> None:
+async def test_voucher_expiration_sweep(client: AsyncClient, admin_headers) -> None:
     factory = get_session_factory()
     partner_id = str(uuid.uuid4())
     offer_id = str(uuid.uuid4())
@@ -96,7 +96,7 @@ async def test_voucher_expiration_sweep(client: AsyncClient) -> None:
             await session.commit()
 
         # Trigger sweep endpoint
-        sweep_resp = await client.post("/admin/vouchers/sweep-expired")
+        sweep_resp = await client.post("/admin/vouchers/sweep-expired", headers=admin_headers)
         assert sweep_resp.status_code == 200
         data = sweep_resp.json()
         assert data["swept_count"] >= 1
@@ -113,3 +113,16 @@ async def test_voucher_expiration_sweep(client: AsyncClient) -> None:
             await session.execute(delete(Partner).where(Partner.id == partner_id))
             await session.execute(delete(User).where(User.id == user_id))
             await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_admin_analytics_queries_and_live_system_settings(client, admin_headers):
+    overview = await client.get('/admin/analytics/overview', headers=admin_headers)
+    assert overview.status_code == 200
+    assert 'fixed_discount_value' in overview.json()
+    charts = await client.get('/admin/analytics/charts', headers=admin_headers)
+    assert charts.status_code == 200
+    assert 'daily_steps' in charts.json()
+    system = await client.get('/admin/system', headers=admin_headers)
+    assert system.status_code == 200
+    assert system.json()['rewards']['daily_step_cap'] == 20000

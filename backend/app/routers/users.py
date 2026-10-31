@@ -13,10 +13,14 @@ there is no token blacklist to maintain for the MVP.
 """
 from __future__ import annotations
 
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, select, update
+import secrets
+import uuid
 
-from app.db.models import User, UserStatus
+from app.db.models import User, UserStatus, ActivityDaily, Device, SupportTicket, Voucher, VoucherStatus, Partner, PartnerStatus, Offer, OfferStatus
 from app.db.postgres import get_session
 from app.deps import get_current_user
 from app.schemas.auth import UserOut
@@ -52,7 +56,7 @@ async def patch_me(
         updated = True
 
     if body.password is not None:
-        current_user.password_hash = hash_password(body.password)
+        current_user.password_hash = await run_in_threadpool(hash_password, body.password)
         updated = True
 
     if updated:
@@ -80,6 +84,27 @@ async def delete_me(
 
     Returns **204 No Content** on success.
     """
+    # Erase direct identifiers and health/support data. Preserve only anonymized
+    # transaction links required by voucher/redemption foreign keys.
+    await session.execute(select(User.id).where(User.id == current_user.id).with_for_update())
+    await session.execute(delete(ActivityDaily).where(ActivityDaily.user_id == current_user.id))
+    await session.execute(delete(Device).where(Device.user_id == current_user.id))
+    await session.execute(delete(SupportTicket).where(SupportTicket.user_id == current_user.id))
+    await session.execute(update(Voucher).where(Voucher.user_id == current_user.id, Voucher.status == VoucherStatus.ISSUED).values(status=VoucherStatus.CANCELLED))
+    if current_user.partner_id:
+        partner = await session.get(Partner, current_user.partner_id)
+        if partner:
+            partner.email = None
+            partner.password_hash = None
+            partner.name = "Closed merchant"
+            partner.description = None
+            partner.location = None
+            partner.status = PartnerStatus.INACTIVE
+            await session.execute(update(Offer).where(Offer.partner_id == partner.id).values(status=OfferStatus.INACTIVE))
+    current_user.email = f"deleted-{uuid.uuid4().hex}@deleted.invalid"
+    current_user.password_hash = await run_in_threadpool(hash_password, secrets.token_urlsafe(32))
+    current_user.country = None
+    current_user.timezone = None
     current_user.status = UserStatus.DELETED
     session.add(current_user)
     await session.commit()

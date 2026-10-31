@@ -41,6 +41,7 @@ from app.services.partner_auth import hash_api_key
 @pytest.mark.asyncio
 async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
     factory = get_session_factory()
+    user_id = None
     email = f"e2e_{uuid.uuid4().hex[:8]}@example.com"
     password = "E2EPassword123!"
     raw_partner_key = f"e2e-key-{uuid.uuid4().hex}"
@@ -82,6 +83,7 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
         assert reg_resp.status_code == 201, reg_resp.text
         user_token = reg_resp.json()["access_token"]
         user_headers = {"Authorization": f"Bearer {user_token}"}
+        user_id = (await client.get('/auth/me', headers=user_headers)).json()['id']
         partner_headers = {"X-Partner-Key": raw_partner_key}
 
         # --- STEP 2: Sync Steps (15,000 steps -> 150 points) ---
@@ -187,12 +189,12 @@ async def test_full_e2e_lifecycle(client: AsyncClient) -> None:
 
         # Verify token is immediately revoked
         revoked_me = await client.get("/auth/me", headers=user_headers)
-        assert revoked_me.status_code == 403
+        assert revoked_me.status_code == 401
 
     finally:
         # --- CLEANUP ---
         async with factory() as session:
-            res = await session.execute(select(User).where(User.email == email))
+            res = await session.execute(select(User).where(User.id == user_id))
             user = res.scalar_one_or_none()
             if user:
                 await session.execute(delete(Redemption).where(Redemption.partner_id == partner_id))

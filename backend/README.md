@@ -1,44 +1,15 @@
-# Qadam Backend (FastAPI)
+# Stepsy API
 
-Async FastAPI + MongoDB (Motor) backend for the Qadam run-to-earn app.
+FastAPI, SQLAlchemy/asyncpg, PostgreSQL, PyJWT and bcrypt. Configuration is loaded from environment variables or `.env`; use `.env.example` as a guide and keep real secrets outside Git.
 
-## Setup
+Use Python 3.12. Install `requirements.txt`, configure the database, and run `uvicorn app.main:app --reload` for development. Production uses reviewed worker/proxy settings under `deploy/`; see the [handoff](../docs/PRODUCTION-HANDOFF.md) before applying migrations or deploying.
 
-```bash
-cd backend
-python -m venv .venv
-# Windows PowerShell:
-.venv\Scripts\Activate.ps1
-# macOS/Linux:
-source .venv/bin/activate
-
-pip install -r requirements.txt
-cp .env.example .env   # then edit values
-```
-
-## Run
+Integration tests require an explicit `TEST_DATABASE_URL`. They create and drop their own isolated schema rather than writing test data into public application tables:
 
 ```bash
-uvicorn app.main:app --reload
+TEST_DATABASE_URL=postgresql+asyncpg://user:password@localhost/testdb python -m pytest tests -q
 ```
 
-- App root: http://127.0.0.1:8000/
-- Health check: http://127.0.0.1:8000/health
-- Swagger docs: http://127.0.0.1:8000/docs
+For TLS test databases, set `TEST_DB_SSL_CA_FILE` as well. Database-free security tests can run with `python -m pytest tests/unit --confcutdir=tests/unit -q`.
 
-## Layout
-
-```
-backend/
-├── app/
-│   ├── main.py          # FastAPI app factory + lifespan
-│   ├── config.py        # Settings (env-driven)
-│   ├── db/              # MongoDB (Motor) connection
-│   ├── routers/         # API routers (health.py for now)
-│   ├── models/          # Pydantic v2 models (empty scaffold)
-│   └── services/        # Business logic (empty scaffold)
-├── requirements.txt
-└── .env.example
-```
-
-> Scaffold only — no features implemented yet.
+Support AI is disabled by default. Set `OPENAI_API_KEY` on the backend and explicitly enable bounded usage in Admin → Support. Never put the key in Flutter or Vite configuration.

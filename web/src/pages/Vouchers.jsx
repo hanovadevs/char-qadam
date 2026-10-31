@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import Badge from '../components/Badge';
 import { Search, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function Vouchers() {
-  // POS Simulator State
+  // POS State
   const [shortCode, setShortCode] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
   const [lookingUp, setLookingUp] = useState(false);
@@ -15,26 +15,34 @@ export default function Vouchers() {
   // Vouchers Table State
   const [vouchers, setVouchers] = useState([]);
   const [search, setSearch] = useState('');
+  const requestVersion = useRef(0);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
 
   const fetchVouchers = async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
     try {
       const data = await api.listVouchers({
         search: search.trim() || undefined,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
       });
+      if (version !== requestVersion.current) return;
       setVouchers(data || []);
     } catch (err) {
+      if (version !== requestVersion.current) return;
       console.error('Error fetching vouchers:', err);
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVouchers();
+    const timer = setTimeout(fetchVouchers, search ? 300 : 0);
+    return () => {
+      clearTimeout(timer);
+      requestVersion.current += 1;
+    };
   }, [search, statusFilter]);
 
   const handleLookup = async (e) => {
@@ -124,7 +132,6 @@ export default function Vouchers() {
             type="text"
             required
             className="input-control font-mono"
-            placeholder="Enter short code (e.g. ST-ABCD)"
             value={shortCode}
             onChange={(e) => setShortCode(e.target.value.toUpperCase())}
             style={{ textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em' }}
@@ -257,7 +264,6 @@ export default function Vouchers() {
                 type="text"
                 className="input-control"
                 style={{ paddingLeft: '32px', fontSize: '12px', padding: '6px 12px 6px 32px' }}
-                placeholder="Search code or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
@@ -8,6 +8,7 @@ export default function Deals() {
   const [deals, setDeals] = useState([]);
   const [partners, setPartners] = useState([]);
   const [search, setSearch] = useState('');
+  const requestVersion = useRef(0);
   const [partnerFilter, setPartnerFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
@@ -29,6 +30,7 @@ export default function Deals() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchData = async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
     setError(null);
     try {
@@ -40,17 +42,23 @@ export default function Deals() {
         }),
         api.listPartners(),
       ]);
+      if (version !== requestVersion.current) return;
       setDeals(dealsData || []);
       setPartners(partnersData || []);
     } catch (err) {
+      if (version !== requestVersion.current) return;
       setError(err.message || 'Failed to load deals.');
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    const timer = setTimeout(fetchData, search ? 300 : 0);
+    return () => {
+      clearTimeout(timer);
+      requestVersion.current += 1;
+    };
   }, [search, partnerFilter, statusFilter]);
 
   const handleCreateDeal = async (e) => {
@@ -147,7 +155,6 @@ export default function Deals() {
               type="text"
               className="input-control"
               style={{ paddingLeft: '36px' }}
-              placeholder="Search deals..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -318,7 +325,6 @@ export default function Deals() {
               type="text"
               required
               className="input-control"
-              placeholder="e.g. 20% Off Footwear Collection"
               value={dealForm.title}
               onChange={(e) => setDealForm({ ...dealForm, title: e.target.value })}
             />
@@ -331,7 +337,6 @@ export default function Deals() {
             <input
               type="text"
               className="input-control"
-              placeholder="Valid on orders over $50"
               value={dealForm.description}
               onChange={(e) => setDealForm({ ...dealForm, description: e.target.value })}
             />
@@ -390,7 +395,6 @@ export default function Deals() {
                 type="number"
                 min="0"
                 className="input-control"
-                placeholder="Unlimited"
                 value={dealForm.inventory}
                 onChange={(e) => setDealForm({ ...dealForm, inventory: e.target.value })}
               />

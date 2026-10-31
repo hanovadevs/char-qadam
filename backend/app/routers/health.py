@@ -54,7 +54,7 @@ async def health_ready(session: AsyncSession = Depends(get_session)) -> dict:
                 "database": {
                     "status": "error",
                     "latency_ms": latency_ms,
-                    "error": str(e),
+                    "error": "Database unavailable",
                 },
                 "time": datetime.now(timezone.utc).isoformat(),
             },

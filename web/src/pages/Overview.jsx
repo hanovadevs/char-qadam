@@ -18,7 +18,7 @@ export default function Overview() {
       const [overviewData, chartData, redemptions] = await Promise.all([
         api.getAnalyticsOverview(),
         api.getAnalyticsCharts(),
-        api.listRedemptions(),
+        api.listRedemptions({ limit: 8 }),
       ]);
       setMetrics(overviewData);
       setCharts(chartData);
@@ -98,12 +98,12 @@ export default function Overview() {
         <StatCard
           label="Registered Users"
           value={loading ? '...' : formatNumber(metrics?.total_users)}
-          subtext="Active walkers"
+          subtext="Registered accounts"
         />
         <StatCard
           label="Eligible Steps"
           value={loading ? '...' : formatNumber(metrics?.total_steps)}
-          subtext="Verified pedometer steps"
+          subtext="Synced eligible step totals"
         />
         <StatCard
           label="Partner Stores"
@@ -121,9 +121,9 @@ export default function Overview() {
           subtext="Completed POS redemptions"
         />
         <StatCard
-          label="Customer Savings"
-          value={loading ? '...' : formatCurrency(metrics?.total_customer_savings)}
-          subtext="Direct consumer value delivered"
+          label="Fixed discounts redeemed"
+          value={loading ? '...' : formatCurrency(metrics?.fixed_discount_value)}
+          subtext="Face value; excludes percentage offers"
         />
       </div>
 
@@ -254,7 +254,7 @@ export default function Overview() {
               Recent POS Voucher Redemptions
             </h3>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Live log of vouchers redeemed at merchant cash counters
+              Most recent recorded voucher redemptions
             </p>
           </div>
           <Link to="/vouchers" style={{ fontSize: '12px', fontWeight: '600', color: 'var(--brand-teal)', textDecoration: 'none' }}>
@@ -286,7 +286,7 @@ export default function Overview() {
                     {formatCurrency(r.discount_value)}
                   </td>
                   <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : 'Just now'}
+                    {r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : 'Unavailable'}
                   </td>
                   <td>
                     <Badge status="REDEEMED" label="REDEEMED" />

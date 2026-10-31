@@ -12,7 +12,6 @@ Correctness invariants (MVP_PLAN.md §1):
 from __future__ import annotations
 
 import hashlib
-import random
 import secrets
 import string
 import uuid
@@ -21,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -28,6 +28,8 @@ from app.db.models import (
     LedgerReason,
     Offer,
     OfferStatus,
+    Partner,
+    PartnerStatus,
     PointsLedger,
     User,
     Voucher,
@@ -44,7 +46,7 @@ _CODE_CHARS = "".join(
 
 def _generate_short_code() -> str:
     """Return a short code like SR-7K4Q-92MX."""
-    part = lambda n: "".join(random.choices(_CODE_CHARS, k=n))  # noqa: E731
+    part = lambda n: "".join([secrets.choice(_CODE_CHARS) for _ in range(n)])  # noqa: E731
     return f"SR-{part(4)}-{part(4)}"
 
 
@@ -104,6 +106,9 @@ async def redeem_offer(
     if offer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
 
+    partner = await session.get(Partner, offer.partner_id)
+    if partner is None or partner.status != PartnerStatus.ACTIVE:
+        raise HTTPException(status_code=409, detail="The merchant is not currently active")
     if offer.status != OfferStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offer is not active")
 
@@ -155,13 +160,14 @@ async def redeem_offer(
             issued_at=now,
             expires_at=expires_at,
         )
-        session.add(voucher)
         try:
-            await session.flush()   # write to DB within transaction; catch unique violations
+            async with session.begin_nested():
+                session.add(voucher)
+                await session.flush()
             break
-        except Exception as exc:
-            if "uq_vouchers_short_code" in str(exc).lower() and attempt < 4:
-                session.expunge(voucher)
+        except IntegrityError as exc:
+            constraint = getattr(getattr(exc.orig, "__cause__", None), "constraint_name", "") or ""
+            if constraint in {"uq_vouchers_short_code", "vouchers_short_code_key"} and attempt < 4:
                 continue
             raise
 

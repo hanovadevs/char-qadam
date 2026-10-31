@@ -1,10 +1,11 @@
 # Qadam backend dependencies (Python 3.12)
 # Web framework + ASGI server
-fastapi==0.118.0
+fastapi==0.162.0
+starlette==1.10.0
 uvicorn[standard]==0.37.0
 
 # Data validation / settings (Pydantic v2)
-pydantic==2.11.10
+pydantic==2.14.2
 pydantic-settings==2.7.1
 
 # PostgreSQL async ORM + migrations
@@ -14,15 +15,14 @@ alembic==1.16.2
 greenlet==3.2.3
 
 # Auth: JWT + password hashing
-python-jose[cryptography]==3.5.0
-passlib[bcrypt]==1.7.4
-bcrypt==4.3.0                 # passlib 1.7.4 is incompatible with bcrypt>=5.x
+PyJWT==2.15.1
+bcrypt==4.3.0
 
 # Misc
-python-multipart==0.0.20
+python-multipart==0.0.33
 email-validator==2.2.0
 
 # Dev / testing
 httpx==0.28.1
-pytest==8.4.2
-pytest-asyncio==0.24.0
+pytest==9.2.0
+pytest-asyncio==1.4.1

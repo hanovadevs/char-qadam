@@ -14,7 +14,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import Offer, OfferStatus, User
+from app.db.models import Offer, OfferStatus, User, Partner, PartnerStatus
 from app.db.postgres import get_session
 from app.deps import get_current_user
 from app.schemas.offers import OfferOut, RedeemOut
@@ -43,8 +43,9 @@ async def list_offers(
     now = datetime.now(timezone.utc)
 
     result = await session.execute(
-        select(Offer)
+        select(Offer).join(Partner, Partner.id == Offer.partner_id)
         .where(
+            Partner.status == PartnerStatus.ACTIVE,
             Offer.status == OfferStatus.ACTIVE,
             or_(Offer.starts_at.is_(None), Offer.starts_at <= now),
             or_(Offer.ends_at.is_(None), Offer.ends_at >= now),

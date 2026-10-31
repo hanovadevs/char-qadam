@@ -7,7 +7,8 @@ GET  /activity?range=...       Aggregated step totals (today | week | month).
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -21,6 +22,14 @@ from app.schemas.activity import ActivityPeriod, ActivityRangeOut, SyncIn, SyncO
 from app.services.activity import sync_activity
 
 router = APIRouter(prefix="/activity", tags=["activity"])
+
+
+def _local_today(user):
+    try:
+        return datetime.now(ZoneInfo(user.timezone or "Asia/Karachi")).date()
+    except (ZoneInfoNotFoundError, ValueError):
+        return datetime.now(timezone.utc).date()
+
 
 
 @router.post(
@@ -51,7 +60,7 @@ async def sync(
             detail="Invalid date format. Expected YYYY-MM-DD",
         )
 
-    today = date.today()
+    today = _local_today(current_user)
     if sync_date > today:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -65,6 +74,8 @@ async def sync(
 
     # 2. Execute sync service
     settings = get_settings()
+    if settings.environment.lower() == "production" and body.source in {"manual", "manual_debug"}:
+        raise HTTPException(status_code=403, detail="Manual step entry is disabled")
     result = await sync_activity(
         user_id=current_user.id,
         local_date=body.local_date,
@@ -98,7 +109,7 @@ async def get_activity(
     Days with no synced data are omitted from ``days`` but counted in the
     date window for ``total_steps``.
     """
-    today = date.today()
+    today = _local_today(current_user)
     if range == "today":
         start = today
     elif range == "week":

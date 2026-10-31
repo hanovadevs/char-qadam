@@ -1,40 +1,11 @@
-# Qadam — Run to Earn 🏃
+# Stepsy / Qadam
 
-A "run to earn" mobile app for Pakistan. Users track runs via GPS, earn points,
-and redeem them for discount coupons / cashback sourced from affiliate networks
-(Awin, later phase).
+Flutter walking-rewards app, React admin console, and FastAPI/PostgreSQL backend.
 
-> **Status:** Initial scaffold only. No features implemented yet.
+- `mobile/`: Android/iOS app, step tracking, points, rewards, wallet, support, and notification preferences.
+- `web/`: admin accounts, merchants, offers, vouchers/POS, ledger, audits, operational status, and support inbox.
+- `backend/`: async API, authentication, points ledger, voucher issuance/redemption, and support/AI cost controls.
 
-## Repository
+See [production and Play Store handoff](docs/PRODUCTION-HANDOFF.md) for verification results, deployment settings, Android setup, and outstanding release requirements. Repository changes must be reconciled with the deployed VPS code and migration revision before rollout.
 
-| Path | What |
-|------|------|
-| [`/mobile`](./mobile) | Flutter app (Android + iOS) — Riverpod, go_router, geolocator, pedometer. |
-| [`/backend`](./backend) | FastAPI (async) + MongoDB via Motor. |
-
-## Tracking docs
-
-- [TECH_STACK.md](./TECH_STACK.md) — technologies, libraries, versions, rationale.
-- [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) — folder/file layout.
-- [REQUIREMENTS.md](./REQUIREMENTS.md) — MVP functional requirements.
-- [MODULES.md](./MODULES.md) — module/feature status checklist.
-
-## Quick start
-
-**Backend**
-```bash
-cd backend
-python -m venv .venv && .venv\Scripts\Activate.ps1   # Windows
-pip install -r requirements.txt
-uvicorn app.main:app --reload        # http://127.0.0.1:8000/health
-```
-& "d:\Personal projects\char-qadam\backend\.venv\Scripts\uvicorn.exe" app.main:app --host 127.0.0.1 --port 8000 --reload
-
-
-**Mobile**
-```bash
-cd mobile
-flutter pub get
-flutter run
-```
+For the Pixel/Java/aapt setup, run the instructions in [mobile/README.md](mobile/README.md).

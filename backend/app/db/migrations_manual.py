@@ -1,8 +1,10 @@
 import asyncio
+import secrets
 import asyncpg
 from app.services.security import hash_password
+from app.config import get_settings
 
-DATABASE_URL = 'postgresql://postgres.uvnkotnnuqjphayudceh:itKLW*5*PpS8Fxc@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres'
+DATABASE_URL = get_settings().database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 async def migrate():
     print("Connecting to Supabase PostgreSQL database...")
@@ -20,7 +22,7 @@ async def migrate():
     partners = await conn.fetch("SELECT id, name, email, password_hash FROM public.partners;")
     print(f"Found {len(partners)} existing partners in database.")
 
-    default_hash = hash_password("store123@")
+    default_hash = hash_password(secrets.token_urlsafe(32))
 
     for p in partners:
         p_id = p['id']
@@ -51,7 +53,7 @@ async def migrate():
                 INSERT INTO public.users (id, email, password_hash, status, role, partner_id)
                 VALUES ($1, $2, $3, 'ACTIVE', 'MERCHANT', $4);
             """, user_id, p_email, p_hash, p_id)
-            print(f"Created new merchant user {p_email} for partner '{p_name}' (password: store123@ if not set)")
+            print(f"Created new merchant user {p_email} for partner '{p_name}' (reset the merchant password in the admin panel)")
 
     await conn.close()
     print("Migration and backfill completed successfully!")

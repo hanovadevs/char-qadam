@@ -5,7 +5,7 @@ reused by the activity sync and the voucher redeem flow.
 """
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import LedgerReason, PointsLedger
@@ -27,22 +27,12 @@ async def get_balance(user_id: str, session: AsyncSession) -> int:
 
 async def get_balance_breakdown(user_id: str, session: AsyncSession) -> dict:
     """Return balance, total_earned, and total_spent for *user_id*."""
-    balance = await get_balance(user_id, session)
-
-    earned_result = await session.execute(
-        select(func.coalesce(func.sum(PointsLedger.delta), 0)).where(
-            PointsLedger.user_id == user_id,
-            PointsLedger.reason == LedgerReason.STEP_EARN,
-        )
+    result = await session.execute(
+        select(
+            func.coalesce(func.sum(PointsLedger.delta), 0),
+            func.coalesce(func.sum(case((PointsLedger.reason == LedgerReason.STEP_EARN, PointsLedger.delta), else_=0)), 0),
+            func.coalesce(func.sum(case((PointsLedger.reason == LedgerReason.OFFER_SPEND, PointsLedger.delta), else_=0)), 0),
+        ).where(PointsLedger.user_id == user_id)
     )
-    total_earned = int(earned_result.scalar())
-
-    spent_result = await session.execute(
-        select(func.coalesce(func.sum(PointsLedger.delta), 0)).where(
-            PointsLedger.user_id == user_id,
-            PointsLedger.reason == LedgerReason.OFFER_SPEND,
-        )
-    )
-    total_spent = abs(int(spent_result.scalar()))  # stored as negative; return positive
-
-    return {"balance": balance, "total_earned": total_earned, "total_spent": total_spent}
+    balance, earned, spent = result.one()
+    return {"balance": int(balance), "total_earned": int(earned), "total_spent": abs(int(spent))}

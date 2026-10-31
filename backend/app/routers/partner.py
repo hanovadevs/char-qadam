@@ -128,6 +128,8 @@ async def validate_voucher(
     voucher, offer = row
     now = datetime.now(timezone.utc)
 
+    if offer.partner_id != partner.id:
+        raise HTTPException(status_code=404, detail="Voucher not found")
     if voucher.status != VoucherStatus.ISSUED:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -192,6 +194,7 @@ async def redeem_voucher(
             Voucher.id == voucher_id,
             Voucher.status == VoucherStatus.ISSUED,
             Voucher.expires_at > now,
+            Voucher.offer_id.in_(select(Offer.id).where(Offer.partner_id == partner.id)),
         )
         .values(status=VoucherStatus.REDEEMED, redeemed_at=now)
         .returning(Voucher.id, Voucher.short_code, Voucher.offer_id)

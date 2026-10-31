@@ -22,6 +22,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    Index,
     Numeric,
     String,
     Text,
@@ -298,3 +299,53 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class SupportTicket(Base):
+    __tablename__ = 'support_tickets'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
+    subject: Mapped[str] = mapped_column(String(120))
+    category: Mapped[str] = mapped_column(String(24))
+    status: Mapped[str] = mapped_column(String(16), default='OPEN', index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
+class SupportMessage(Base):
+    __tablename__ = 'support_messages'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey('support_tickets.id', ondelete='CASCADE'), index=True)
+    author: Mapped[str] = mapped_column(String(16))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class SupportAISettings(Base):
+    __tablename__ = 'support_ai_settings'
+    id: Mapped[str] = mapped_column(String(16), primary_key=True, default='global')
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    user_daily_limit: Mapped[int] = mapped_column(Integer, default=5)
+    global_daily_limit: Mapped[int] = mapped_column(Integer, default=300)
+    daily_token_budget: Mapped[int] = mapped_column(Integer, default=200000)
+
+
+class SupportAIUsage(Base):
+    __tablename__ = 'support_ai_usage'
+    user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    day: Mapped[str] = mapped_column(String(10), primary_key=True, index=True)
+    requests: Mapped[int] = mapped_column(Integer, default=0)
+    charged_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    last_request_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# Keep ORM-created test databases aligned with the production query indexes.
+Index('ix_ledger_user_id', PointsLedger.user_id)
+Index('ix_ledger_user_created', PointsLedger.user_id, PointsLedger.created_at.desc())
+Index('ix_activity_date_user', ActivityDaily.local_date, ActivityDaily.user_id)
+Index('ix_users_created_id', User.created_at.desc(), User.id)
+Index('ix_vouchers_user_status', Voucher.user_id, Voucher.status)
+Index('ix_vouchers_status_expiry', Voucher.status, Voucher.expires_at)
+Index('ix_offers_partner', Offer.partner_id)

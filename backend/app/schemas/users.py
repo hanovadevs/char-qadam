@@ -1,10 +1,19 @@
 """Pydantic schemas for user profile endpoints."""
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
-class PatchUserIn(BaseModel):
+class PasswordInput(BaseModel):
+    @field_validator("password", "new_password", check_fields=False)
+    @classmethod
+    def validate_password_bytes(cls, value):
+        if value is not None and len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 UTF-8 bytes")
+        return value
+
+
+class PatchUserIn(PasswordInput):
     """Body for PATCH /users/me.
 
     All fields are optional — only supplied fields are updated.

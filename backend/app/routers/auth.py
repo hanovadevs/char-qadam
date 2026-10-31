@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import uuid
 
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -34,6 +36,7 @@ from app.schemas.auth import (
 )
 from app.services.security import (
     create_access_token,
+    create_user_access_token,
     create_password_reset_token,
     decode_password_reset_token,
     hash_password,
@@ -71,16 +74,20 @@ async def register(
     user = User(
         id=str(uuid.uuid4()),
         email=body.email,
-        password_hash=hash_password(body.password),
+        password_hash=await run_in_threadpool(hash_password, body.password),
         status=UserStatus.ACTIVE,
         country=body.country,
         timezone=body.timezone,
     )
     session.add(user)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="An account with this email already exists")
 
     return TokenOut(
-        access_token=create_access_token(user.id, extra_claims={"role": user.role}),
+        access_token=create_user_access_token(user),
         role=user.role,
     )
 
@@ -104,7 +111,7 @@ async def login(
     )
     user = result.scalar_one_or_none()
 
-    if user is None or not verify_password(body.password, user.password_hash):
+    if user is None or not await run_in_threadpool(verify_password, body.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -123,13 +130,7 @@ async def login(
         if partner:
             partner_name = partner.name
 
-    token = create_access_token(
-        user.id,
-        extra_claims={
-            "role": user.role,
-            "partner_id": user.partner_id,
-        },
-    )
+    token = create_user_access_token(user)
     return TokenOut(
         access_token=token,
         role=user.role,
@@ -182,7 +183,7 @@ async def google_auth(
         user = User(
             id=str(uuid.uuid4()),
             email=email,
-            password_hash=hash_password(f"GoogleOAuth:{uuid.uuid4()}"),
+            password_hash=await run_in_threadpool(hash_password, f"GoogleOAuth:{uuid.uuid4()}"),
             status=UserStatus.ACTIVE,
             country=body.country,
             timezone=body.timezone,
@@ -203,7 +204,7 @@ async def google_auth(
             partner_name = partner.name
 
     return TokenOut(
-        access_token=create_access_token(user.id, extra_claims={"role": user.role, "partner_id": user.partner_id}),
+        access_token=create_user_access_token(user),
         role=user.role,
         partner_id=user.partner_id,
         partner_name=partner_name,
@@ -223,6 +224,9 @@ async def forgot_password(
 
     Returns 200 regardless of whether the email exists to prevent enumeration.
     """
+    if get_settings().environment.lower() == "production":
+        # No email transport exists yet. Never expose account takeover tokens.
+        raise HTTPException(status_code=503, detail="Password recovery is temporarily unavailable. Contact support.")
     result = await session.execute(
         select(User).where(User.email == body.email)
     )
@@ -267,7 +271,7 @@ async def reset_password(
             detail="User not found or account is inactive",
         )
 
-    user.password_hash = hash_password(body.new_password)
+    user.password_hash = await run_in_threadpool(hash_password, body.new_password)
     await session.commit()
 
     return ResetPasswordOut(

@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import secrets
+import hmac
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, EmailStr
-from sqlalchemy import delete, desc, func, or_, select, update
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy import case, delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -32,9 +34,14 @@ from app.db.models import (
 from app.db.postgres import get_session
 from app.services.partner_auth import hash_api_key
 from app.services.security import create_access_token, hash_password
+from app.schemas.auth import PasswordInput
 from app.services.voucher_sweep import sweep_expired_vouchers
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+from app.deps import require_admin
+
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
+auth_router = APIRouter(prefix="/admin", tags=["admin"])
+
 
 
 # ---------------------------------------------------------------------------
@@ -43,26 +50,40 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 class AdminLoginIn(BaseModel):
     email: str
-    password: str
+    password: str = Field(min_length=8, max_length=72)
 
 
 class AdminUserStatusIn(BaseModel):
-    status: str
+    status: str = Field(pattern="^(ACTIVE|SUSPENDED|DELETED)$")
 
 
 class AdminAdjustPointsIn(BaseModel):
-    delta: int
-    reason_note: str
+    delta: int = Field(ge=-1000000, le=1000000)
+    reason_note: str = Field(min_length=3, max_length=64)
+
+    @field_validator("reason_note")
+    @classmethod
+    def reason_required(cls, value):
+        if len(value.strip()) < 3:
+            raise ValueError("A meaningful adjustment reason is required")
+        return value.strip()
+
+    @field_validator("delta")
+    @classmethod
+    def nonzero_delta(cls, value):
+        if value == 0:
+            raise ValueError("Adjustment must be nonzero")
+        return value
 
 
-class AdminPartnerIn(BaseModel):
+class AdminPartnerIn(PasswordInput):
     name: str
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=72)
     category: str | None = None
     description: str | None = None
     location: str | None = None
-    status: str | None = "ACTIVE"
+    status: str | None = Field(default="ACTIVE", pattern="^(ACTIVE|INACTIVE)$")
     generate_api_key: bool | None = False
 
 
@@ -72,11 +93,11 @@ class AdminPartnerPatchIn(BaseModel):
     category: str | None = None
     description: str | None = None
     location: str | None = None
-    status: str | None = None
+    status: str | None = Field(default=None, pattern="^(ACTIVE|INACTIVE)$")
 
 
-class AdminPartnerResetPasswordIn(BaseModel):
-    password: str
+class AdminPartnerResetPasswordIn(PasswordInput):
+    password: str = Field(min_length=8, max_length=72)
 
 
 class AdminOfferIn(BaseModel):
@@ -84,10 +105,10 @@ class AdminOfferIn(BaseModel):
     title: str
     description: str | None = None
     discount_type: DiscountType
-    discount_value: float
-    points_cost: int
-    min_basket: float | None = None
-    inventory: int | None = None
+    discount_value: float = Field(ge=0, allow_inf_nan=False)
+    points_cost: int = Field(ge=1)
+    min_basket: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    inventory: int | None = Field(default=None, ge=0)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     status: OfferStatus | None = OfferStatus.ACTIVE
@@ -97,10 +118,10 @@ class AdminOfferPatchIn(BaseModel):
     title: str | None = None
     description: str | None = None
     discount_type: DiscountType | None = None
-    discount_value: float | None = None
-    points_cost: int | None = None
-    min_basket: float | None = None
-    inventory: int | None = None
+    discount_value: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    points_cost: int | None = Field(default=None, ge=1)
+    min_basket: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    inventory: int | None = Field(default=None, ge=0)
     status: OfferStatus | None = None
 
 
@@ -118,12 +139,12 @@ class AdminVoucherRedeemIn(BaseModel):
 # 1. Admin Authentication
 # ---------------------------------------------------------------------------
 
-@router.post("/auth/login", summary="Admin Portal Login")
+@auth_router.post("/auth/login", summary="Admin Portal Login")
 async def admin_login(body: AdminLoginIn) -> dict[str, Any]:
     settings = get_settings()
     if (
         body.email.strip().lower() != settings.admin_email.strip().lower()
-        or body.password != settings.admin_password
+        or not hmac.compare_digest(body.password.encode(), settings.admin_password.encode())
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -132,6 +153,7 @@ async def admin_login(body: AdminLoginIn) -> dict[str, Any]:
 
     token = create_access_token(
         subject="admin_user_root",
+        expires_minutes=60,
         extra_claims={"email": settings.admin_email, "role": "ADMIN"},
     )
     return {
@@ -161,23 +183,19 @@ async def admin_get_me() -> dict[str, Any]:
 
 @router.get("/analytics/overview", summary="Overview Metrics")
 async def get_analytics_overview(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
-    total_users = (await session.execute(select(func.count(User.id)))).scalar_one() or 0
-    total_steps = (await session.execute(select(func.coalesce(func.sum(ActivityDaily.eligible_steps), 0)))).scalar_one() or 0
-    active_partners = (await session.execute(select(func.count(Partner.id)).where(Partner.status == PartnerStatus.ACTIVE))).scalar_one() or 0
-    active_offers = (await session.execute(select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE))).scalar_one() or 0
-    vouchers_issued = (await session.execute(select(func.count(Voucher.id)))).scalar_one() or 0
-    vouchers_redeemed = (await session.execute(select(func.count(Voucher.id)).where(Voucher.status == VoucherStatus.REDEEMED))).scalar_one() or 0
-    total_savings = (await session.execute(select(func.coalesce(func.sum(Redemption.discount_value), 0)))).scalar_one() or 0.0
+    # Independent scalar aggregates in one database round trip, without joins
+    # that would multiply counts across unrelated tables.
+    metrics = (await session.execute(select(
+        select(func.count(User.id)).scalar_subquery().label("total_users"),
+        select(func.coalesce(func.sum(ActivityDaily.eligible_steps), 0)).scalar_subquery().label("total_steps"),
+        select(func.count(Partner.id)).where(Partner.status == PartnerStatus.ACTIVE).scalar_subquery().label("active_partners"),
+        select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE).scalar_subquery().label("active_offers"),
+        select(func.count(Voucher.id)).scalar_subquery().label("vouchers_issued"),
+        select(func.count(Voucher.id)).where(Voucher.status == VoucherStatus.REDEEMED).scalar_subquery().label("vouchers_redeemed"),
+        select(func.coalesce(func.sum(Redemption.discount_value), 0)).select_from(Redemption).join(Voucher, Voucher.id == Redemption.voucher_id).join(Offer, Offer.id == Voucher.offer_id).where(Offer.discount_type == DiscountType.FIXED).scalar_subquery().label("fixed_discount_value"),
+    ))).mappings().one()
+    return {key: float(value) if key == "fixed_discount_value" else int(value) for key, value in metrics.items()}
 
-    return {
-        "total_users": total_users,
-        "total_steps": int(total_steps),
-        "active_partners": active_partners,
-        "active_offers": active_offers,
-        "vouchers_issued": vouchers_issued,
-        "vouchers_redeemed": vouchers_redeemed,
-        "total_customer_savings": float(total_savings),
-    }
 
 
 @router.get("/analytics/charts", summary="Chart Metrics")
@@ -201,9 +219,11 @@ async def get_analytics_charts(session: AsyncSession = Depends(get_session)) -> 
             Partner.id,
             Partner.name,
             func.count(Redemption.id).label("count"),
-            func.coalesce(func.sum(Redemption.discount_value), 0.0).label("value"),
+            func.coalesce(func.sum(case((Offer.discount_type == DiscountType.FIXED, Redemption.discount_value), else_=0)), 0.0).label("value"),
         )
         .join(Redemption, Redemption.partner_id == Partner.id)
+        .join(Voucher, Voucher.id == Redemption.voucher_id)
+        .join(Offer, Offer.id == Voucher.offer_id)
         .group_by(Partner.id, Partner.name)
         .order_by(desc("count"))
         .limit(5)
@@ -220,8 +240,9 @@ async def get_analytics_charts(session: AsyncSession = Depends(get_session)) -> 
             Offer.id,
             Offer.title,
             func.count(Redemption.id).label("count"),
-            func.coalesce(func.sum(Redemption.discount_value), 0.0).label("value"),
+            func.coalesce(func.sum(case((Offer.discount_type == DiscountType.FIXED, Redemption.discount_value), else_=0)), 0.0).label("value"),
         )
+        .select_from(Redemption)
         .join(Voucher, Voucher.id == Redemption.voucher_id)
         .join(Offer, Offer.id == Voucher.offer_id)
         .group_by(Offer.id, Offer.title)
@@ -248,7 +269,7 @@ async def get_analytics_charts(session: AsyncSession = Depends(get_session)) -> 
 @router.get("/partners", summary="List All Merchant Partners")
 async def list_partners(
     search: str | None = None,
-    status: str | None = None,
+    status: str | None = Query(default=None, pattern="^(ALL|ACTIVE|INACTIVE)$"),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
     query = select(Partner).order_by(Partner.name)
@@ -271,8 +292,8 @@ async def list_partners(
         select(
             Redemption.partner_id,
             func.count(Redemption.id),
-            func.coalesce(func.sum(Redemption.discount_value), 0.0),
-        ).group_by(Redemption.partner_id)
+            func.coalesce(func.sum(case((Offer.discount_type == DiscountType.FIXED, Redemption.discount_value), else_=0)), 0.0),
+        ).select_from(Redemption).join(Voucher, Voucher.id == Redemption.voucher_id).join(Offer, Offer.id == Voucher.offer_id).group_by(Redemption.partner_id)
     )
     redemption_stats = {
         row[0]: (int(row[1]), float(row[2]))
@@ -330,7 +351,7 @@ async def create_partner(
         raw_api_key = f"pk_live_{secrets.token_urlsafe(32)}"
         api_key_hash = hash_api_key(raw_api_key)
 
-    hashed_pwd = hash_password(body.password)
+    hashed_pwd = await run_in_threadpool(hash_password, body.password)
     partner_id = str(uuid.uuid4())
 
     partner = Partner(
@@ -445,7 +466,7 @@ async def reset_partner_password(
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
 
-    new_hash = hash_password(body.password)
+    new_hash = await run_in_threadpool(hash_password, body.password)
     partner.password_hash = new_hash
 
     # Find or link merchant user
@@ -574,7 +595,7 @@ async def get_partner(
 @router.get("/offers", summary="List All Deals/Offers")
 async def list_offers(
     partner_id: str | None = None,
-    status: str | None = None,
+    status: str | None = Query(default=None, pattern="^(ALL|ACTIVE|INACTIVE|EXPIRED)$"),
     search: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
@@ -713,7 +734,7 @@ async def delete_offer(
 async def list_vouchers(
     partner_id: str | None = None,
     offer_id: str | None = None,
-    status: str | None = None,
+    status: str | None = Query(default=None, pattern="^(ALL|ISSUED|REDEEMED|EXPIRED|CANCELLED)$"),
     short_code: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
@@ -724,6 +745,10 @@ async def list_vouchers(
     )
     if status and status != "ALL":
         query = query.where(Voucher.status == VoucherStatus(status))
+    if partner_id:
+        query = query.where(Voucher.offer.has(Offer.partner_id == partner_id))
+    if offer_id:
+        query = query.where(Voucher.offer_id == offer_id)
     if short_code:
         query = query.where(Voucher.short_code.ilike(f"%{short_code}%"))
 
@@ -789,6 +814,7 @@ async def redeem_voucher(
         select(Voucher)
         .options(selectinload(Voucher.offer))
         .where(Voucher.short_code == code)
+        .with_for_update()
     )
     v = result.scalar_one_or_none()
     if not v:
@@ -831,6 +857,8 @@ async def redeem_voucher(
 @router.get("/redemptions", summary="List Redemption History")
 async def list_redemptions(
     partner_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
     query = (
@@ -844,7 +872,7 @@ async def list_redemptions(
     if partner_id:
         query = query.where(Redemption.partner_id == partner_id)
 
-    result = await session.execute(query)
+    result = await session.execute(query.limit(limit).offset(offset))
     redemptions = result.scalars().all()
 
     items = []
@@ -869,7 +897,9 @@ async def list_redemptions(
 @router.get("/users", summary="List App Users")
 async def list_users(
     search: str | None = None,
-    status: str | None = None,
+    status: str | None = Query(default=None, pattern="^(ALL|ACTIVE|SUSPENDED|DELETED)$"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
     query = (
@@ -879,7 +909,7 @@ async def list_users(
         )
         .outerjoin(ActivityDaily, User.id == ActivityDaily.user_id)
         .group_by(User.id)
-        .order_by(desc(User.created_at))
+        .order_by(desc(User.created_at), User.id)
     )
 
     if status and status != "ALL":
@@ -887,15 +917,18 @@ async def list_users(
     if search:
         query = query.where(User.email.ilike(f"%{search}%"))
 
-    result = await session.execute(query)
+    result = await session.execute(query.limit(limit).offset(offset))
     rows = result.all()
 
+    user_ids = [u.id for u, _ in rows]
+    balances = dict((await session.execute(
+        select(PointsLedger.user_id, func.sum(PointsLedger.delta))
+        .where(PointsLedger.user_id.in_(user_ids))
+        .group_by(PointsLedger.user_id)
+    )).all()) if user_ids else {}
     items = []
     for u, total_steps in rows:
-        # Calculate points balance
-        pts = (await session.execute(
-            select(func.coalesce(func.sum(PointsLedger.delta), 0)).where(PointsLedger.user_id == u.id)
-        )).scalar_one() or 0
+        pts = balances.get(u.id, 0)
 
         items.append({
             "id": u.id,
@@ -937,10 +970,14 @@ async def adjust_user_points(
     body: AdminAdjustPointsIn,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    user = await session.get(User, user_id)
+    user = (await session.execute(select(User).where(User.id == user_id).with_for_update())).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    from app.services.points import get_balance
+    balance = await get_balance(user_id, session)
+    if balance + body.delta < 0:
+        raise HTTPException(status_code=409, detail="Adjustment would make the user's balance negative")
     ledger_entry = PointsLedger(
         id=str(uuid.uuid4()),
         user_id=user.id,
@@ -994,10 +1031,12 @@ async def get_user_ledger(
 
 @router.get("/ledger", summary="Global Points Ledger")
 async def get_global_ledger(
-    reason: str | None = None,
+    reason: str | None = Query(default=None, pattern="^(ALL|STEP_EARN|OFFER_SPEND|ADJUST)$"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    query = select(PointsLedger).options(selectinload(PointsLedger.user)).order_by(desc(PointsLedger.created_at)).limit(100)
+    query = select(PointsLedger).options(selectinload(PointsLedger.user)).order_by(desc(PointsLedger.created_at), PointsLedger.id).limit(limit).offset(offset)
     if reason and reason != "ALL":
         query = query.where(PointsLedger.reason == LedgerReason(reason))
 
@@ -1018,11 +1057,18 @@ async def get_global_ledger(
 
 @router.get("/audit-logs", summary="System Audit Logs")
 async def list_audit_logs(
+    action: str | None = Query(default=None, max_length=128),
+    actor: str | None = Query(default=None, max_length=36),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    result = await session.execute(
-        select(AuditLog).order_by(desc(AuditLog.created_at)).limit(100)
-    )
+    query = select(AuditLog).order_by(desc(AuditLog.created_at), AuditLog.id)
+    if action:
+        query = query.where(AuditLog.action.ilike(f"%{action}%"))
+    if actor:
+        query = query.where(AuditLog.actor == actor)
+    result = await session.execute(query.limit(limit).offset(offset))
     logs = result.scalars().all()
     return [
         {
@@ -1035,3 +1081,50 @@ async def list_audit_logs(
         }
         for l in logs
     ]
+
+
+@router.get("/system", summary="Live operational status and rewards configuration")
+async def system_status(session: AsyncSession = Depends(get_session)):
+    import time
+    from sqlalchemy import text
+    settings = get_settings()
+    started = time.perf_counter()
+    await session.execute(text("SELECT 1"))
+    latency = round((time.perf_counter() - started) * 1000, 2)
+    now = datetime.now(timezone.utc)
+    counts = (await session.execute(select(
+        select(func.count(Voucher.id)).where(Voucher.status == VoucherStatus.ISSUED, Voucher.expires_at < now).scalar_subquery().label("overdue_vouchers"),
+        select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE, Offer.inventory <= 10).scalar_subquery().label("low_inventory_offers"),
+        select(func.count(Offer.id)).where(Offer.status == OfferStatus.ACTIVE, Offer.ends_at < now).scalar_subquery().label("ended_active_offers"),
+    ))).mappings().one()
+    return {
+        "environment": settings.environment,
+        "database": {"status": "connected", "latency_ms": latency},
+        "rewards": {"steps_per_point": settings.steps_per_point, "daily_step_cap": settings.daily_step_cap,
+                    "voucher_validity_days": settings.voucher_validity_days},
+        "attention": dict(counts),
+        "checked_at": now.isoformat(),
+    }
+
+
+@router.post("/vouchers/sweep-expired", summary="Expire overdue vouchers")
+async def expire_overdue_vouchers(session: AsyncSession = Depends(get_session)):
+    # Voucher updates and audit record must commit together.
+    now = datetime.now(timezone.utc)
+    result = await session.execute(update(Voucher).where(
+        Voucher.status == VoucherStatus.ISSUED, Voucher.expires_at < now,
+    ).values(status=VoucherStatus.EXPIRED).returning(Voucher.id))
+    count = len(result.all())
+    session.add(AuditLog(actor="admin", action="SWEEP_EXPIRED_VOUCHERS", object_type="VOUCHER"))
+    await session.commit()
+    return {"swept_count": count}
+
+
+@router.get("/ledger/summary", summary="All-time points totals independent of the visible page")
+async def ledger_summary(session: AsyncSession = Depends(get_session)):
+    row = (await session.execute(select(
+        func.coalesce(func.sum(case((PointsLedger.delta > 0, PointsLedger.delta), else_=0)), 0),
+        func.coalesce(func.sum(case((PointsLedger.delta < 0, -PointsLedger.delta), else_=0)), 0),
+        func.coalesce(func.sum(PointsLedger.delta), 0),
+    ))).one()
+    return {"credited": int(row[0]), "debited": int(row[1]), "balance": int(row[2])}

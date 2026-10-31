@@ -52,3 +52,6 @@ web/.next/
 # ---------- IDE / Editors ----------
 .vscode/
 *.swp
+
+# Local assistant configuration
+.claude/

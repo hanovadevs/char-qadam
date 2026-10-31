@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.db.models import ActivityDaily, LedgerReason, PointsLedger
+from app.db.models import ActivityDaily, LedgerReason, PointsLedger, User
 from app.services.points import get_balance
 
 
@@ -44,6 +44,10 @@ async def sync_activity(
     Called inside an already-open session; the caller must NOT commit before
     receiving the result (we commit here to keep the ledger write atomic).
     """
+    # Lock a row that always exists, including the first sync of a new day.
+    # Matches the per-user lock used by offer redemption.
+    await session.execute(select(User.id).where(User.id == user_id).with_for_update())
+
     # ------------------------------------------------------------------ clamp
     clamped = min(eligible_steps, settings.daily_step_cap)
 

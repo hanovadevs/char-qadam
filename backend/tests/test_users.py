@@ -190,23 +190,26 @@ async def test_delete_soft_deletes_account(client: AsyncClient) -> None:
     email = _email()
     try:
         token = await _register(client, email)
+        user_id = (await client.get('/auth/me', headers=_auth(token))).json()['id']
         await client.delete("/users/me", headers=_auth(token))
 
         factory = get_session_factory()
         async with factory() as session:
             result = await session.execute(
-                __import__("sqlalchemy", fromlist=["select"]).select(User).where(User.email == email)
+                __import__("sqlalchemy", fromlist=["select"]).select(User).where(User.id == user_id)
             )
             user = result.scalar_one_or_none()
             assert user is not None
             assert user.status.value == "DELETED"
+            assert user.email != email
+            assert user.country is None and user.timezone is None
     finally:
         await _cleanup(email)
 
 
 @pytest.mark.asyncio
 async def test_delete_invalidates_jwt(client: AsyncClient) -> None:
-    """After DELETE, using the same JWT token returns 403 (account deleted)."""
+    """After DELETE, using the same JWT token returns 401 (credentials revoked)."""
     email = _email()
     try:
         token = await _register(client, email)
@@ -214,7 +217,7 @@ async def test_delete_invalidates_jwt(client: AsyncClient) -> None:
 
         # Old token must now be rejected
         me = await client.get("/auth/me", headers=_auth(token))
-        assert me.status_code == 403
+        assert me.status_code == 401
     finally:
         await _cleanup(email)
 

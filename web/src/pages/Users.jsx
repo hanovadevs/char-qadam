@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
@@ -7,6 +7,9 @@ import { Search, Sliders, History } from 'lucide-react';
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const requestVersion = useRef(0);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,24 +26,34 @@ export default function Users() {
   const [loadingLedger, setLoadingLedger] = useState(false);
 
   const fetchUsers = async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
     setError(null);
     try {
       const data = await api.listUsers({
+        limit: 51,
+        offset: page * 50,
         search: search.trim() || undefined,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
       });
-      setUsers(data || []);
+      if (version !== requestVersion.current) return;
+      setHasMore((data || []).length > 50);
+      setUsers((data || []).slice(0, 50));
     } catch (err) {
+      if (version !== requestVersion.current) return;
       setError(err.message || 'Error loading users.');
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, [search, statusFilter]);
+    const timer = setTimeout(fetchUsers, search ? 300 : 0);
+    return () => {
+      clearTimeout(timer);
+      requestVersion.current += 1;
+    };
+  }, [search, statusFilter, page]);
 
   const handleAdjustPoints = async (e) => {
     e.preventDefault();
@@ -121,9 +134,8 @@ export default function Users() {
             type="text"
             className="input-control"
             style={{ paddingLeft: '36px' }}
-            placeholder="Search users by email..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           />
         </div>
 
@@ -132,7 +144,7 @@ export default function Users() {
           {['ALL', 'ACTIVE', 'SUSPENDED'].map((status) => (
             <button
               key={status}
-              onClick={() => setStatusFilter(status)}
+              onClick={() => { setStatusFilter(status); setPage(0); }}
               className="btn btn-sm"
               style={{
                 background: statusFilter === status ? 'var(--brand-dark)' : 'var(--bg-surface-tertiary)',
@@ -233,6 +245,11 @@ export default function Users() {
         </table>
       </div>
 
+      <nav aria-label="User pages" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 }}>
+        <button className="btn btn-secondary btn-sm" disabled={loading || page === 0} onClick={() => setPage(page - 1)}>Previous</button>
+        <span>Page {page + 1}</span>
+        <button className="btn btn-secondary btn-sm" disabled={loading || !hasMore} onClick={() => setPage(page + 1)}>Next</button>
+      </nav>
       {/* Adjust Points Modal */}
       <Modal
         isOpen={Boolean(adjustingUser)}
@@ -249,7 +266,6 @@ export default function Users() {
               type="number"
               required
               className="input-control font-mono"
-              placeholder="e.g. 500 or -200"
               value={delta}
               onChange={(e) => setDelta(e.target.value)}
             />
@@ -263,7 +279,6 @@ export default function Users() {
               type="text"
               required
               className="input-control"
-              placeholder="e.g. Promotion bonus, support compensation, correction"
               value={reasonNote}
               onChange={(e) => setReasonNote(e.target.value)}
             />

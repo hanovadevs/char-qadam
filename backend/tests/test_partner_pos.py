@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import delete
@@ -87,7 +87,7 @@ async def test_validate_and_redeem_by_short_code(client: AsyncClient) -> None:
         token = reg.json()["access_token"]
         await client.post(
             "/activity/sync",
-            json={"local_date": "2026-08-28", "eligible_steps": 10000, "source": "test", "sync_key": str(uuid.uuid4())},
+            json={"local_date": date.today().isoformat(), "eligible_steps": 10000, "source": "test", "sync_key": str(uuid.uuid4())},
             headers=_auth(token),
         )
 

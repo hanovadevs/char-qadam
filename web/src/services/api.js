@@ -1,9 +1,10 @@
 // Stepsy Admin API Client
 
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = import.meta.env?.VITE_API_URL || '';
 
 class ApiClient {
   constructor() {
+    this.inflight = new Map();
     this.token = localStorage.getItem('stepsy_admin_token') || null;
   }
 
@@ -26,13 +27,34 @@ class ApiClient {
     return headers;
   }
 
-  async request(path, options = {}) {
+  request(path, options = {}) {
+    const key = `${this.token || ''}:${path}`;
+    const share = (!options.method || options.method === 'GET') && !options.signal;
+    if (share && this.inflight.has(key)) return this.inflight.get(key);
+    const request = this.performRequest(path, options);
+    if (share) {
+      this.inflight.set(key, request);
+      const clear = () => {
+        if (this.inflight.get(key) === request) this.inflight.delete(key);
+      };
+      request.then(clear, clear);
+    }
+    return request;
+  }
+
+  async performRequest(path, options = {}) {
+    const requestToken = this.token;
     const url = `${BASE_URL}${path}`;
     const headers = { ...this.getHeaders(), ...options.headers };
 
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    options.signal?.addEventListener('abort', abort, { once: true });
+    if (options.signal?.aborted) controller.abort();
+    const timeout = setTimeout(abort, 15000);
     try {
-      const response = await fetch(url, { ...options, headers });
-      if (response.status === 401) {
+      const response = await fetch(url, { ...options, headers, signal: controller.signal });
+      if (response.status === 401 && this.token === requestToken) {
         this.setToken(null);
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
@@ -42,13 +64,19 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || `Request failed with status ${response.status}`);
+        const detail = Array.isArray(errorData.detail)
+          ? errorData.detail.map(item => item.msg).join('; ')
+          : errorData.detail || errorData.message;
+        throw new Error(detail || `Request failed with status ${response.status}`);
       }
 
-      return await response.json();
+      return response.status === 204 ? null : await response.json();
     } catch (err) {
       console.error(`[API Error] ${path}:`, err);
       throw err;
+    } finally {
+      clearTimeout(timeout);
+      options.signal?.removeEventListener('abort', abort);
     }
   }
 
@@ -155,7 +183,7 @@ class ApiClient {
   // Vouchers & POS
   async listVouchers({ search, status } = {}) {
     const params = new URLSearchParams();
-    if (search) params.append('search', search);
+    if (search) params.append('short_code', search);
     if (status && status !== 'ALL') params.append('status', status);
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/vouchers${query}`);
@@ -175,13 +203,13 @@ class ApiClient {
     });
   }
 
-  async listRedemptions() {
-    return this.request('/admin/redemptions');
+  async listRedemptions({ limit = 50 } = {}) {
+    return this.request(`/admin/redemptions?limit=${limit}`);
   }
 
   // Users
-  async listUsers({ search, status } = {}) {
-    const params = new URLSearchParams();
+  async listUsers({ search, status, limit = 51, offset = 0 } = {}) {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (search) params.append('search', search);
     if (status && status !== 'ALL') params.append('status', status);
     const query = params.toString() ? `?${params.toString()}` : '';
@@ -207,16 +235,22 @@ class ApiClient {
   }
 
   // Ledger & Audit
-  async getGlobalLedger({ reason } = {}) {
-    const params = new URLSearchParams();
+  async getGlobalLedger({ reason, limit = 51, offset = 0 } = {}) {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (reason && reason !== 'ALL') params.append('reason', reason);
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request(`/admin/ledger${query}`);
+    return this.request(`/admin/ledger?${params}`);
   }
 
-  async getAuditLogs() {
-    return this.request('/admin/audit-logs');
+  async getAuditLogs({ action, actor, limit = 51, offset = 0 } = {}) {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (action) params.append('action', action);
+    if (actor) params.append('actor', actor);
+    return this.request(`/admin/audit-logs?${params}`);
   }
+
+  getSystemStatus() { return this.request('/admin/system'); }
+  getLedgerSummary() { return this.request('/admin/ledger/summary'); }
+  expireVouchers() { return this.request('/admin/vouchers/sweep-expired', { method: 'POST' }); }
 }
 
 export const api = new ApiClient();

@@ -18,6 +18,7 @@ export default function Navbar({ user }) {
     { label: 'Users', to: '/users' },
     { label: 'Ledger', to: '/ledger' },
     { label: 'Audit', to: '/audit' },
+    { label: 'Support', to: '/support' },
     { label: 'Settings', to: '/settings' },
   ];
 
@@ -68,7 +69,7 @@ export default function Navbar({ user }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
-            {user?.email || 'admin@stepsy.app'}
+            {user?.email || 'Administrator'}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
             Superadmin
