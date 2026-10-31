@@ -110,15 +110,23 @@ class _GuidedTourState extends ConsumerState<GuidedTour>
   bool _valid(int request) =>
       mounted && request == _request && ref.read(guidedTourProvider).active;
   Future<void> _locate(int index, int request) async {
+    try {
+      await _positionTarget(index, request);
+    } catch (_) {
+      // A missing/disposed target must leave the explanation and navigation usable.
+      if (_valid(request)) setState(() => _target = null);
+    } finally {
+      if (_valid(request)) setState(() => _locating = false);
+    }
+  }
+
+  Future<void> _positionTarget(int index, int request) async {
     if (!_valid(request)) return;
     setState(() {
       _locating = true;
       _target = null;
     });
     final stop = tourStops[index];
-    final motion = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : AppTheme.motion;
     final path = GoRouter.of(context).routeInformationProvider.value.uri.path;
     if (![
       '/steps',
@@ -148,8 +156,9 @@ class _GuidedTourState extends ConsumerState<GuidedTour>
           await Scrollable.ensureVisible(
             target,
             alignment: .03,
-            duration: motion,
-            curve: AppTheme.easeOut,
+            // Page tickers are intentionally muted under the guide. A driven
+            // scroll would wait forever for that paused ticker to advance.
+            duration: Duration.zero,
           );
           break;
         }

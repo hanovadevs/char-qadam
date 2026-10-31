@@ -127,6 +127,7 @@ void main() {
         initialPath: '/steps',
         rewards: rewards,
         height: 850,
+        disableAnimations: false,
       );
       await settleTour(tester);
       expect(find.text('Shall we take a little tour?'), findsOneWidget);
