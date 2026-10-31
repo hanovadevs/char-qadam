@@ -51,8 +51,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   String _errorMessage(Object error) {
     if (error is DioException) {
       final data = error.response?.data;
-      if (data is Map && data['detail'] is String)
+      if (data is Map && data['detail'] is String) {
         return data['detail'] as String;
+      }
     }
     return 'Unable to complete the request. Please try again.';
   }
@@ -75,11 +76,12 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
         _error = null;
       });
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = _errorMessage(error);
         });
+      }
     }
   }
 
@@ -93,15 +95,17 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     try {
       await operation();
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = _errorMessage(error);
         });
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _busy = false;
         });
+      }
     }
   }
 
@@ -145,10 +149,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   Future<void> _openTicket(String id) async {
     await _run(() async {
       final response = await _api.get('/support/tickets/$id');
-      if (mounted)
+      if (mounted) {
         setState(() {
           _ticket = response.data as Map<String, dynamic>;
         });
+      }
     });
   }
 
@@ -172,10 +177,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
       _subject.clear();
       _message.clear();
       await _load();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _notice = 'Your support ticket was created. Replies appear here.';
         });
+      }
     });
   }
 
@@ -266,11 +272,12 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                         '/support/tickets/${_ticket!['id']}/messages',
                         data: {'message': _reply.text.trim()},
                       );
-                      if (mounted)
+                      if (mounted) {
                         setState(() {
                           _ticket = response.data as Map<String, dynamic>;
                           _reply.clear();
                         });
+                      }
                     }),
               child: const Text('Send reply'),
             ),
@@ -382,11 +389,12 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                                       ),
                                     },
                                   );
-                                  if (mounted)
+                                  if (mounted) {
                                     setState(() {
                                       _reported = true;
                                       _notice = 'Reported to the support team.';
                                     });
+                                  }
                                 }),
                         ),
                     ],

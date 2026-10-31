@@ -46,8 +46,9 @@ class HealthConsent {
           ),
         ) ??
         false;
-    if (accepted)
+    if (accepted) {
       await (await SharedPreferences.getInstance()).setBool(key, true);
+    }
     return accepted;
   }
 }
